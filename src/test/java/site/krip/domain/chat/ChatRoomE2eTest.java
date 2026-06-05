@@ -1,0 +1,446 @@
+package site.krip.domain.chat;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
+import site.krip.domain.friend.entity.Friendship;
+import site.krip.domain.friend.entity.UserBlock;
+import site.krip.domain.friend.repository.FriendshipRepository;
+import site.krip.domain.friend.repository.UserBlockRepository;
+import site.krip.support.IntegrationTestSupport;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 채팅 방 생성/멤버십/조회 REST E2E ({@code /api/chat/rooms}).
+ *
+ * <p>친구 관계는 친구 API({@code FriendshipController})로, 차단은 {@link UserBlockRepository} 직접 시드.
+ * (방/메시지 생성은 REST 로만 다루며 WS 실시간 경로는 별도.) 응답 JSON 은 snake_case,
+ * room type 은 대문자 enum({@code DIRECT/GROUP}).
+ */
+class ChatRoomE2eTest extends IntegrationTestSupport {
+
+    private final ObjectMapper om = new ObjectMapper();
+
+    @Autowired
+    private FriendshipRepository friendshipRepo;
+
+    @Autowired
+    private UserBlockRepository blockRepo;
+
+    // ──────────────────── 헬퍼 ────────────────────
+
+    /** a↔b 를 ACCEPTED 친구로 시드 (그룹 초대 정책 통과용). assigned-id 라 save() 반환값 사용. */
+    private void makeFriends(String a, String b) {
+        Friendship f = new Friendship(a, b);
+        f.accept();
+        friendshipRepo.save(f);
+    }
+
+    /** blocker → blocked 차단 시드. */
+    private void block(String blocker, String blocked) {
+        blockRepo.save(new UserBlock(blocker, blocked));
+    }
+
+    private MvcResult createDirect(String me, String peer) throws Exception {
+        return mockMvc.perform(post("/api/chat/rooms/direct")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(me))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"peer_user_id\":\"" + peer + "\"}"))
+                .andReturn();
+    }
+
+    private String createGroup(String me, String title, String... memberIds) throws Exception {
+        StringBuilder ids = new StringBuilder();
+        for (int i = 0; i < memberIds.length; i++) {
+            if (i > 0) {
+                ids.append(",");
+            }
+            ids.append("\"").append(memberIds[i]).append("\"");
+        }
+        MvcResult res = mockMvc.perform(post("/api/chat/rooms/group")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(me))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"" + title + "\",\"member_ids\":[" + ids + "]}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return om.readTree(res.getResponse().getContentAsString()).get("chat_room_id").asText();
+    }
+
+    // ──────────────────── 1:1 방 ────────────────────
+
+    @Test
+    @DisplayName("1:1 방 생성 → 201, type=DIRECT + peer 노출; 재생성 시 동일 방(idempotent)")
+    void createDirectIdempotent() throws Exception {
+        String a = fixtures.createActiveUser("앨리스");
+        String b = fixtures.createActiveUser("밥");
+
+        MvcResult res = createDirect(a, b);
+        org.junit.jupiter.api.Assertions.assertEquals(201, res.getResponse().getStatus());
+        JsonNode body = om.readTree(res.getResponse().getContentAsString());
+        String roomId = body.get("chat_room_id").asText();
+        org.junit.jupiter.api.Assertions.assertEquals("direct", body.get("type").asText());
+        org.junit.jupiter.api.Assertions.assertEquals(b, body.get("peer").get("user_id").asText());
+
+        // 재생성 → 같은 room_id (canonical UNIQUE 로 idempotent)
+        MvcResult again = createDirect(a, b);
+        org.junit.jupiter.api.Assertions.assertEquals(201, again.getResponse().getStatus());
+        String roomIdAgain = om.readTree(again.getResponse().getContentAsString())
+                .get("chat_room_id").asText();
+        org.junit.jupiter.api.Assertions.assertEquals(roomId, roomIdAgain);
+
+        // 반대 방향(B→A)도 동일 방 (canonical 정렬)
+        MvcResult reverse = createDirect(b, a);
+        String roomIdReverse = om.readTree(reverse.getResponse().getContentAsString())
+                .get("chat_room_id").asText();
+        org.junit.jupiter.api.Assertions.assertEquals(roomId, roomIdReverse);
+    }
+
+    @Test
+    @DisplayName("비친구와도 1:1 방 생성 허용 → 201 (친구 정책 없음)")
+    void createDirectNonFriendAllowed() throws Exception {
+        String a = fixtures.createActiveUser("찰리");
+        String b = fixtures.createActiveUser("데이브");
+
+        createDirect(a, b).getResponse();
+        mockMvc.perform(post("/api/chat/rooms/direct")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"peer_user_id\":\"" + b + "\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("자기 자신과 1:1 방 → 400")
+    void createDirectSelf() throws Exception {
+        String a = fixtures.createActiveUser("이브");
+
+        mockMvc.perform(post("/api/chat/rooms/direct")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"peer_user_id\":\"" + a + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 상대와 1:1 방 → 400")
+    void createDirectNonexistentPeer() throws Exception {
+        String a = fixtures.createActiveUser("프랭크");
+
+        mockMvc.perform(post("/api/chat/rooms/direct")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"peer_user_id\":\"nonexistent-user-id\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("차단한 상대와 1:1 방 → 400")
+    void createDirectBlockedPeer() throws Exception {
+        String a = fixtures.createActiveUser("그레이스");
+        String b = fixtures.createActiveUser("헨리");
+        block(a, b);
+
+        mockMvc.perform(post("/api/chat/rooms/direct")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"peer_user_id\":\"" + b + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("peer_user_id 누락 → 400")
+    void createDirectMissingPeer() throws Exception {
+        String a = fixtures.createActiveUser("아이비");
+
+        mockMvc.perform(post("/api/chat/rooms/direct")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ──────────────────── 그룹 방 ────────────────────
+
+    @Test
+    @DisplayName("그룹 방 생성(친구 멤버) → 201, type=GROUP + title")
+    void createGroupOk() throws Exception {
+        String owner = fixtures.createActiveUser("방장");
+        String m1 = fixtures.createActiveUser("멤버1");
+        String m2 = fixtures.createActiveUser("멤버2");
+        makeFriends(owner, m1);
+        makeFriends(owner, m2);
+
+        String roomId = createGroup(owner, "여행 단톡방", m1, m2);
+        org.junit.jupiter.api.Assertions.assertNotNull(roomId);
+
+        // 방 상세 — GROUP + title
+        mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.type").value("group"))
+                .andExpect(jsonPath("$.title").value("여행 단톡방"));
+    }
+
+    @Test
+    @DisplayName("본인만 멤버인 그룹 방(=본인 제외 시 빈 멤버) → 400")
+    void createGroupSelfOnly() throws Exception {
+        String owner = fixtures.createActiveUser("외톨이");
+
+        mockMvc.perform(post("/api/chat/rooms/group")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"혼자방\",\"member_ids\":[\"" + owner + "\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("친구가 아닌 유저를 그룹 멤버로 → 400")
+    void createGroupNonFriend() throws Exception {
+        String owner = fixtures.createActiveUser("주최자");
+        String stranger = fixtures.createActiveUser("낯선이");
+
+        mockMvc.perform(post("/api/chat/rooms/group")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"낯선방\",\"member_ids\":[\"" + stranger + "\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("member_ids 빈 배열 → 400 (검증)")
+    void createGroupEmptyMembers() throws Exception {
+        String owner = fixtures.createActiveUser("빈방장");
+
+        mockMvc.perform(post("/api/chat/rooms/group")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"빈방\",\"member_ids\":[]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ──────────────────── 초대 / 퇴장 / 강퇴 ────────────────────
+
+    @Test
+    @DisplayName("그룹 방에 친구 초대 → invited 에 포함")
+    void inviteFriend() throws Exception {
+        String owner = fixtures.createActiveUser("초대장방장");
+        String m1 = fixtures.createActiveUser("초대원1");
+        String invitee = fixtures.createActiveUser("초대대상");
+        makeFriends(owner, m1);
+        makeFriends(owner, invitee);
+
+        String roomId = createGroup(owner, "초대테스트", m1);
+
+        mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_ids\":[\"" + invitee + "\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.invited_user_ids[0]").value(invitee));
+    }
+
+    @Test
+    @DisplayName("친구가 아닌 유저 초대 → 400")
+    void inviteNonFriend() throws Exception {
+        String owner = fixtures.createActiveUser("방장x");
+        String m1 = fixtures.createActiveUser("기존멤버");
+        String stranger = fixtures.createActiveUser("초대불가");
+        makeFriends(owner, m1);
+
+        String roomId = createGroup(owner, "초대거부", m1);
+
+        mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_ids\":[\"" + stranger + "\"]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("비멤버가 초대 시도 → 403")
+    void inviteByNonMember() throws Exception {
+        String owner = fixtures.createActiveUser("진짜방장");
+        String m1 = fixtures.createActiveUser("멤버a");
+        String outsider = fixtures.createActiveUser("외부인");
+        String target = fixtures.createActiveUser("타겟");
+        makeFriends(owner, m1);
+        makeFriends(outsider, target);
+
+        String roomId = createGroup(owner, "권한방", m1);
+
+        mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(outsider))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_ids\":[\"" + target + "\"]}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("그룹 방 퇴장 → 204")
+    void leaveGroup() throws Exception {
+        String owner = fixtures.createActiveUser("퇴장방장");
+        String leaver = fixtures.createActiveUser("나가는사람");
+        makeFriends(owner, leaver);
+
+        String roomId = createGroup(owner, "퇴장방", leaver);
+
+        mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(leaver)))
+                .andExpect(status().isNoContent());
+
+        // 퇴장 후 방 상세 접근 → 403 (활성 멤버 아님)
+        mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(leaver)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("방장이 멤버 강퇴 → 204")
+    void kickByOwner() throws Exception {
+        String owner = fixtures.createActiveUser("강퇴방장");
+        String target = fixtures.createActiveUser("강퇴대상");
+        makeFriends(owner, target);
+
+        String roomId = createGroup(owner, "강퇴방", target);
+
+        mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_id\":\"" + target + "\"}"))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("방장이 아닌 멤버가 강퇴 시도 → 403")
+    void kickByNonOwner() throws Exception {
+        String owner = fixtures.createActiveUser("원래방장");
+        String m1 = fixtures.createActiveUser("일반멤버");
+        String m2 = fixtures.createActiveUser("강퇴될뻔");
+        makeFriends(owner, m1);
+        makeFriends(owner, m2);
+
+        String roomId = createGroup(owner, "강퇴권한방", m1, m2);
+
+        // m1(방장 아님)이 m2 강퇴 시도 → 403
+        mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(m1))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"user_id\":\"" + m2 + "\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    // ──────────────────── 조회 ────────────────────
+
+    @Test
+    @DisplayName("방 리스트 조회 → 참여 중인 방 노출")
+    void listRooms() throws Exception {
+        String a = fixtures.createActiveUser("리스트a");
+        String b = fixtures.createActiveUser("리스트b");
+
+        MvcResult res = createDirect(a, b);
+        String roomId = om.readTree(res.getResponse().getContentAsString())
+                .get("chat_room_id").asText();
+
+        mockMvc.perform(get("/api/chat/rooms")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.chat_room_id == '" + roomId + "')]").exists());
+    }
+
+    @Test
+    @DisplayName("그룹 방 참여자 목록 조회 → 멤버 노출")
+    void listMembers() throws Exception {
+        String owner = fixtures.createActiveUser("멤버조회방장");
+        String m1 = fixtures.createActiveUser("조회멤버1");
+        makeFriends(owner, m1);
+
+        String roomId = createGroup(owner, "멤버조회방", m1);
+
+        mockMvc.perform(get("/api/chat/rooms/{id}/members", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.user_id == '" + m1 + "')]").exists())
+                .andExpect(jsonPath("$.items[?(@.user_id == '" + owner + "')]").exists());
+    }
+
+    @Test
+    @DisplayName("초대 가능 친구 목록 → 미참여 친구 노출 / 이미 멤버는 제외")
+    void invitableFriends() throws Exception {
+        String owner = fixtures.createActiveUser("초대가능방장");
+        String member = fixtures.createActiveUser("이미멤버");
+        String candidate = fixtures.createActiveUser("초대후보");
+        makeFriends(owner, member);
+        makeFriends(owner, candidate);
+
+        String roomId = createGroup(owner, "초대가능방", member);
+
+        mockMvc.perform(get("/api/chat/rooms/{id}/invitable-friends", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.user_id == '" + candidate + "')]").exists())
+                .andExpect(jsonPath("$.items[?(@.user_id == '" + member + "')]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("비멤버가 방 상세 접근 → 403")
+    void nonMemberGetRoom() throws Exception {
+        String a = fixtures.createActiveUser("방주인");
+        String b = fixtures.createActiveUser("방상대");
+        String outsider = fixtures.createActiveUser("외부자");
+
+        MvcResult res = createDirect(a, b);
+        String roomId = om.readTree(res.getResponse().getContentAsString())
+                .get("chat_room_id").asText();
+
+        mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(outsider)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 방 상세 → 404")
+    void getRoomNotFound() throws Exception {
+        String a = fixtures.createActiveUser("조회자");
+
+        mockMvc.perform(get("/api/chat/rooms/{id}", "no-such-room")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a)))
+                .andExpect(status().isNotFound());
+    }
+}

@@ -1,0 +1,26 @@
+target/
+!.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# 환경 — 보안키 유출 방지
+.env
+.env.local
+
+# secrets/
+secrets/*
+!secrets/.gitkeep
+!secrets/README.md
+*.pem
+*-secret-key.json
+
+# logs
+logs/
+*.log

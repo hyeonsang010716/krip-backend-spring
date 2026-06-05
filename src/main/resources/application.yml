@@ -1,0 +1,112 @@
+server:
+  port: ${PORT:8000}
+
+spring:
+  application:
+    name: krip-backend
+
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
+  # ──────────────────── PostgreSQL (JPA) ────────────────────
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_NAME:magic7}
+    username: ${POSTGRES_USER:magic7}
+    password: ${POSTGRES_PASSWORD:ZAvEjgkEzu8K**}
+    hikari:
+      maximum-pool-size: 20
+      pool-name: krip-hikari
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc.time_zone: UTC
+        format_sql: false
+    show-sql: false
+
+  # ──────────────────── Flyway (스키마 마이그레이션) ────────────────────
+  # ddl-auto=validate 와 한 쌍: 테이블 생성/변경은 Flyway, 검증만 Hibernate 가 담당.
+  flyway:
+    enabled: ${FLYWAY_ENABLED:true}
+    baseline-on-migrate: true
+    baseline-version: 1
+
+  # ──────────────────── MongoDB ────────────────────
+  data:
+    mongodb:
+      uri: mongodb://${MONGODB_USER:magic7}:${MONGODB_PASSWORD:ZAvEjgkEzu8K**}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_NAME:magic7}?authSource=admin
+      auto-index-creation: true
+
+  # ──────────────────── Redis ────────────────────
+  data.redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DB:0}
+    timeout: 5s
+
+# ──────────────────── 애플리케이션 설정 (krip.*) ────────────────────
+krip:
+  environment: ${ENVIRONMENT:DEV}
+  auth:
+    access-token: ${ACCESS_TOKEN:dev-access-token}
+    jwt:
+      secret: ${USER_LOGIN_JWT_SECRET_KEY:your-secret-key-here}
+      expiration-days: ${USER_LOGIN_JWT_EXPIRATION_DAYS:1}
+      cookie-name: ${USER_LOGIN_COOKIE_NAME:utk}
+    registered-cache-ttl-seconds: 86400
+  share:
+    secret: ${SHARE_JWT_SECRET_KEY:your-share-secret-here}
+    expiration-days: ${SHARE_JWT_EXPIRATION_DAYS:30}
+  chat:
+    # 채팅 fan-out 모드: in_process(단일 노드) | node_channel(다중 노드 Redis Pub/Sub)
+    fanout-mode: ${FANOUT_MODE:in_process}
+    node-id: ${NODE_ID:${HOSTNAME:node-local}}
+    dedupe-redis-database: ${CHAT_DEDUPE_REDIS_DB:1}
+  fcm:
+    # Firebase 서비스 계정 JSON 경로. 미설정/파일 부재 시 FCM 발송 비활성(토큰/뮤트/인박스는 정상).
+    enabled: ${FCM_ENABLED:true}
+    credentials-path: ${FCM_CREDENTIALS_PATH:}
+  oauth:
+    redirect-base-url: ${OAUTH_REDIRECT_BASE_URL:http://localhost:8000}
+    frontend-url: ${FRONTEND_URL:https://krip.site}
+    local-frontend-url: ${LOCAL_FRONTEND_URL:https://localhost:3000}
+    app-deep-link: krip://auth/callback
+    google:
+      client-id: ${GOOGLE_CLIENT_ID:}
+      client-secret: ${GOOGLE_CLIENT_SECRET:}
+  cors:
+    allowed-origins:
+      - ${FRONTEND_URL:https://krip.site}
+      - ${LOCAL_FRONTEND_URL:https://localhost:3000}
+    # 네이티브 앱(Capacitor) WebSocket 핸드셰이크 전용 origin. HTTP CORS 에는 미포함.
+    app-allowed-origins:
+      - capacitor://localhost
+      - https://localhost
+  storage:
+    access-key-id: ${S3_ACCESS_KEY_ID:}
+    secret-access-key: ${S3_SECRET_ACCESS_KEY:}
+    region: ${S3_REGION:kr-standard}
+    bucket-name: ${S3_BUCKET_NAME:}
+    endpoint-url: ${S3_ENDPOINT_URL:}
+  withdraw:
+    grace-period-days: 30
+    # cron 모드: 매일 KST 04:00. 테스트는 WITHDRAW_PURGE_CRON 으로 override.
+    purge-cron: ${WITHDRAW_PURGE_CRON:0 0 4 * * *}
+    purge-zone: Asia/Seoul
+
+# multipart 업로드 한도
+spring.servlet.multipart:
+  max-file-size: 11MB
+  max-request-size: 110MB
+
+springdoc:
+  swagger-ui:
+    path: /docs
+  api-docs:
+    path: /openapi.json
+
+logging:
+  level:
+    site.krip: ${LOG_LEVEL:INFO}

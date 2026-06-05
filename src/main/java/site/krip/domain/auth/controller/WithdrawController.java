@@ -1,0 +1,68 @@
+package site.krip.domain.auth.controller;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import site.krip.domain.auth.dto.response.WithdrawResponse;
+import site.krip.domain.auth.service.WithdrawService;
+import site.krip.global.auth.CurrentUserId;
+import site.krip.global.cache.RegisteredCacheManager;
+import site.krip.global.common.dto.MessageResponse;
+import site.krip.global.support.IsoTimestamp;
+
+import java.time.Instant;
+
+/**
+ * 회원 탈퇴/취소. 이 prefix 는 RegisterCheckFilter 제외 대상이라 INACTIVE 유저도 cancel 에 도달한다.
+ */
+@RestController
+@RequestMapping("/api/auth/withdraw")
+public class WithdrawController {
+
+    private static final Logger log = LoggerFactory.getLogger(WithdrawController.class);
+
+    private final WithdrawService withdrawService;
+    private final RegisteredCacheManager registeredCache;
+    private final LoginCookieFactory cookieFactory;
+
+    public WithdrawController(WithdrawService withdrawService, RegisteredCacheManager registeredCache,
+                              LoginCookieFactory cookieFactory) {
+        this.withdrawService = withdrawService;
+        this.registeredCache = registeredCache;
+        this.cookieFactory = cookieFactory;
+    }
+
+    /** 탈퇴 요청 — INACTIVE 전환 + 30일 후 영구 삭제 예약, 쿠키 즉시 만료. */
+    @DeleteMapping
+    public ResponseEntity<WithdrawResponse> withdraw(@CurrentUserId String userId) {
+        Instant purgeAt = withdrawService.requestWithdraw(userId);
+
+        // commit 이후 캐시 무효화 + chat 세션 즉시 종료 (미커밋 ACTIVE 재캐싱 race 차단).
+        registeredCache.invalidate(userId);
+        withdrawService.revokeUserChatState(userId);
+
+        ResponseCookie expired = cookieFactory.expired();
+        WithdrawResponse body = new WithdrawResponse(
+                "회원 탈퇴 요청이 접수되었습니다. 30일 후 영구 삭제됩니다.",
+                IsoTimestamp.format(purgeAt));
+
+        log.info("회원 탈퇴 요청 처리 완료 (user_id={})", userId);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, expired.toString())
+                .body(body);
+    }
+
+    /** 탈퇴 취소 — 유예 기간 내 INACTIVE → ACTIVE 복구. */
+    @PostMapping("/cancel")
+    public MessageResponse cancelWithdraw(@CurrentUserId String userId) {
+        withdrawService.cancelWithdraw(userId);
+        log.info("회원 탈퇴 취소 처리 완료 (user_id={})", userId);
+        return new MessageResponse("회원 탈퇴 요청이 취소되었습니다.");
+    }
+}

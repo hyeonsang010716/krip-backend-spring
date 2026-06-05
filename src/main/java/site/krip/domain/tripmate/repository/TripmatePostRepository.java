@@ -1,0 +1,71 @@
+package site.krip.domain.tripmate.repository;
+
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import site.krip.domain.tripmate.entity.TripmatePost;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * 여행 메이트 게시글 RDB 접근.
+ *
+ * <p>목록/검색은 (created_at, post_id) 커서 페이지네이션. to-one(user·detail)만 fetch join
+ * 하여 LIMIT 호환을 유지하고, 이미지는 {@code @BatchSize} lazy 로 로드한다.
+ * like_count·is_liked 는 {@link TripmatePostLikeRepository} 로 별도 집계.
+ */
+public interface TripmatePostRepository extends JpaRepository<TripmatePost, String> {
+
+    @Query("select p from TripmatePost p "
+            + "left join fetch p.user u left join fetch u.detail "
+            + "where p.postId = :postId")
+    Optional<TripmatePost> findByIdWithUserDetail(@Param("postId") String postId);
+
+    @Query("select p.createdAt from TripmatePost p where p.postId = :postId")
+    Optional<Instant> findCreatedAt(@Param("postId") String postId);
+
+    // ──────────────────── 목록 (최신순) ────────────────────
+
+    @Query("select p from TripmatePost p "
+            + "left join fetch p.user u left join fetch u.detail "
+            + "where p.displayed = true")
+    List<TripmatePost> findDisplayedFirstPage(Pageable pageable);
+
+    @Query("select p from TripmatePost p "
+            + "left join fetch p.user u left join fetch u.detail "
+            + "where p.displayed = true "
+            + "and (p.createdAt < :cursorAt or (p.createdAt = :cursorAt and p.postId < :cursor))")
+    List<TripmatePost> findDisplayedAfterCursor(@Param("cursorAt") Instant cursorAt,
+                                                @Param("cursor") String cursor,
+                                                Pageable pageable);
+
+    // ──────────────────── 검색 (제목·내용·작성자 닉네임) ────────────────────
+
+    @Query("select p from TripmatePost p "
+            + "left join fetch p.user u left join fetch u.detail "
+            + "where p.displayed = true and ("
+            + "  lower(p.title) like lower(:pattern) escape '!' "
+            + "  or lower(p.content) like lower(:pattern) escape '!' "
+            + "  or exists (select 1 from UserDetailInform d "
+            + "             where d.userId = p.userId and lower(d.userName) like lower(:pattern) escape '!')"
+            + ")")
+    List<TripmatePost> searchFirstPage(@Param("pattern") String pattern, Pageable pageable);
+
+    @Query("select p from TripmatePost p "
+            + "left join fetch p.user u left join fetch u.detail "
+            + "where p.displayed = true "
+            + "and (p.createdAt < :cursorAt or (p.createdAt = :cursorAt and p.postId < :cursor)) "
+            + "and ("
+            + "  lower(p.title) like lower(:pattern) escape '!' "
+            + "  or lower(p.content) like lower(:pattern) escape '!' "
+            + "  or exists (select 1 from UserDetailInform d "
+            + "             where d.userId = p.userId and lower(d.userName) like lower(:pattern) escape '!')"
+            + ")")
+    List<TripmatePost> searchAfterCursor(@Param("pattern") String pattern,
+                                         @Param("cursorAt") Instant cursorAt,
+                                         @Param("cursor") String cursor,
+                                         Pageable pageable);
+}

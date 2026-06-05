@@ -1,0 +1,272 @@
+package site.krip.domain.notification;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import site.krip.domain.notification.document.InboxItem;
+import site.krip.domain.notification.document.TargetType;
+import site.krip.domain.notification.repository.InboxRepository;
+import site.krip.domain.notification.service.InboxService;
+import site.krip.support.IntegrationTestSupport;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 인박스 E2E — 경로 {@code /api/notification/inbox}. Mongo 단독. 인박스 항목은 {@link InboxRepository} 로
+ * 직접 시드한다(static 팩토리: feedLike/feedComment/tripmateLike). 응답 JSON snake_case.
+ *
+ * <p>커버: 목록(200, 커서) / 미읽음 카운트(200) / hide(잘못된 ObjectId·미존재·타인 → 404) /
+ * 첫 페이지 자동 read(응답은 read 전 상태) / 본인→본인 self-skip / 잘못된 커서 400.
+ */
+class InboxE2eTest extends IntegrationTestSupport {
+
+    @Autowired
+    private InboxRepository inboxRepo;
+
+    @Autowired
+    private InboxService inboxService;
+
+    /** recipient 인박스에 actor 의 feed_like 항목을 직접 insert (dedup 회피용 distinct postId). */
+    private InboxItem seedFeedLike(String recipientId, String actorId, String postId) {
+        InboxItem item = InboxItem.feedLike(
+                recipientId, actorId, "행위자", null, postId, "게시글 미리보기");
+        inboxRepo.insert(item);
+        return item;
+    }
+
+    // ──────────────────── 목록 / 카운트 ────────────────────
+
+    @Test
+    @DisplayName("목록 조회 → 200, items 배열 + next_cursor")
+    void listItems() throws Exception {
+        String recipient = fixtures.createActiveUser("수신자");
+        String actor = fixtures.createActiveUser("행위자");
+        InboxItem item = seedFeedLike(recipient, actor, "post-list-1");
+
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").exists())
+                .andExpect(jsonPath("$.items[0].type").value("feed_like"))
+                .andExpect(jsonPath("$.items[0].actor_id").value(actor));
+    }
+
+    @Test
+    @DisplayName("미읽음 카운트 → 200, unread_count 반영")
+    void unreadCount() throws Exception {
+        String recipient = fixtures.createActiveUser("카운트수신자");
+        String actor = fixtures.createActiveUser("카운트행위자");
+        seedFeedLike(recipient, actor, "post-count-1");
+        seedFeedLike(recipient, actor, "post-count-2");
+
+        mockMvc.perform(get("/api/notification/inbox/unread-count")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unread_count").value(2));
+    }
+
+    @Test
+    @DisplayName("빈 인박스 미읽음 카운트 → 200, 0")
+    void unreadCountEmpty() throws Exception {
+        String recipient = fixtures.createActiveUser();
+
+        mockMvc.perform(get("/api/notification/inbox/unread-count")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unread_count").value(0));
+    }
+
+    // ──────────────────── 자동 read ────────────────────
+
+    @Test
+    @DisplayName("첫 페이지 진입 시 응답은 read 전 상태(is_read=false), 재조회 시 read 반영")
+    void firstPageAutoReadReflectsPreReadState() throws Exception {
+        String recipient = fixtures.createActiveUser("자동읽음수신자");
+        String actor = fixtures.createActiveUser("자동읽음행위자");
+        InboxItem item = seedFeedLike(recipient, actor, "post-autoread-1");
+
+        // 첫 페이지(cursor 없음) → 자동 read 처리되지만 응답 is_read 는 read 전(false).
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
+                        + "')].is_read").value(false));
+
+        // 이후 미읽음 카운트는 0 (자동 read 반영).
+        mockMvc.perform(get("/api/notification/inbox/unread-count")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unread_count").value(0));
+
+        // 재조회 시 is_read=true.
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
+                        + "')].is_read").value(true));
+    }
+
+    // ──────────────────── self-skip ────────────────────
+
+    @Test
+    @DisplayName("본인→본인 fan-out 은 skip — 인박스에 쌓이지 않음")
+    void selfActionSkipped() throws Exception {
+        String user = fixtures.createActiveUser("본인");
+
+        // 서비스 fan-out 직접 호출(컨트롤러 진입점 없음) — recipient == actor → skip.
+        inboxService.notifyFeedLike(user, user, "본인", null, "post-self-1", "내 글");
+
+        mockMvc.perform(get("/api/notification/inbox/unread-count")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unread_count").value(0));
+    }
+
+    // ──────────────────── hide ────────────────────
+
+    @Test
+    @DisplayName("본인 항목 hide → 200, 이후 목록에서 제외")
+    void hideOwnItem() throws Exception {
+        String recipient = fixtures.createActiveUser("숨김수신자");
+        String actor = fixtures.createActiveUser("숨김행위자");
+        InboxItem item = seedFeedLike(recipient, actor, "post-hide-1");
+
+        mockMvc.perform(patch("/api/notification/inbox/" + item.getId() + "/hide")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").exists());
+
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("잘못된 ObjectId 형식 hide → 404")
+    void hideInvalidObjectId() throws Exception {
+        String recipient = fixtures.createActiveUser();
+
+        mockMvc.perform(patch("/api/notification/inbox/not-an-objectid/hide")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는(유효 형식) ObjectId hide → 404")
+    void hideNotFound() throws Exception {
+        String recipient = fixtures.createActiveUser();
+
+        mockMvc.perform(patch("/api/notification/inbox/0123456789abcdef01234567/hide")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("타인 항목 hide → 404 (소유자 아님)")
+    void hideNonOwner() throws Exception {
+        String recipient = fixtures.createActiveUser("실수신자");
+        String actor = fixtures.createActiveUser("실행위자");
+        String other = fixtures.createActiveUser("타인");
+        InboxItem item = seedFeedLike(recipient, actor, "post-nonowner-1");
+
+        mockMvc.perform(patch("/api/notification/inbox/" + item.getId() + "/hide")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(other)))
+                .andExpect(status().isNotFound());
+    }
+
+    // ──────────────────── cascade ────────────────────
+
+    @Test
+    @DisplayName("게시글 삭제 cascade → 해당 target 항목 목록에서 제외(soft hide)")
+    void cascadePostDeletedHidesItems() throws Exception {
+        String recipient = fixtures.createActiveUser("cascade수신자");
+        String actor = fixtures.createActiveUser("cascade행위자");
+        String postId = "post-cascade-del";
+        InboxItem item = seedFeedLike(recipient, actor, postId);
+
+        inboxService.cascadePostDeleted(TargetType.FEED_POST.getValue(), postId);
+
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("유저 탈퇴 cascade → 수신자 인박스 항목 hard delete")
+    void cascadeUserWithdrawnDeletesItems() throws Exception {
+        String recipient = fixtures.createActiveUser("탈퇴수신자");
+        String actor = fixtures.createActiveUser("탈퇴행위자");
+        seedFeedLike(recipient, actor, "post-cascade-withdraw");
+
+        // 탈퇴 전: 항목 존재(미읽음 1).
+        mockMvc.perform(get("/api/notification/inbox/unread-count")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.unread_count").value(1));
+
+        inboxService.cascadeUserWithdrawn(recipient);
+
+        // 탈퇴 후: 수신자 매칭 항목이 모두 삭제 → 빈 목록.
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isEmpty());
+    }
+
+    // ──────────────────── 커서 ────────────────────
+
+    @Test
+    @DisplayName("유효 ISO 커서 → 200")
+    void validIsoCursor() throws Exception {
+        String recipient = fixtures.createActiveUser();
+
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient))
+                        .param("cursor", "2026-01-01T00:00:00Z"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray());
+    }
+
+    @Test
+    @DisplayName("쓰레기 커서 → 400")
+    void garbageCursorBadRequest() throws Exception {
+        String recipient = fixtures.createActiveUser();
+
+        mockMvc.perform(get("/api/notification/inbox")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(recipient))
+                        .param("cursor", "not-a-date"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("인증 없이 목록 → 401")
+    void listUnauthenticated() throws Exception {
+        mockMvc.perform(get("/api/notification/inbox")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isUnauthorized());
+    }
+}

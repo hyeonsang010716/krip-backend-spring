@@ -1,0 +1,141 @@
+package site.krip.domain.chat.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.connection.RedisZSetCommands.ZAddArgs;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.stereotype.Service;
+import site.krip.domain.chat.worker.NodeRegistry;
+import site.krip.global.chat.ChatRedisKeys;
+import site.krip.global.config.ChatProperties;
+import site.krip.global.support.IdGenerator;
+
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * WS 세션의 Redis 상태 관리.
+ *
+ * <p>키: {@code sess:{sid}}(HASH, TTL 90s) / {@code sessions:{uid}}(ZSET, score=만료시각ms) /
+ * {@code ws_route:{sid}}(STRING node_id, TTL 90s). ZSET score 가 만료시각이라
+ * ZREMRANGEBYSCORE 한 번으로 죽은 세션 청소 — 자가 치유. 유저당 {@code MAX_SESSIONS_PER_USER} 초과 시 oldest revoke.
+ */
+@Service
+public class SessionService {
+
+    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
+
+    private final FanoutService fanout;
+    private final StringRedisTemplate redis;
+    private final ChatProperties props;
+
+    public SessionService(FanoutService fanout, StringRedisTemplate redis, ChatProperties props) {
+        this.fanout = fanout;
+        this.redis = redis;
+        this.props = props;
+    }
+
+    private static long nowMs() {
+        return System.currentTimeMillis();
+    }
+
+    private static long expiresMs() {
+        return nowMs() + ChatRedisKeys.SESSION_TTL * 1000;
+    }
+
+    private static final Duration TTL = Duration.ofSeconds(ChatRedisKeys.SESSION_TTL);
+
+    /** WS 연결 시 — 새 session_id 발급 후 Redis 3키 세팅 + 한도 체크. */
+    public String createSession(String userId, String tokenJti) {
+        String sessionId = IdGenerator.sessionId();
+        long nowMs = nowMs();
+
+        Map<String, String> sess = new HashMap<>();
+        sess.put("user_id", userId);
+        sess.put("node_id", props.nodeId());
+        sess.put("token_jti", tokenJti);
+        sess.put("connected_at", String.valueOf(nowMs));
+        redis.opsForHash().putAll(ChatRedisKeys.sess(sessionId), sess);
+        redis.expire(ChatRedisKeys.sess(sessionId), TTL);
+        redis.opsForZSet().add(ChatRedisKeys.sessions(userId), sessionId, nowMs + ChatRedisKeys.SESSION_TTL * 1000);
+        redis.opsForValue().set(ChatRedisKeys.wsRoute(sessionId), props.nodeId(), TTL);
+
+        enforceSessionLimit(userId);
+        return sessionId;
+    }
+
+    /** ping/pong 시 세 키 TTL 연장. sessions ZSET 은 이미 있는 멤버만 갱신(죽은 세션 부활 방지). */
+    public void heartbeat(String sessionId, String userId) {
+        redis.expire(ChatRedisKeys.sess(sessionId), TTL);
+        redis.expire(ChatRedisKeys.wsRoute(sessionId), TTL);
+        // ZADD ... XX — 이미 있는 멤버의 score 만 원자적으로 갱신. ZSCORE→ZADD 의 TOCTOU 레이스(동시 ZREM 후
+        // 부활)를 차단한다. 고수준 opsForZSet().add 에 XX 가 없어 저수준 호출(NodeRegistry.heartbeatSelf 와 동일).
+        byte[] key = ChatRedisKeys.sessions(userId).getBytes(StandardCharsets.UTF_8);
+        byte[] member = sessionId.getBytes(StandardCharsets.UTF_8);
+        double score = expiresMs();
+        redis.execute((RedisCallback<Boolean>) connection ->
+                connection.zSetCommands().zAdd(key, score, member, ZAddArgs.ifExists()));
+    }
+
+    /** JWT refresh 시 token_jti 만 갱신. session_id 유지. */
+    public void updateTokenJti(String sessionId, String newTokenJti) {
+        redis.opsForHash().put(ChatRedisKeys.sess(sessionId), "token_jti", newTokenJti);
+    }
+
+    /** 매 op 진입 시 호출 — false 면 revoke 된 상태. */
+    public boolean sessionExists(String sessionId) {
+        return Boolean.TRUE.equals(redis.hasKey(ChatRedisKeys.sess(sessionId)));
+    }
+
+    public String getUserId(String sessionId) {
+        Object v = redis.opsForHash().get(ChatRedisKeys.sess(sessionId), "user_id");
+        return v != null ? v.toString() : null;
+    }
+
+    /** WS 종료/명시 로그아웃 시 Redis 상태 정리. */
+    public void terminateSession(String sessionId, String userId) {
+        redis.delete(ChatRedisKeys.sess(sessionId));
+        redis.delete(ChatRedisKeys.wsRoute(sessionId));
+        redis.opsForZSet().remove(ChatRedisKeys.sessions(userId), sessionId);
+    }
+
+    /** 유저의 모든 활성 세션 강제 종료 (회원 탈퇴 등). 오프라인이면 0. */
+    public int revokeAllSessions(String userId) {
+        Set<String> sessionIds = redis.opsForZSet().range(ChatRedisKeys.sessions(userId), 0, -1);
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            return 0;
+        }
+        for (String sid : sessionIds) {
+            fanout.fanOutToSession(sid, Map.of("type", "session_revoked", "session_id", sid));
+        }
+        for (String sid : sessionIds) {
+            redis.delete(ChatRedisKeys.sess(sid));
+            redis.delete(ChatRedisKeys.wsRoute(sid));
+        }
+        redis.delete(ChatRedisKeys.sessions(userId));
+        log.info("전체 세션 revoke: user_id={}, revoked_count={}", userId, sessionIds.size());
+        return sessionIds.size();
+    }
+
+    private void enforceSessionLimit(String userId) {
+        redis.opsForZSet().removeRangeByScore(ChatRedisKeys.sessions(userId), Double.NEGATIVE_INFINITY, nowMs());
+        Long count = redis.opsForZSet().zCard(ChatRedisKeys.sessions(userId));
+        while (count != null && count > ChatRedisKeys.MAX_SESSIONS_PER_USER) {
+            Set<String> oldest = redis.opsForZSet().range(ChatRedisKeys.sessions(userId), 0, 0);
+            if (oldest == null || oldest.isEmpty()) {
+                break;
+            }
+            String oldSid = oldest.iterator().next();
+            fanout.fanOutToSession(oldSid, Map.of("type", "session_revoked", "session_id", oldSid));
+            redis.opsForZSet().remove(ChatRedisKeys.sessions(userId), oldSid);
+            redis.delete(ChatRedisKeys.sess(oldSid));
+            redis.delete(ChatRedisKeys.wsRoute(oldSid));
+            log.info("세션 한도 초과로 revoke: user_id={}, revoked_session_id={}", userId, oldSid);
+            count--;
+        }
+    }
+}

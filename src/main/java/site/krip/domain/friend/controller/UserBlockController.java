@@ -1,0 +1,53 @@
+package site.krip.domain.friend.controller;
+
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import site.krip.domain.friend.dto.request.BlockUserBody;
+import site.krip.domain.friend.dto.response.UserBlockListResponse;
+import site.krip.domain.friend.dto.response.UserBlockResponse;
+import site.krip.domain.friend.service.UserBlockService;
+import site.krip.global.auth.CurrentUserId;
+import site.krip.global.common.dto.MessageResponse;
+
+/**
+ * 유저 차단/해제/목록.
+ * 경로: {@code /api/friend/blocks}.
+ */
+@RestController
+@RequestMapping("/api/friend/blocks")
+public class UserBlockController {
+
+    private final UserBlockService userBlockService;
+
+    public UserBlockController(UserBlockService userBlockService) {
+        this.userBlockService = userBlockService;
+    }
+
+    @PostMapping
+    public ResponseEntity<UserBlockResponse> blockUser(@CurrentUserId String userId,
+                                                       @Valid @RequestBody BlockUserBody body) {
+        UserBlockResponse result = userBlockService.blockUser(userId, body.targetUserId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    @DeleteMapping("/{target_user_id}")
+    public MessageResponse unblockUser(@CurrentUserId String userId, @PathVariable("target_user_id") String targetUserId) {
+        userBlockService.unblockUser(userId, targetUserId);
+        return new MessageResponse("차단을 해제했습니다.");
+    }
+
+    @GetMapping
+    public UserBlockListResponse getBlockedUsers(@CurrentUserId String userId,
+                                                 @RequestParam(value = "cursor", required = false) String cursor) {
+        return userBlockService.getBlockedUsers(userId, cursor);
+    }
+}

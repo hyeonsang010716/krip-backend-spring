@@ -1,0 +1,45 @@
+package site.krip.domain.notification.controller;
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import site.krip.domain.notification.dto.response.InboxListResponse;
+import site.krip.domain.notification.dto.response.UnreadCountResponse;
+import site.krip.domain.notification.service.InboxService;
+import site.krip.global.auth.CurrentUserId;
+import site.krip.global.common.dto.MessageResponse;
+
+/**
+ * 인박스. 경로: {@code /api/notification/inbox}.
+ * 첫 페이지(cursor 미지정) 진입 시 미읽음 자동 read 처리(응답 isRead 는 read 전 상태 유지).
+ */
+@RestController
+@RequestMapping("/api/notification/inbox")
+public class InboxController {
+
+    private final InboxService inboxService;
+
+    public InboxController(InboxService inboxService) {
+        this.inboxService = inboxService;
+    }
+
+    @GetMapping
+    public InboxListResponse list(@CurrentUserId String userId,
+                                  @RequestParam(required = false) String cursor) {
+        return inboxService.listItems(userId, cursor, cursor == null);
+    }
+
+    @GetMapping("/unread-count")
+    public UnreadCountResponse unreadCount(@CurrentUserId String userId) {
+        return new UnreadCountResponse(inboxService.countUnread(userId));
+    }
+
+    @PatchMapping("/{inbox_item_id}/hide")
+    public MessageResponse hide(@CurrentUserId String userId, @PathVariable("inbox_item_id") String inboxItemId) {
+        inboxService.hideItem(userId, inboxItemId);
+        return new MessageResponse("인박스 항목이 숨겨졌습니다.");
+    }
+}

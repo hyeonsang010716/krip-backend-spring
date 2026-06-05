@@ -1,0 +1,99 @@
+package site.krip.domain.friend;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
+import site.krip.support.IntegrationTestSupport;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 친구 상세 조회 에러/관계상태 E2E ({@code /api/friend/detail/{userId}}).
+ *
+ * <p>{@link FriendSearchE2eTest} 가 무관계/PENDING(요청자 시점)을 다룬다. 본 테스트는 남은 경계를 메운다:
+ * 미존재 유저(404), 2차 미완료 유저(400), ACCEPTED 관계, 그리고 요청을 "받은" 시점(is_requester=false).
+ */
+class FriendDetailE2eTest extends IntegrationTestSupport {
+
+    private final ObjectMapper om = new ObjectMapper();
+
+    private String sendRequest(String requester, String addressee) throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(requester))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"addressee_id\":\"" + addressee + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return om.readTree(res.getResponse().getContentAsString()).get("friendship_id").asText();
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 유저 상세 → 404")
+    void detailUserNotFound() throws Exception {
+        String viewer = fixtures.createActiveUser("상세404뷰어");
+
+        mockMvc.perform(get("/api/friend/detail/{userId}", "no-such-user")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("2차 회원가입 미완료(detail 없음) 유저 상세 → 400")
+    void detailIncompleteProfile() throws Exception {
+        String viewer = fixtures.createActiveUser("상세400뷰어");
+        String preRegister = fixtures.createPreRegisterUser();
+
+        mockMvc.perform(get("/api/friend/detail/{userId}", preRegister)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("상세: ACCEPTED 친구 → friendship_status=accepted")
+    void detailAcceptedRelation() throws Exception {
+        String viewer = fixtures.createActiveUser("상세친구뷰어");
+        String target = fixtures.createActiveUser("상세친구타겟");
+        String friendshipId = sendRequest(viewer, target);
+        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(target)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/friend/detail/{userId}", target)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id").value(target))
+                .andExpect(jsonPath("$.friendship_status").value("accepted"))
+                .andExpect(jsonPath("$.friendship_id").value(friendshipId))
+                .andExpect(jsonPath("$.is_requester").value(true));
+    }
+
+    @Test
+    @DisplayName("상세: 요청을 받은 시점 → is_requester=false")
+    void detailPendingAsAddressee() throws Exception {
+        String requester = fixtures.createActiveUser("상세받은요청자");
+        String addressee = fixtures.createActiveUser("상세받은당사자");
+        sendRequest(requester, addressee);
+
+        // addressee 가 requester 의 상세를 보면 is_requester=false (내가 요청자가 아님)
+        mockMvc.perform(get("/api/friend/detail/{userId}", requester)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(addressee)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id").value(requester))
+                .andExpect(jsonPath("$.friendship_status").value("pending"))
+                .andExpect(jsonPath("$.is_requester").value(false));
+    }
+}

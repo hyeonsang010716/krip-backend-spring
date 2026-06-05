@@ -1,0 +1,78 @@
+package site.krip;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import site.krip.support.IntegrationTestSupport;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+/**
+ * 마이그레이션 패리티 보정 회귀 — 추가한 400 분기들이 깨지지 않게 고정한다.
+ *
+ * <p>커버: 잘못된 place 커서 400 / 검색기록 빈 검색어 삭제 400(friend·tour·tripmate) / 빈 이미지 업로드 400.
+ */
+class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
+
+    @Test
+    @DisplayName("tour 장소 — 잘못된 형식의 cursor → 400 (500 아님)")
+    void tourPlaceMalformedCursor() throws Exception {
+        String userId = fixtures.createActiveUser();
+
+        mockMvc.perform(get("/api/tour/places")
+                        .param("keyword", "cafe")
+                        .param("cursor", "garbage-no-colon")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("friend 검색기록 — 빈 search_name 삭제 → 400")
+    void friendSearchHistoryBlankDelete() throws Exception {
+        String userId = fixtures.createActiveUser();
+
+        mockMvc.perform(delete("/api/friend/search/history/one")
+                        .param("search_name", " ")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("tour 검색기록 — 빈 search_name 삭제 → 400")
+    void tourSearchHistoryBlankDelete() throws Exception {
+        String userId = fixtures.createActiveUser();
+
+        mockMvc.perform(delete("/api/tour/search-history/one")
+                        .param("search_name", " ")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("tripmate 검색기록 — 빈 search_name 삭제 → 400")
+    void tripmateSearchHistoryBlankDelete() throws Exception {
+        String userId = fixtures.createActiveUser();
+
+        mockMvc.perform(delete("/api/tripmate/search-history/one")
+                        .param("search_name", " ")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("tripmate 이미지 — 파일 없는 업로드 → 400")
+    void tripmateImageEmptyUpload() throws Exception {
+        String userId = fixtures.createActiveUser();
+
+        mockMvc.perform(multipart("/api/tripmate/images")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+}

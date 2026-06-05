@@ -1,0 +1,131 @@
+package site.krip.domain.chat.ws;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.web.socket.TextMessage;
+import org.springframework.web.socket.WebSocketHttpHeaders;
+import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.client.standard.StandardWebSocketClient;
+import org.springframework.web.socket.handler.TextWebSocketHandler;
+import site.krip.domain.chat.service.RoomService;
+import site.krip.support.IntegrationTestSupport;
+
+import java.net.URI;
+import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * 실 WebSocket 핸드셰이크 + op E2E — {@code @SpringBootTest(RANDOM_PORT)} 로 임베디드 톰캣을 띄우고
+ * JSR-356 클라이언트({@link StandardWebSocketClient})로 {@code /api/ws/chat} 에 실제 연결한다.
+ *
+ * <p>앱 채널 인증(쿠키 대신 {@code auth.<jwt>} 서브프로토콜) + Origin 화이트리스트를 통과해 connected →
+ * send(ACK) → read(read_ack) 흐름과 무토큰 핸드셰이크 거부를 검증한다.
+ */
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+class ChatWebSocketE2eTest extends IntegrationTestSupport {
+
+    private static final String ALLOWED_ORIGIN = "https://krip.site";
+
+    @LocalServerPort
+    private int port;
+
+    @Autowired
+    private RoomService roomService;
+
+    private final ObjectMapper om = new ObjectMapper();
+
+    /** 수신 텍스트 메시지를 큐에 모으는 클라이언트 핸들러. */
+    static class CollectingHandler extends TextWebSocketHandler {
+        final BlockingQueue<String> messages = new LinkedBlockingQueue<>();
+
+        @Override
+        protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+            messages.add(message.getPayload());
+        }
+    }
+
+    private WebSocketSession connect(CollectingHandler handler, List<String> subprotocols) throws Exception {
+        StandardWebSocketClient client = new StandardWebSocketClient();
+        WebSocketHttpHeaders headers = new WebSocketHttpHeaders();
+        headers.setOrigin(ALLOWED_ORIGIN);
+        headers.setSecWebSocketProtocol(subprotocols);
+        return client.execute(handler, headers, URI.create("ws://localhost:" + port + "/api/ws/chat"))
+                .get(5, TimeUnit.SECONDS);
+    }
+
+    /** 지정 type 의 메시지가 올 때까지 대기(타임아웃 시 AssertionError). */
+    private JsonNode awaitType(CollectingHandler handler, String type, long timeoutMs) throws Exception {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            String msg = handler.messages.poll(deadline - System.currentTimeMillis(), TimeUnit.MILLISECONDS);
+            if (msg == null) {
+                break;
+            }
+            JsonNode node = om.readTree(msg);
+            if (type.equals(node.path("type").asText())) {
+                return node;
+            }
+        }
+        throw new AssertionError("WS 메시지 대기 타임아웃: type=" + type);
+    }
+
+    @Test
+    @DisplayName("유효 토큰(auth 서브프로토콜) + 허용 Origin → 핸드셰이크 성공 + connected 수신")
+    void connectsAndReceivesConnected() throws Exception {
+        String a = fixtures.createActiveUser("ws접속유저");
+        CollectingHandler h = new CollectingHandler();
+
+        WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
+
+        JsonNode connected = awaitType(h, "connected", 5000);
+        assertThat(connected.path("session_id").asText()).isNotBlank();
+
+        session.close();
+    }
+
+    @Test
+    @DisplayName("send op → message.sent ACK, 이어서 read op → read_ack")
+    void sendThenReadOverWebSocket() throws Exception {
+        String a = fixtures.createActiveUser("ws발신");
+        String b = fixtures.createActiveUser("ws수신");
+        String room = roomService.createDirectRoom(a, b).chatRoomId();
+
+        CollectingHandler h = new CollectingHandler();
+        WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
+        awaitType(h, "connected", 5000);
+
+        session.sendMessage(new TextMessage(
+                "{\"op\":\"send\",\"room_id\":\"" + room + "\",\"client_msg_id\":\"cm-1\","
+                        + "\"content\":\"hello ws\",\"type\":\"text\"}"));
+        JsonNode ack = awaitType(h, "message.sent", 5000);
+        assertThat(ack.path("client_msg_id").asText()).isEqualTo("cm-1");
+        long seq = ack.path("server_seq").asLong();
+        assertThat(seq).isGreaterThan(0);
+
+        session.sendMessage(new TextMessage(
+                "{\"op\":\"read\",\"room_id\":\"" + room + "\",\"up_to_server_seq\":" + seq + "}"));
+        JsonNode readAck = awaitType(h, "read_ack", 5000);
+        assertThat(readAck.path("up_to_server_seq").asLong()).isEqualTo(seq);
+
+        session.close();
+    }
+
+    @Test
+    @DisplayName("토큰 없이 핸드셰이크 시도 → 거부(연결 실패)")
+    void handshakeRejectedWithoutToken() {
+        CollectingHandler h = new CollectingHandler();
+        assertThatThrownBy(() -> connect(h, List.of("krip.chat.v1")))
+                .isInstanceOf(ExecutionException.class);
+    }
+}
