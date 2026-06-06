@@ -11,19 +11,13 @@ import site.krip.global.common.exception.ErrorResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.ArrayList;
 import java.util.List;
 
 
 public class BearerTokenFilter extends OncePerRequestFilter {
 
-    private static final List<String> EXCLUDE_PREFIXES;
-
-    static {
-        List<String> p = new ArrayList<>(List.of("/api/auth/login", "/api/public", "/api/ws"));
-        p.addAll(FilterSupport.DOC_EXCLUDE_PREFIXES);
-        EXCLUDE_PREFIXES = List.copyOf(p);
-    }
+    private static final List<String> EXCLUDE_PREFIXES =
+            List.of("/api/auth/login", "/api/public", "/api/ws");
 
     private final byte[] accessTokenBytes;
     private final ObjectMapper mapper;
@@ -37,7 +31,7 @@ public class BearerTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         if (FilterSupport.isExcluded(request.getRequestURI(),
-                FilterSupport.COMMON_EXCLUDE_PATHS, EXCLUDE_PREFIXES)) {
+                EXCLUDE_PREFIXES)) {
             chain.doFilter(request, response);
             return;
         }

@@ -14,7 +14,6 @@ import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.common.exception.ErrorResponse;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -24,13 +23,8 @@ import java.util.List;
  */
 public class LoginAuthFilter extends OncePerRequestFilter {
 
-    private static final List<String> EXCLUDE_PREFIXES;
-
-    static {
-        List<String> p = new ArrayList<>(List.of("/api/auth/login", "/api/public", "/api/ws"));
-        p.addAll(FilterSupport.DOC_EXCLUDE_PREFIXES);
-        EXCLUDE_PREFIXES = List.copyOf(p);
-    }
+    private static final List<String> EXCLUDE_PREFIXES =
+            List.of("/api/auth/login", "/api/public", "/api/ws");
 
     private final JwtProvider jwtProvider;
     private final String cookieName;
@@ -62,7 +56,7 @@ public class LoginAuthFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         if (FilterSupport.isExcluded(request.getRequestURI(),
-                FilterSupport.COMMON_EXCLUDE_PATHS, EXCLUDE_PREFIXES)) {
+                EXCLUDE_PREFIXES)) {
             chain.doFilter(request, response);
             return;
         }
