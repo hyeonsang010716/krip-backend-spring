@@ -98,10 +98,10 @@ public class ChatRoomController {
                                               @RequestParam(name = "after_server_seq", required = false) Long afterServerSeq,
                                               @RequestParam(defaultValue = "50") int limit) {
         if ((beforeServerSeq == null) == (afterServerSeq == null)) {
-            throw new ApiException(400, "before_server_seq 또는 after_server_seq 중 하나만 지정해야 합니다.");
+            throw ApiException.badRequest("before_server_seq 또는 after_server_seq 중 하나만 지정해야 합니다.");
         }
         if (limit < 1 || limit > 200) {
-            throw new ApiException(400, "limit 은 1~200 범위여야 합니다.");
+            throw ApiException.badRequest("limit 은 1~200 범위여야 합니다.");
         }
         if (beforeServerSeq != null) {
             return historyService.findMessagesBefore(userId, chatRoomId, beforeServerSeq, limit);

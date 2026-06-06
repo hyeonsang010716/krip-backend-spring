@@ -60,7 +60,7 @@ public class PlaceController {
         double actualLat = lat != null ? lat : DEFAULT_LAT;
         double actualLng = lng != null ? lng : DEFAULT_LNG;
         if (maxDistance != null && maxDistance <= 0) {
-            throw new ApiException(400, "max_distance 는 0 보다 커야 합니다.");
+            throw ApiException.badRequest("max_distance 는 0 보다 커야 합니다.");
         }
 
         if (keyword != null && !keyword.isBlank()) {
@@ -104,7 +104,7 @@ public class PlaceController {
     public PlaceResponse getPlace(@CurrentUserId String userId, @PathVariable("place_id") String placeId) {
         PlaceResponse result = placeService.getPlaceById(placeId, userId);
         if (result == null) {
-            throw new ApiException(404, "장소를 찾을 수 없습니다.");
+            throw ApiException.notFound("장소를 찾을 수 없습니다.");
         }
         return result;
     }

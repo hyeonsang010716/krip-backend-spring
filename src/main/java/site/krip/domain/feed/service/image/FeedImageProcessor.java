@@ -64,28 +64,28 @@ public class FeedImageProcessor {
         String format;
         try (ImageInputStream iis = ImageIO.createImageInputStream(new ByteArrayInputStream(src))) {
             if (iis == null) {
-                throw new ApiException(400, "이미지를 처리할 수 없습니다.");
+                throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
             }
             Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
             if (!readers.hasNext()) {
-                throw new ApiException(400, "지원하지 않는 이미지 포맷입니다.");
+                throw ApiException.badRequest("지원하지 않는 이미지 포맷입니다.");
             }
             ImageReader reader = readers.next();
             try {
                 reader.setInput(iis, true, true);
                 format = reader.getFormatName().toUpperCase();
                 if (!ALLOWED_FORMATS.contains(format)) {
-                    throw new ApiException(400, "지원하지 않는 이미지 포맷입니다.");
+                    throw ApiException.badRequest("지원하지 않는 이미지 포맷입니다.");
                 }
                 long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
                 if (pixels > MAX_DECODE_PIXELS) {
-                    throw new ApiException(400, "이미지 해상도가 너무 큽니다.");
+                    throw ApiException.badRequest("이미지 해상도가 너무 큽니다.");
                 }
                 // 애니메이션 거절 — 헤더 컨테이너 레벨로 감지.
                 // ImageIO {@code getNumImages} 는 TwelveMonkeys WEBP/APNG 에서 단일 프레임으로 오인하므로
                 // 신뢰하지 않고, WEBP 의 VP8X ANIM 플래그 / PNG 의 acTL 청크를 직접 확인한다.
                 if (isAnimated(src, format)) {
-                    throw new ApiException(400, "애니메이션 이미지는 업로드할 수 없습니다.");
+                    throw ApiException.badRequest("애니메이션 이미지는 업로드할 수 없습니다.");
                 }
             } finally {
                 reader.dispose();
@@ -94,7 +94,7 @@ public class FeedImageProcessor {
             throw e;
         } catch (Exception e) {
             log.warn("이미지 헤더 probe 실패: {}", e.toString());
-            throw new ApiException(400, "이미지를 처리할 수 없습니다.");
+            throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
 
         // 2) 디코딩 — ImageIO.read 는 메타데이터를 무시하고 첫 프레임을 안전하게 디코딩.
@@ -103,10 +103,10 @@ public class FeedImageProcessor {
             image = ImageIO.read(new ByteArrayInputStream(src));
         } catch (Exception e) {
             log.warn("이미지 디코딩 실패: {}", e.toString());
-            throw new ApiException(400, "이미지를 처리할 수 없습니다.");
+            throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
         if (image == null) {
-            throw new ApiException(400, "이미지를 처리할 수 없습니다.");
+            throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
 
         int orientation = readExifOrientation(src);
@@ -130,7 +130,7 @@ public class FeedImageProcessor {
                     .outputFormat("jpg").outputQuality(JPEG_QUALITY).toOutputStream(buf);
             return new ProcessedVariant(buf.toByteArray(), "image/jpeg", "jpg");
         } catch (Exception e) {
-            throw new ApiException(400, "이미지를 처리할 수 없습니다.");
+            throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
     }
 
@@ -158,7 +158,7 @@ public class FeedImageProcessor {
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
-            throw new ApiException(400, "이미지를 처리할 수 없습니다.");
+            throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
     }
 

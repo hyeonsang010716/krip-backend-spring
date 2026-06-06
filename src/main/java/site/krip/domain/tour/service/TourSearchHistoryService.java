@@ -35,7 +35,7 @@ public class TourSearchHistoryService {
 
     public void deleteSearch(String userId, String searchName) {
         if (searchName == null || searchName.isBlank()) {
-            throw new ApiException(400, "검색어를 입력해주세요.");
+            throw ApiException.badRequest("검색어를 입력해주세요.");
         }
         searchRepo.deleteOne(userId, searchName);
     }

@@ -163,7 +163,7 @@ public class FeedPostService {
         }
         FeedPostRow row = rows.get(0);
         if (!row.post().getUserId().equals(userId)) {
-            throw new ApiException(403, "게시물에 대한 권한이 없습니다.");
+            throw ApiException.forbidden("게시물에 대한 권한이 없습니다.");
         }
         return row;
     }

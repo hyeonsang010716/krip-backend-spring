@@ -2,6 +2,7 @@ package site.krip.domain.feed.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -24,6 +25,7 @@ import site.krip.domain.feed.service.FeedPostService;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.common.dto.MessageResponse;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.common.validation.CodePointSize;
 
 import java.io.IOException;
 import java.util.Set;
@@ -33,6 +35,7 @@ import java.util.Set;
  */
 @RestController
 @RequestMapping("/api/feed")
+@Validated
 public class FeedPostController {
 
     // GIF 제외 (정지 이미지 전용). thumbnail 화이트리스트와 일치 — 라우터 fast-fail.
@@ -50,27 +53,26 @@ public class FeedPostController {
     public FeedPostResponse upload(@CurrentUserId String userId,
                                    @RequestPart("file") MultipartFile file,
                                    @RequestParam(value = "visibility", defaultValue = "public") String visibility,
-                                   @RequestParam(value = "caption", required = false) String caption) {
+                                   @RequestParam(value = "caption", required = false)
+                                   @CodePointSize(max = FeedPost.CAPTION_MAX_LENGTH,
+                                           message = "캡션은 최대 {max}자까지 가능합니다.") String caption) {
         if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
-            throw new ApiException(400,
-                    "허용되지 않는 파일 형식입니다: " + file.getContentType() + " (jpeg, png, webp만 가능)");
+            throw ApiException.badRequest("허용되지 않는 파일 형식입니다: " + file.getContentType() + " (jpeg, png, webp만 가능)");
         }
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ApiException(400, "파일 크기가 " + (MAX_FILE_SIZE / (1024 * 1024)) + "MB 를 초과합니다.");
+            throw ApiException.badRequest("파일 크기가 " + (MAX_FILE_SIZE / (1024 * 1024)) + "MB 를 초과합니다.");
         }
-        // S3 업로드 전에 캡션 길이 검증(과길이 시 변형 업로드 낭비/INSERT 500 방지).
-        validateCaptionLength(caption);
         byte[] bytes;
         try {
             bytes = file.getBytes();
         } catch (IOException e) {
-            throw new ApiException(400, "파일을 읽을 수 없습니다.");
+            throw ApiException.badRequest("파일을 읽을 수 없습니다.");
         }
         FeedVisibility parsedVisibility;
         try {
             parsedVisibility = FeedVisibility.from(visibility);
         } catch (IllegalArgumentException e) {
-            throw new ApiException(400, "알 수 없는 공개 범위: " + visibility);
+            throw ApiException.badRequest("알 수 없는 공개 범위: " + visibility);
         }
         return feedPostService.uploadPost(userId, bytes, parsedVisibility, caption);
     }
@@ -95,22 +97,7 @@ public class FeedPostController {
     @PatchMapping("/posts/{post_id}/caption")
     public FeedPostResponse updateCaption(@CurrentUserId String userId, @PathVariable("post_id") String postId,
                                           @Valid @RequestBody UpdateCaptionRequest body) {
-        validateCaptionLength(body.caption());
         return feedPostService.updateCaption(userId, postId, body.caption());
-    }
-
-    /**
-     * 캡션 길이 검증 — <b>코드포인트</b> 기준으로 센다.
-     *
-     * <p>{@code String.length()}(UTF-16 코드유닛)는 이모지 등 비-BMP 문자를 2로 세어
-     * Postgres {@code varchar(100)}(코드포인트)보다 과도하게 거부하므로 {@link String#codePointCount} 사용.
-     * null/빈/공백만은 서비스가 null 로 정규화하므로 여기선 원문 기준 길이만 검사.
-     */
-    private static void validateCaptionLength(String caption) {
-        if (caption != null
-                && caption.codePointCount(0, caption.length()) > FeedPost.CAPTION_MAX_LENGTH) {
-            throw new ApiException(400, "캡션은 최대 " + FeedPost.CAPTION_MAX_LENGTH + "자까지 가능합니다.");
-        }
     }
 
     @DeleteMapping("/posts/{post_id}")

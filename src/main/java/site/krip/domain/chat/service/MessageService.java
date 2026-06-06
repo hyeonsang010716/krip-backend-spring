@@ -85,22 +85,20 @@ public class MessageService {
 
         long count = seq.incrWithTtl(ChatRedisKeys.rateMsg(senderUserId), ChatRedisKeys.RATE_LIMIT_TTL);
         if (count > ChatRedisKeys.RATE_LIMIT_THRESHOLD) {
-            throw new ApiException(400, "메시지 전송 속도 제한에 걸렸습니다. 잠시 후 다시 시도해주세요.");
+            throw ApiException.badRequest("메시지 전송 속도 제한에 걸렸습니다. 잠시 후 다시 시도해주세요.");
         }
 
-        ChatRoom room = roomRepo.findById(roomId).orElse(null);
-        if (room == null) {
-            throw new ApiException(400, "존재하지 않는 방입니다.");
-        }
+        ChatRoom room = roomRepo.findById(roomId)
+                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 방입니다."));
         if (room.getType() == ChatRoomType.DIRECT && isDirectBlocked(room, senderUserId)) {
-            throw new ApiException(403, "차단 관계인 유저에게는 메시지를 보낼 수 없습니다.");
+            throw ApiException.forbidden("차단 관계인 유저에게는 메시지를 보낼 수 없습니다.");
         }
 
         String dedupeK = ChatRedisKeys.dedupe(senderUserId, clientMsgId);
         Boolean first = dedupeRedis.opsForValue()
                 .setIfAbsent(dedupeK, "1", Duration.ofSeconds(ChatRedisKeys.DEDUPE_TTL));
         if (!Boolean.TRUE.equals(first)) {
-            throw new ApiException(400, "이미 처리된 메시지입니다 (dedupe).");
+            throw ApiException.badRequest("이미 처리된 메시지입니다 (dedupe).");
         }
 
         Instant now = Instant.now();
@@ -172,25 +170,25 @@ public class MessageService {
                                             String editorSessionId, String newContent) {
         Document doc = messageRepo.findById(messageId);
         if (doc == null) {
-            throw new ApiException(400, "존재하지 않는 메시지입니다.");
+            throw ApiException.badRequest("존재하지 않는 메시지입니다.");
         }
         if (doc.getDate("deleted_at") != null) {
-            throw new ApiException(400, "삭제된 메시지는 편집할 수 없습니다.");
+            throw ApiException.badRequest("삭제된 메시지는 편집할 수 없습니다.");
         }
         if (MessageType.SYSTEM.getValue().equals(doc.getString("type"))) {
-            throw new ApiException(403, "시스템 메시지는 편집할 수 없습니다.");
+            throw ApiException.forbidden("시스템 메시지는 편집할 수 없습니다.");
         }
         if (!editorUserId.equals(doc.getString("sender_id"))) {
-            throw new ApiException(403, "본인 메시지만 편집할 수 있습니다.");
+            throw ApiException.forbidden("본인 메시지만 편집할 수 있습니다.");
         }
         String roomId = doc.getString("chat_room_id");
         if (!memberRepo.isActiveMember(roomId, editorUserId)) {
-            throw new ApiException(403, "이 방의 활성 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
         Instant now = Instant.now();
         Date createdAt = doc.getDate("created_at");
         if (createdAt != null && Duration.between(createdAt.toInstant(), now).compareTo(EDIT_TIME_LIMIT) > 0) {
-            throw new ApiException(400, "메시지 편집 제한 시간(5분)이 지났습니다.");
+            throw ApiException.badRequest("메시지 편집 제한 시간(5분)이 지났습니다.");
         }
 
         messageRepo.updateContent(messageId, newContent, Date.from(now));
@@ -211,28 +209,26 @@ public class MessageService {
     public void deleteMessage(String messageId, String deleterUserId, String deleterSessionId) {
         Document doc = messageRepo.findById(messageId);
         if (doc == null) {
-            throw new ApiException(400, "존재하지 않는 메시지입니다.");
+            throw ApiException.badRequest("존재하지 않는 메시지입니다.");
         }
         if (doc.getDate("deleted_at") != null) {
-            throw new ApiException(400, "이미 삭제된 메시지입니다.");
+            throw ApiException.badRequest("이미 삭제된 메시지입니다.");
         }
         if (MessageType.SYSTEM.getValue().equals(doc.getString("type"))) {
-            throw new ApiException(403, "시스템 메시지는 삭제할 수 없습니다.");
+            throw ApiException.forbidden("시스템 메시지는 삭제할 수 없습니다.");
         }
         String roomId = doc.getString("chat_room_id");
         String senderId = doc.getString("sender_id");
         if (!memberRepo.isActiveMember(roomId, deleterUserId)) {
-            throw new ApiException(403, "이 방의 활성 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
         if (!deleterUserId.equals(senderId)) {
-            ChatRoom room = roomRepo.findById(roomId).orElse(null);
-            if (room == null) {
-                throw new ApiException(400, "존재하지 않는 방입니다.");
-            }
+            ChatRoom room = roomRepo.findById(roomId)
+                    .orElseThrow(() -> ApiException.badRequest("존재하지 않는 방입니다."));
             boolean isGroupCreator = room.getType() == ChatRoomType.GROUP
                     && deleterUserId.equals(room.getCreatorId());
             if (!isGroupCreator) {
-                throw new ApiException(403, "본인 메시지 또는 그룹 방장만 삭제할 수 있습니다.");
+                throw ApiException.forbidden("본인 메시지 또는 그룹 방장만 삭제할 수 있습니다.");
             }
         }
 
@@ -257,12 +253,12 @@ public class MessageService {
         }
         List<String> members = memberRepo.findActiveMemberIds(roomId);
         if (members.isEmpty()) {
-            throw new ApiException(400, "존재하지 않는 방이거나 멤버가 없습니다.");
+            throw ApiException.badRequest("존재하지 않는 방이거나 멤버가 없습니다.");
         }
         redis.opsForSet().add(key, members.toArray(new String[0]));
         redis.expire(key, Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
         if (!members.contains(userId)) {
-            throw new ApiException(403, "이 방의 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
     }
 

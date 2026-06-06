@@ -70,7 +70,7 @@ public class InboxService {
             try {
                 cursorDt = Instant.parse(cursor);
             } catch (Exception e) {
-                throw new ApiException(400, "cursor 형식이 올바르지 않습니다.");
+                throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
             }
         }
         List<InboxItem> items = repo.findByRecipient(recipientId, cursorDt, InboxRepository.PAGE_SIZE);

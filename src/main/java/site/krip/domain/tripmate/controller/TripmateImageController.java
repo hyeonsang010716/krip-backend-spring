@@ -3,10 +3,10 @@ package site.krip.domain.tripmate.controller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import site.krip.domain.tripmate.document.TripmateImage;
@@ -43,24 +43,24 @@ public class TripmateImageController {
     }
 
     @PostMapping
-    public ResponseEntity<ImageUploadListResponse> uploadImages(
+    @ResponseStatus(HttpStatus.CREATED)
+    public ImageUploadListResponse uploadImages(
             @CurrentUserId String userId,
             @RequestParam(value = "files", required = false) List<MultipartFile> files) {
 
         // 파트 누락(null)·빈 목록 모두 400 — 최소 1개 필수.
         if (files == null || files.isEmpty()) {
-            throw new ApiException(400, "업로드할 이미지 파일이 필요합니다.");
+            throw ApiException.badRequest("업로드할 이미지 파일이 필요합니다.");
         }
         if (files.size() > MAX_FILE_COUNT) {
-            throw new ApiException(400, "이미지는 최대 " + MAX_FILE_COUNT + "개까지 업로드할 수 있습니다.");
+            throw ApiException.badRequest("이미지는 최대 " + MAX_FILE_COUNT + "개까지 업로드할 수 있습니다.");
         }
         for (MultipartFile f : files) {
             if (!ALLOWED_CONTENT_TYPES.contains(f.getContentType())) {
-                throw new ApiException(400,
-                        "허용되지 않는 파일 형식입니다: " + f.getContentType() + " (jpeg, png, webp, gif만 가능)");
+                throw ApiException.badRequest("허용되지 않는 파일 형식입니다: " + f.getContentType() + " (jpeg, png, webp, gif만 가능)");
             }
             if (f.getSize() > MAX_FILE_SIZE) {
-                throw new ApiException(400, "파일 크기가 10MB를 초과합니다: " + f.getOriginalFilename());
+                throw ApiException.badRequest("파일 크기가 10MB를 초과합니다: " + f.getOriginalFilename());
             }
         }
 
@@ -77,10 +77,10 @@ public class TripmateImageController {
             throw e;
         } catch (Exception e) {
             log.error("이미지 업로드 실패 (user_id={}): {}", userId, e.toString());
-            throw new ApiException(500, "이미지 업로드에 실패했습니다.");
+            throw ApiException.internalError("이미지 업로드에 실패했습니다.");
         }
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(new ImageUploadListResponse(uploaded));
+        return new ImageUploadListResponse(uploaded);
     }
 
     /** 고아 이미지 정리 — 운영/관리용. */
@@ -90,7 +90,7 @@ public class TripmateImageController {
             return new CleanupResponse(imageService.cleanupOrphanedImages(userId));
         } catch (Exception e) {
             log.error("고아 이미지 정리 실패 (user_id={}): {}", userId, e.toString());
-            throw new ApiException(500, "고아 이미지 정리에 실패했습니다.");
+            throw ApiException.internalError("고아 이미지 정리에 실패했습니다.");
         }
     }
 }

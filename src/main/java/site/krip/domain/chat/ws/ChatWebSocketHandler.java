@@ -183,10 +183,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         String clientMsgId = str(req.get("client_msg_id"));
         String content = str(req.get("content"));
         if (roomId == null || clientMsgId == null || content == null) {
-            throw new ApiException(400, "invalid op: room_id/client_msg_id/content 필수");
+            throw ApiException.badRequest("invalid op: room_id/client_msg_id/content 필수");
         }
         if (content.length() > 2000) {
-            throw new ApiException(400, "invalid op: content 는 2000자 이하");
+            throw ApiException.badRequest("invalid op: content 는 2000자 이하");
         }
         MessageType type = req.get("type") != null ? MessageType.from(str(req.get("type"))) : MessageType.TEXT;
 
@@ -204,7 +204,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         String roomId = str(req.get("room_id"));
         Object seqRaw = req.get("up_to_server_seq");
         if (roomId == null || !(seqRaw instanceof Number)) {
-            throw new ApiException(400, "invalid op: room_id/up_to_server_seq 필수");
+            throw ApiException.badRequest("invalid op: room_id/up_to_server_seq 필수");
         }
         long upTo = ((Number) seqRaw).longValue();
         roomService.markRead(userId, sessionId, roomId, upTo); // read_ack/read 는 내부에서 fan-out

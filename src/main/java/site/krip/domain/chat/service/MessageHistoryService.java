@@ -104,7 +104,7 @@ public class MessageHistoryService {
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
         ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(roomId, meId)).orElse(null);
         if (member == null || member.isLeft()) {
-            throw new ApiException(403, "이 방의 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
 
         String peerUserId = null;
@@ -129,10 +129,10 @@ public class MessageHistoryService {
         ChatRoom room = roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
         if (!memberRepo.isActiveMember(roomId, meId)) {
-            throw new ApiException(403, "이 방의 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
         if (room.getType() != ChatRoomType.GROUP) {
-            throw new ApiException(400, "그룹 방의 참여자 목록만 조회할 수 있습니다.");
+            throw ApiException.badRequest("그룹 방의 참여자 목록만 조회할 수 있습니다.");
         }
         List<RoomMemberResponse> items = memberRepo.findActiveMemberUsers(roomId).stream()
                 .map(RoomMemberResponse::from).toList();
@@ -144,10 +144,10 @@ public class MessageHistoryService {
         ChatRoom room = roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
         if (!memberRepo.isActiveMember(roomId, meId)) {
-            throw new ApiException(403, "이 방의 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
         if (room.getType() != ChatRoomType.GROUP) {
-            throw new ApiException(400, "그룹 방에만 친구를 초대할 수 있습니다.");
+            throw ApiException.badRequest("그룹 방에만 친구를 초대할 수 있습니다.");
         }
         Set<String> friendIds = new TreeSet<>(friendshipRepo.findAcceptedFriendIds(meId));
         if (friendIds.isEmpty()) {
@@ -191,7 +191,7 @@ public class MessageHistoryService {
 
     private void assertRoomMember(String roomId, String userId) {
         if (!memberRepo.isActiveMember(roomId, userId)) {
-            throw new ApiException(403, "이 방의 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
     }
 

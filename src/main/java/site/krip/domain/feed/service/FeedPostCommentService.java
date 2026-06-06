@@ -110,7 +110,7 @@ public class FeedPostCommentService {
             throw new FeedPostCommentNotFoundException("존재하지 않는 댓글입니다.");
         }
         if (!comment.getUserId().equals(userId)) {
-            throw new ApiException(403, "댓글에 대한 권한이 없습니다.");
+            throw ApiException.forbidden("댓글에 대한 권한이 없습니다.");
         }
         commentRepo.delete(comment);
         log.info("피드 댓글 삭제 (user_id={}, post_id={}, comment_id={})", userId, postId, commentId);
@@ -120,7 +120,7 @@ public class FeedPostCommentService {
     private static String normalizeContent(String content) {
         String stripped = content.strip();
         if (stripped.isEmpty()) {
-            throw new ApiException(400, "댓글 내용이 비어 있습니다.");
+            throw ApiException.badRequest("댓글 내용이 비어 있습니다.");
         }
         return stripped;
     }

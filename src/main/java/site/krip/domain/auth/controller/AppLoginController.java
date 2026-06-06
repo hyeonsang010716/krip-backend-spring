@@ -56,7 +56,7 @@ public class AppLoginController {
                                             @RequestParam("state") String state) {
         int idx = state.lastIndexOf(':');
         if (idx < 0 || !"app".equals(state.substring(0, idx))) {
-            throw new ApiException(400, "잘못된 state 값");
+            throw ApiException.badRequest("잘못된 state 값");
         }
         String providerValue = state.substring(idx + 1);
 
@@ -64,7 +64,7 @@ public class AppLoginController {
         try {
             provider = OAuthProvider.fromValue(providerValue);
         } catch (IllegalArgumentException e) {
-            throw new ApiException(400, "지원하지 않는 OAuth 제공자");
+            throw ApiException.badRequest("지원하지 않는 OAuth 제공자");
         }
         OAuthConfig config = oauthConfigs.appConfig(provider);
         OAuthClient client = oauthConfigs.client(provider);

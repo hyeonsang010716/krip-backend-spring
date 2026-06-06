@@ -37,10 +37,10 @@ public class FavoritePlaceService {
     @Transactional
     public void addFavorite(String userId, String placeId) {
         if (placeRepo.findByPlaceIds(List.of(placeId)).isEmpty()) {
-            throw new ApiException(400, "존재하지 않는 장소입니다.");
+            throw ApiException.badRequest("존재하지 않는 장소입니다.");
         }
         if (favRepo.existsByUserIdAndPlaceId(userId, placeId)) {
-            throw new ApiException(400, "이미 즐겨찾기한 장소입니다.");
+            throw ApiException.badRequest("이미 즐겨찾기한 장소입니다.");
         }
         favRepo.save(new FavoritePlace(userId, placeId));
     }
@@ -48,7 +48,7 @@ public class FavoritePlaceService {
     @Transactional
     public void removeFavorite(String userId, String placeId) {
         if (!favRepo.existsByUserIdAndPlaceId(userId, placeId)) {
-            throw new ApiException(400, "즐겨찾기하지 않은 장소입니다.");
+            throw ApiException.badRequest("즐겨찾기하지 않은 장소입니다.");
         }
         favRepo.deleteByUserIdAndPlaceId(userId, placeId);
     }

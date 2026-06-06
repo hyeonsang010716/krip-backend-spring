@@ -32,10 +32,10 @@ public class RegisterService {
     @Transactional
     public void registerDetail(String userId, RegisterRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ApiException(409, "존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.conflict("존재하지 않는 유저입니다."));
 
         if (detailRepository.existsById(userId)) {
-            throw new ApiException(409, "이미 2차 회원가입이 완료된 유저입니다.");
+            throw ApiException.conflict("이미 2차 회원가입이 완료된 유저입니다.");
         }
 
         UserDetailInform detail = new UserDetailInform(

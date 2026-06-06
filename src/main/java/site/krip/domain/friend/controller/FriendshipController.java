@@ -2,7 +2,6 @@ package site.krip.domain.friend.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -11,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import site.krip.domain.friend.dto.request.SendFriendRequestBody;
 import site.krip.domain.friend.dto.response.FriendshipListResponse;
@@ -34,10 +34,10 @@ public class FriendshipController {
     }
 
     @PostMapping("/requests")
-    public ResponseEntity<FriendshipResponse> sendRequest(@CurrentUserId String userId,
-                                                          @Valid @RequestBody SendFriendRequestBody body) {
-        FriendshipResponse result = friendshipService.sendRequest(userId, body.addresseeId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    @ResponseStatus(HttpStatus.CREATED)
+    public FriendshipResponse sendRequest(@CurrentUserId String userId,
+                                          @Valid @RequestBody SendFriendRequestBody body) {
+        return friendshipService.sendRequest(userId, body.addresseeId());
     }
 
     @GetMapping("/requests/received")

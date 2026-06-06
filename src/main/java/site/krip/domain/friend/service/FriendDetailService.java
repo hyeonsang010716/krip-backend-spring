@@ -34,9 +34,9 @@ public class FriendDetailService {
     @Transactional(readOnly = true)
     public FriendDetailResponse getFriendDetail(String viewerId, String peerId) {
         User peer = userRepository.findByIdWithProfile(peerId)
-                .orElseThrow(() -> new ApiException(404, "존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.notFound("존재하지 않는 유저입니다."));
         if (peer.getDetail() == null) {
-            throw new ApiException(400, "2차 회원가입이 완료되지 않은 유저입니다.");
+            throw ApiException.badRequest("2차 회원가입이 완료되지 않은 유저입니다.");
         }
 
         Friendship friendship = friendshipRepository.findBetween(viewerId, peerId).orElse(null);

@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import site.krip.domain.tripmate.dto.request.CreatePostRequest;
 import site.krip.domain.tripmate.dto.request.SaveDraftRequest;
@@ -62,9 +62,10 @@ public class TripmatePostController {
     // ──────────────────── 게시글 CRUD ────────────────────
 
     @PostMapping
-    public ResponseEntity<PostCreateResponse> createPost(@CurrentUserId String userId,
-                                                         @Valid @RequestBody CreatePostRequest body) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(postService.createPost(userId, body));
+    @ResponseStatus(HttpStatus.CREATED)
+    public PostCreateResponse createPost(@CurrentUserId String userId,
+                                         @Valid @RequestBody CreatePostRequest body) {
+        return postService.createPost(userId, body);
     }
 
     @GetMapping
@@ -79,7 +80,7 @@ public class TripmatePostController {
                                         @RequestParam(value = "cursor", required = false) String cursor) {
         // 빈 검색어 거부. 공백만도 막아 LIKE '%%' 전체조회·빈 검색기록 저장을 방지.
         if (keyword.isBlank()) {
-            throw new ApiException(400, "검색어를 입력해주세요.");
+            throw ApiException.badRequest("검색어를 입력해주세요.");
         }
         try {
             searchHistoryService.saveSearch(userId, keyword);
@@ -135,9 +136,10 @@ public class TripmatePostController {
     // ──────────────────── 좋아요 ────────────────────
 
     @PostMapping("/{post_id}/like")
-    public ResponseEntity<LikeResponse> addLike(@CurrentUserId String userId, @PathVariable("post_id") String postId) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public LikeResponse addLike(@CurrentUserId String userId, @PathVariable("post_id") String postId) {
         long likeCount = likeService.addLike(userId, postId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new LikeResponse(postId, likeCount));
+        return new LikeResponse(postId, likeCount);
     }
 
     @DeleteMapping("/{post_id}/like")

@@ -2,7 +2,6 @@ package site.krip.domain.friend.controller;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,6 +9,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import site.krip.domain.friend.dto.request.BlockUserBody;
 import site.krip.domain.friend.dto.response.UserBlockListResponse;
@@ -33,10 +33,10 @@ public class UserBlockController {
     }
 
     @PostMapping
-    public ResponseEntity<UserBlockResponse> blockUser(@CurrentUserId String userId,
-                                                       @Valid @RequestBody BlockUserBody body) {
-        UserBlockResponse result = userBlockService.blockUser(userId, body.targetUserId());
-        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserBlockResponse blockUser(@CurrentUserId String userId,
+                                       @Valid @RequestBody BlockUserBody body) {
+        return userBlockService.blockUser(userId, body.targetUserId());
     }
 
     @DeleteMapping("/{target_user_id}")

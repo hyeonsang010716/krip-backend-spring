@@ -1,5 +1,7 @@
 package site.krip.global.common.exception;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -33,6 +35,16 @@ public class GlobalExceptionHandler {
         String statusField = e.getStatus() == 419 ? "withdrawal_pending" : null;
         return ResponseEntity.status(e.getStatus())
                 .body(ErrorResponse.of(e.getMessage(), statusField));
+    }
+
+    /** {@code @Validated} 파라미터(@RequestParam/@PathVariable) 제약 위반 → 400. */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException e) {
+        String detail = e.getConstraintViolations().stream()
+                .findFirst()
+                .map(ConstraintViolation::getMessage)
+                .orElse("요청 파라미터가 올바르지 않습니다.");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(detail));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

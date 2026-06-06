@@ -63,7 +63,7 @@ public class LoginController {
                                          @RequestParam("state") String state) {
         int idx = state.lastIndexOf(':');
         if (idx < 0) {
-            throw new ApiException(400, "잘못된 state 값");
+            throw ApiException.badRequest("잘못된 state 값");
         }
         String redirectUrl = state.substring(0, idx);
         String providerValue = state.substring(idx + 1);
@@ -72,7 +72,7 @@ public class LoginController {
         try {
             provider = OAuthProvider.fromValue(providerValue);
         } catch (IllegalArgumentException e) {
-            throw new ApiException(400, "지원하지 않는 OAuth 제공자");
+            throw ApiException.badRequest("지원하지 않는 OAuth 제공자");
         }
         OAuthConfig config = oauthConfigs.webConfig(provider);
         OAuthClient client = oauthConfigs.client(provider);

@@ -14,6 +14,26 @@ public class ApiException extends RuntimeException {
         this.status = status;
     }
 
+    public static ApiException badRequest(String message) {
+        return new ApiException(400, message);
+    }
+
+    public static ApiException forbidden(String message) {
+        return new ApiException(403, message);
+    }
+
+    public static ApiException notFound(String message) {
+        return new ApiException(404, message);
+    }
+
+    public static ApiException conflict(String message) {
+        return new ApiException(409, message);
+    }
+
+    public static ApiException internalError(String message) {
+        return new ApiException(500, message);
+    }
+
     public int getStatus() {
         return status;
     }

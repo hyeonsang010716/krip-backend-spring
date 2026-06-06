@@ -37,7 +37,7 @@ public class FriendSearchController {
                                                 @RequestParam(value = "cursor", required = false) String cursor) {
         String normalized = keyword == null ? "" : keyword.strip();
         if (normalized.isEmpty()) {
-            throw new ApiException(400, "검색어를 입력해주세요.");
+            throw ApiException.badRequest("검색어를 입력해주세요.");
         }
 
         // 검색 기록 저장은 첫 페이지에서만 — 페이지네이션 중복 upsert 방지 (best-effort)

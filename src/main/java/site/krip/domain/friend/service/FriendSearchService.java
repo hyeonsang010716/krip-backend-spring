@@ -52,7 +52,7 @@ public class FriendSearchService {
     public FriendSearchListResponse search(String viewerId, String keyword, String cursor) {
         String normalized = keyword == null ? "" : keyword.strip();
         if (normalized.isEmpty()) {
-            throw new ApiException(400, "검색어를 입력해주세요.");
+            throw ApiException.badRequest("검색어를 입력해주세요.");
         }
         String pattern = escapeLike(normalized);
         Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);

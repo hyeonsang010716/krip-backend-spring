@@ -61,13 +61,13 @@ public class FeedPostLikeService {
     private AddLikeResult doAddLike(String userId, String postId) {
         FeedPost post = access.loadViewablePost(userId, postId).post();
         if (likeRepo.existsByUserIdAndPostId(userId, post.getPostId())) {
-            throw new ApiException(400, "이미 좋아요를 누른 게시물입니다.");
+            throw ApiException.badRequest("이미 좋아요를 누른 게시물입니다.");
         }
         try {
             likeRepo.saveAndFlush(new FeedPostLike(userId, post.getPostId()));
         } catch (DataIntegrityViolationException e) {
             // 동시 클릭 race — "이미 좋아요" 와 동치로 일원화
-            throw new ApiException(400, "이미 좋아요를 누른 게시물입니다.");
+            throw ApiException.badRequest("이미 좋아요를 누른 게시물입니다.");
         }
         long likeCount = likeRepo.countByPostId(post.getPostId());
         log.info("피드 좋아요 추가 (user_id={}, post_id={})", userId, post.getPostId());
@@ -87,7 +87,7 @@ public class FeedPostLikeService {
     public long removeLike(String userId, String postId) {
         FeedPost post = access.loadViewablePost(userId, postId).post();
         if (!likeRepo.existsByUserIdAndPostId(userId, post.getPostId())) {
-            throw new ApiException(400, "좋아요를 누르지 않은 게시물입니다.");
+            throw ApiException.badRequest("좋아요를 누르지 않은 게시물입니다.");
         }
         likeRepo.deleteByUserIdAndPostId(userId, post.getPostId());
         long likeCount = likeRepo.countByPostId(post.getPostId());

@@ -78,12 +78,12 @@ public class PlaceRepository {
             // cursor 형식: "distance:place_id". 콜론 없음/비숫자 distance 는 잘못된 클라이언트 입력 → 400.
             int idx = cursor.indexOf(':');
             if (idx < 0) {
-                throw new ApiException(400, "cursor 형식이 올바르지 않습니다.");
+                throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
             }
             try {
                 cursorDistance = Double.parseDouble(cursor.substring(0, idx));
             } catch (NumberFormatException e) {
-                throw new ApiException(400, "cursor 형식이 올바르지 않습니다.");
+                throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
             }
             cursorPlaceId = cursor.substring(idx + 1);
         }

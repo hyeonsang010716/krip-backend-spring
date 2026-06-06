@@ -4,7 +4,6 @@ import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -13,6 +12,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import site.krip.domain.auth.dto.request.ProfileUpdateRequest;
@@ -69,20 +69,20 @@ public class ProfileController {
     // ──────────────────── 프로필 이미지 (유저당 1장) ────────────────────
 
     @PostMapping("/image")
-    public ResponseEntity<ProfileImageResponse> addProfileImage(@CurrentUserId String userId,
-                                                                @RequestParam("file") MultipartFile file) {
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProfileImageResponse addProfileImage(@CurrentUserId String userId,
+                                                @RequestParam("file") MultipartFile file) {
         validateContentType(file);
         validateSize(file);
         try {
-            ProfileImageResponse result = profileService.addProfileImage(
+            return profileService.addProfileImage(
                     userId, openStream(file), file.getSize(),
                     filename(file), contentType(file));
-            return ResponseEntity.status(HttpStatus.CREATED).body(result);
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
             log.error("프로필 이미지 추가 실패 (user_id={}): {}", userId, e.toString());
-            throw new ApiException(500, "프로필 이미지 업로드에 실패했습니다.");
+            throw ApiException.internalError("프로필 이미지 업로드에 실패했습니다.");
         }
     }
 
@@ -99,7 +99,7 @@ public class ProfileController {
             throw e;
         } catch (Exception e) {
             log.error("프로필 이미지 수정 실패 (user_id={}): {}", userId, e.toString());
-            throw new ApiException(500, "프로필 이미지 수정에 실패했습니다.");
+            throw ApiException.internalError("프로필 이미지 수정에 실패했습니다.");
         }
     }
 
@@ -111,7 +111,7 @@ public class ProfileController {
             throw e;
         } catch (Exception e) {
             log.error("프로필 이미지 삭제 실패 (user_id={}): {}", userId, e.toString());
-            throw new ApiException(500, "프로필 이미지 삭제에 실패했습니다.");
+            throw ApiException.internalError("프로필 이미지 삭제에 실패했습니다.");
         }
         return new MessageResponse("프로필 이미지가 삭제되었습니다.");
     }
@@ -120,14 +120,13 @@ public class ProfileController {
 
     private void validateContentType(MultipartFile file) {
         if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
-            throw new ApiException(400,
-                    "허용되지 않는 파일 형식입니다: " + file.getContentType() + " (jpeg, png, webp, gif만 가능)");
+            throw ApiException.badRequest("허용되지 않는 파일 형식입니다: " + file.getContentType() + " (jpeg, png, webp, gif만 가능)");
         }
     }
 
     private void validateSize(MultipartFile file) {
         if (file.getSize() > MAX_FILE_SIZE) {
-            throw new ApiException(400, "파일 크기가 5MB를 초과합니다: " + file.getOriginalFilename());
+            throw ApiException.badRequest("파일 크기가 5MB를 초과합니다: " + file.getOriginalFilename());
         }
     }
 

@@ -63,10 +63,10 @@ public class TripmatePostLikeService {
 
     private AddLikePayload addLikeTx(String userId, String postId) {
         TripmatePost post = postRepository.findById(postId)
-                .orElseThrow(() -> new ApiException(400, "존재하지 않는 게시글입니다."));
+                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 게시글입니다."));
 
         if (likeRepository.existsByUserIdAndPostId(userId, postId)) {
-            throw new ApiException(400, "이미 좋아요를 누른 게시글입니다.");
+            throw ApiException.badRequest("이미 좋아요를 누른 게시글입니다.");
         }
 
         likeRepository.save(new TripmatePostLike(userId, postId));
@@ -89,7 +89,7 @@ public class TripmatePostLikeService {
     @Transactional
     public long removeLike(String userId, String postId) {
         if (!likeRepository.existsByUserIdAndPostId(userId, postId)) {
-            throw new ApiException(400, "좋아요를 누르지 않은 게시글입니다.");
+            throw ApiException.badRequest("좋아요를 누르지 않은 게시글입니다.");
         }
         likeRepository.deleteByUserIdAndPostId(userId, postId);
         return likeRepository.countByPostId(postId);

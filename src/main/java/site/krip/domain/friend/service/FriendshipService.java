@@ -55,34 +55,32 @@ public class FriendshipService {
 
     public FriendshipResponse sendRequest(String requesterId, String addresseeId) {
         if (requesterId.equals(addresseeId)) {
-            throw new ApiException(400, "자기 자신에게 친구 요청을 보낼 수 없습니다.");
+            throw ApiException.badRequest("자기 자신에게 친구 요청을 보낼 수 없습니다.");
         }
         try {
             return txTemplate.execute(s -> doSendRequest(requesterId, addresseeId));
         } catch (DataIntegrityViolationException e) {
             // canonical unique 경합 — 새 트랜잭션에서 재조회 후 정확한 메시지로 변환(항상 throw).
             return txTemplate.execute(s -> {
-                Friendship existing = friendshipRepository.findBetween(requesterId, addresseeId).orElse(null);
-                if (existing == null) {
-                    throw new ApiException(400, "친구 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.");
-                }
+                Friendship existing = friendshipRepository.findBetween(requesterId, addresseeId)
+                        .orElseThrow(() -> ApiException.badRequest("친구 요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요."));
                 raiseExistingError(existing, requesterId);
-                throw new ApiException(400, "친구 요청 상태가 변경되었습니다. 다시 시도해주세요.");
+                throw ApiException.badRequest("친구 요청 상태가 변경되었습니다. 다시 시도해주세요.");
             });
         }
     }
 
     private FriendshipResponse doSendRequest(String requesterId, String addresseeId) {
         User addressee = userRepository.findByIdWithProfile(addresseeId)
-                .orElseThrow(() -> new ApiException(400, "존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
 
         // 차단 관계 우선 검증 — 내가 건 차단 우선 안내(actionable)
         List<UserBlock> blocks = userBlockRepository.findBlocksBetween(requesterId, addresseeId);
         if (blocks.stream().anyMatch(b -> b.getBlockerId().equals(requesterId))) {
-            throw new ApiException(400, "차단한 유저입니다. 먼저 차단을 해제해주세요.");
+            throw ApiException.badRequest("차단한 유저입니다. 먼저 차단을 해제해주세요.");
         }
         if (!blocks.isEmpty()) {
-            throw new ApiException(400, "해당 유저에게 친구 요청을 보낼 수 없습니다.");
+            throw ApiException.badRequest("해당 유저에게 친구 요청을 보낼 수 없습니다.");
         }
 
         Friendship existing = friendshipRepository.findBetween(requesterId, addresseeId).orElse(null);
@@ -104,12 +102,12 @@ public class FriendshipService {
     private void raiseExistingError(Friendship existing, String requesterId) {
         if (existing.getStatus() == FriendshipStatus.PENDING) {
             if (existing.getRequesterId().equals(requesterId)) {
-                throw new ApiException(400, "이미 친구 요청을 보낸 상대입니다.");
+                throw ApiException.badRequest("이미 친구 요청을 보낸 상대입니다.");
             }
-            throw new ApiException(400, "이미 친구 요청이 와 있는 상대입니다. 받은 요청에서 수락해주세요.");
+            throw ApiException.badRequest("이미 친구 요청이 와 있는 상대입니다. 받은 요청에서 수락해주세요.");
         }
         if (existing.getStatus() == FriendshipStatus.ACCEPTED) {
-            throw new ApiException(400, "이미 친구 관계입니다.");
+            throw ApiException.badRequest("이미 친구 관계입니다.");
         }
     }
 
@@ -122,7 +120,7 @@ public class FriendshipService {
             throw new FriendForbiddenException("요청 수락 권한이 없습니다.");
         }
         if (f.getStatus() != FriendshipStatus.PENDING) {
-            throw new ApiException(400, "대기 중인 요청만 수락할 수 있습니다.");
+            throw ApiException.badRequest("대기 중인 요청만 수락할 수 있습니다.");
         }
         f.accept();
     }
@@ -134,7 +132,7 @@ public class FriendshipService {
             throw new FriendForbiddenException("요청 거절 권한이 없습니다.");
         }
         if (f.getStatus() != FriendshipStatus.PENDING) {
-            throw new ApiException(400, "대기 중인 요청만 거절할 수 있습니다.");
+            throw ApiException.badRequest("대기 중인 요청만 거절할 수 있습니다.");
         }
         f.reject();
     }
@@ -146,7 +144,7 @@ public class FriendshipService {
             throw new FriendForbiddenException("요청 취소 권한이 없습니다.");
         }
         if (f.getStatus() != FriendshipStatus.PENDING) {
-            throw new ApiException(400, "대기 중인 요청만 취소할 수 있습니다.");
+            throw ApiException.badRequest("대기 중인 요청만 취소할 수 있습니다.");
         }
         friendshipRepository.delete(f);
     }
@@ -158,14 +156,14 @@ public class FriendshipService {
             throw new FriendForbiddenException("친구 삭제 권한이 없습니다.");
         }
         if (f.getStatus() != FriendshipStatus.ACCEPTED) {
-            throw new ApiException(400, "친구 상태에서만 삭제할 수 있습니다.");
+            throw ApiException.badRequest("친구 상태에서만 삭제할 수 있습니다.");
         }
         friendshipRepository.delete(f);
     }
 
     private Friendship requireFriendship(String friendshipId, String notFoundMessage) {
         return friendshipRepository.findById(friendshipId)
-                .orElseThrow(() -> new ApiException(400, notFoundMessage));
+                .orElseThrow(() -> ApiException.badRequest(notFoundMessage));
     }
 
     // ──────────────────── 목록 조회 ────────────────────

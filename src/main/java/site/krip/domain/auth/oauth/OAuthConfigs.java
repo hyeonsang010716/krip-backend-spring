@@ -49,14 +49,14 @@ public class OAuthConfigs {
     public OAuthClient client(OAuthProvider provider) {
         OAuthClient client = clients.get(provider);
         if (client == null) {
-            throw new ApiException(400, "지원하지 않는 OAuth 제공자: " + provider);
+            throw ApiException.badRequest("지원하지 않는 OAuth 제공자: " + provider);
         }
         return client;
     }
 
     private OAuthConfig require(OAuthConfig config, OAuthProvider provider) {
         if (config == null) {
-            throw new ApiException(400, "지원하지 않는 OAuth 제공자: " + provider);
+            throw ApiException.badRequest("지원하지 않는 OAuth 제공자: " + provider);
         }
         return config;
     }

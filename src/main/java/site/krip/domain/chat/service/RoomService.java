@@ -75,17 +75,17 @@ public class RoomService {
 
     public ChatRoomResponse createDirectRoom(String meId, String peerUserId) {
         if (meId.equals(peerUserId)) {
-            throw new ApiException(400, "자기 자신과의 방은 만들 수 없습니다.");
+            throw ApiException.badRequest("자기 자신과의 방은 만들 수 없습니다.");
         }
         User peer = userRepo.findByIdWithProfile(peerUserId)
-                .orElseThrow(() -> new ApiException(400, "존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
 
         List<UserBlock> blocks = blockRepo.findBlocksBetween(meId, peerUserId);
         if (blocks.stream().anyMatch(b -> b.getBlockerId().equals(meId))) {
-            throw new ApiException(400, "차단한 유저와는 방을 만들 수 없습니다. 먼저 차단을 해제해주세요.");
+            throw ApiException.badRequest("차단한 유저와는 방을 만들 수 없습니다. 먼저 차단을 해제해주세요.");
         }
         if (!blocks.isEmpty()) {
-            throw new ApiException(400, "해당 유저와는 방을 만들 수 없습니다.");
+            throw ApiException.badRequest("해당 유저와는 방을 만들 수 없습니다.");
         }
 
         String userA = meId.compareTo(peerUserId) < 0 ? meId : peerUserId;
@@ -106,10 +106,8 @@ public class RoomService {
                 return room;
             });
         } catch (DataIntegrityViolationException e) {
-            ChatRoom raced = roomRepo.findDirectByPair(userA, userB).orElse(null);
-            if (raced == null) {
-                throw new ApiException(400, "방 생성 경합 실패. 잠시 후 다시 시도해주세요.");
-            }
+            ChatRoom raced = roomRepo.findDirectByPair(userA, userB)
+                    .orElseThrow(() -> ApiException.badRequest("방 생성 경합 실패. 잠시 후 다시 시도해주세요."));
             return toDirectDto(raced, peer);
         }
 
@@ -138,13 +136,13 @@ public class RoomService {
         Set<String> targets = new HashSet<>(memberIds);
         targets.remove(meId);
         if (targets.isEmpty()) {
-            throw new ApiException(400, "초대할 대상이 없습니다 (본인 외 멤버 없음).");
+            throw ApiException.badRequest("초대할 대상이 없습니다 (본인 외 멤버 없음).");
         }
         Set<String> friendIds = new HashSet<>(friendshipRepo.findAcceptedFriendIdsWith(meId, targets));
         Set<String> nonFriends = new TreeSet<>(targets);
         nonFriends.removeAll(friendIds);
         if (!nonFriends.isEmpty()) {
-            throw new ApiException(400, "친구가 아닌 유저는 초대할 수 없습니다: " + new ArrayList<>(nonFriends));
+            throw ApiException.badRequest("친구가 아닌 유저는 초대할 수 없습니다: " + new ArrayList<>(nonFriends));
         }
 
         Set<String> allMemberIds = new TreeSet<>(targets);
@@ -184,21 +182,21 @@ public class RoomService {
         ChatRoom room = roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
         if (room.getType() != ChatRoomType.GROUP) {
-            throw new ApiException(400, "그룹 방에만 멤버를 초대할 수 있습니다.");
+            throw ApiException.badRequest("그룹 방에만 멤버를 초대할 수 있습니다.");
         }
         if (!memberRepo.isActiveMember(roomId, meId)) {
-            throw new ApiException(403, "이 방의 활성 멤버만 초대할 수 있습니다.");
+            throw ApiException.forbidden("이 방의 활성 멤버만 초대할 수 있습니다.");
         }
         Set<String> targets = new HashSet<>(userIds);
         targets.remove(meId);
         if (targets.isEmpty()) {
-            throw new ApiException(400, "초대할 대상이 없습니다.");
+            throw ApiException.badRequest("초대할 대상이 없습니다.");
         }
         Set<String> friendIds = new HashSet<>(friendshipRepo.findAcceptedFriendIdsWith(meId, targets));
         Set<String> nonFriends = new TreeSet<>(targets);
         nonFriends.removeAll(friendIds);
         if (!nonFriends.isEmpty()) {
-            throw new ApiException(400, "친구가 아닌 유저는 초대할 수 없습니다: " + new ArrayList<>(nonFriends));
+            throw ApiException.badRequest("친구가 아닌 유저는 초대할 수 없습니다: " + new ArrayList<>(nonFriends));
         }
 
         long currentSeq = getCurrentSeq(roomId);
@@ -261,12 +259,12 @@ public class RoomService {
         ChatRoom room = roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
         if (room.getType() != ChatRoomType.GROUP) {
-            throw new ApiException(400, "그룹 방만 퇴장할 수 있습니다.");
+            throw ApiException.badRequest("그룹 방만 퇴장할 수 있습니다.");
         }
         ChatRoomMember member = memberRepo.findById(
                 new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, meId)).orElse(null);
         if (member == null || member.isLeft()) {
-            throw new ApiException(403, "이 방의 활성 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
         redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), meId);
@@ -275,7 +273,7 @@ public class RoomService {
         txTemplate.executeWithoutResult(s -> {
             ChatRoomMember m = memberRepo.findById(
                     new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, meId))
-                    .orElseThrow(() -> new ApiException(403, "이 방의 활성 멤버가 아닙니다."));
+                    .orElseThrow(() -> ApiException.forbidden("이 방의 활성 멤버가 아닙니다."));
             m.markLeft();
             memberRepo.save(m);
         });
@@ -290,23 +288,23 @@ public class RoomService {
 
     public void kickMember(String meId, String roomId, String targetUserId) {
         if (meId.equals(targetUserId)) {
-            throw new ApiException(400, "자기 자신은 강퇴할 수 없습니다. 퇴장 API 를 사용하세요.");
+            throw ApiException.badRequest("자기 자신은 강퇴할 수 없습니다. 퇴장 API 를 사용하세요.");
         }
         ChatRoom room = roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
         if (room.getType() != ChatRoomType.GROUP) {
-            throw new ApiException(400, "그룹 방에서만 강퇴할 수 있습니다.");
+            throw ApiException.badRequest("그룹 방에서만 강퇴할 수 있습니다.");
         }
         if (!meId.equals(room.getCreatorId())) {
-            throw new ApiException(403, "방장만 강퇴할 수 있습니다.");
+            throw ApiException.forbidden("방장만 강퇴할 수 있습니다.");
         }
         if (!memberRepo.isActiveMember(roomId, meId)) {
-            throw new ApiException(403, "방장이 이미 방을 떠난 상태입니다.");
+            throw ApiException.forbidden("방장이 이미 방을 떠난 상태입니다.");
         }
         ChatRoomMember target = memberRepo.findById(
                 new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, targetUserId)).orElse(null);
         if (target == null || target.isLeft()) {
-            throw new ApiException(400, "강퇴 대상이 활성 멤버가 아닙니다.");
+            throw ApiException.badRequest("강퇴 대상이 활성 멤버가 아닙니다.");
         }
 
         redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), targetUserId);
@@ -315,7 +313,7 @@ public class RoomService {
         txTemplate.executeWithoutResult(s -> {
             ChatRoomMember m = memberRepo.findById(
                     new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, targetUserId))
-                    .orElseThrow(() -> new ApiException(400, "강퇴 대상이 활성 멤버가 아닙니다."));
+                    .orElseThrow(() -> ApiException.badRequest("강퇴 대상이 활성 멤버가 아닙니다."));
             m.markLeft();
             memberRepo.save(m);
         });
@@ -331,7 +329,7 @@ public class RoomService {
 
     public long markRead(String meId, String meSessionId, String roomId, long upToServerSeq) {
         if (upToServerSeq <= 0) {
-            throw new ApiException(400, "up_to_server_seq 는 1 이상이어야 합니다.");
+            throw ApiException.badRequest("up_to_server_seq 는 1 이상이어야 합니다.");
         }
         roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
@@ -344,7 +342,7 @@ public class RoomService {
             return memberRepo.findLastReadSeq(roomId, meId).orElse(upToServerSeq);
         });
         if (finalSeq == null) {
-            throw new ApiException(403, "이 방의 활성 멤버가 아닙니다.");
+            throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
         redis.opsForHash().put(ChatRedisKeys.unread(meId), roomId, "0");

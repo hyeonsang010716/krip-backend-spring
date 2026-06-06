@@ -27,7 +27,7 @@ public class MuteService {
     @Transactional
     public void setGlobalMute(String userId, boolean muted) {
         User user = userRepo.findById(userId)
-                .orElseThrow(() -> new ApiException(400, "존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
         user.applyNotificationMute(muted);
     }
 
@@ -35,7 +35,7 @@ public class MuteService {
     public void setRoomMute(String userId, String chatRoomId, boolean muted) {
         ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(chatRoomId, userId)).orElse(null);
         if (member == null || member.isLeft()) {
-            throw new ApiException(400, "이 방의 활성 멤버가 아닙니다.");
+            throw ApiException.badRequest("이 방의 활성 멤버가 아닙니다.");
         }
         member.applyNotificationMute(muted);
     }

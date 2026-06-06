@@ -30,7 +30,7 @@ public class TripmateSearchHistoryService {
 
     public void deleteSearch(String userId, String searchName) {
         if (searchName == null || searchName.isBlank()) {
-            throw new ApiException(400, "검색어를 입력해주세요.");
+            throw ApiException.badRequest("검색어를 입력해주세요.");
         }
         searchRepository.deleteOne(userId, searchName);
     }
