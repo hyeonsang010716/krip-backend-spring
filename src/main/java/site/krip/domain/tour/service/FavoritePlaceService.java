@@ -2,6 +2,7 @@ package site.krip.domain.tour.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.tour.document.Place;
 import site.krip.domain.tour.dto.response.FavoritePlaceListResponse;
 import site.krip.domain.tour.dto.response.FavoritePlaceResponse;
@@ -28,21 +29,26 @@ public class FavoritePlaceService {
 
     private final FavoritePlaceRepository favRepo;
     private final PlaceRepository placeRepo;
+    private final TransactionTemplate txTemplate;
 
-    public FavoritePlaceService(FavoritePlaceRepository favRepo, PlaceRepository placeRepo) {
+    public FavoritePlaceService(FavoritePlaceRepository favRepo, PlaceRepository placeRepo,
+                                TransactionTemplate txTemplate) {
         this.favRepo = favRepo;
         this.placeRepo = placeRepo;
+        this.txTemplate = txTemplate;
     }
 
-    @Transactional
     public void addFavorite(String userId, String placeId) {
+        // 장소 존재 검증(Mongo) 은 RDB 트랜잭션 밖에서 — 네트워크 왕복 동안 커넥션을 점유하지 않는다.
         if (placeRepo.findByPlaceIds(List.of(placeId)).isEmpty()) {
             throw ApiException.badRequest("존재하지 않는 장소입니다.");
         }
-        if (favRepo.existsByUserIdAndPlaceId(userId, placeId)) {
-            throw ApiException.badRequest("이미 즐겨찾기한 장소입니다.");
-        }
-        favRepo.save(new FavoritePlace(userId, placeId));
+        txTemplate.executeWithoutResult(s -> {
+            if (favRepo.existsByUserIdAndPlaceId(userId, placeId)) {
+                throw ApiException.badRequest("이미 즐겨찾기한 장소입니다.");
+            }
+            favRepo.save(new FavoritePlace(userId, placeId));
+        });
     }
 
     @Transactional
@@ -52,8 +58,8 @@ public class FavoritePlaceService {
         }
     }
 
-    @Transactional(readOnly = true)
     public FavoritePlaceListResponse getFavorites(String userId) {
+        // 단일 RDB 조회(auto-commit, lazy 연관 없음) 후 Mongo 병합 — 둘을 한 트랜잭션에 묶지 않는다.
         List<FavoritePlace> favorites = favRepo.findAllByUserOrderByCreatedAtDesc(userId);
         if (favorites.isEmpty()) {
             return new FavoritePlaceListResponse(List.of(), 0);

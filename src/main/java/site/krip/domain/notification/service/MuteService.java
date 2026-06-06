@@ -1,42 +1,29 @@
 package site.krip.domain.notification.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.repository.UserRepository;
-import site.krip.domain.chat.entity.ChatRoomMember;
-import site.krip.domain.chat.entity.ChatRoomMemberId;
-import site.krip.domain.chat.repository.ChatRoomMemberRepository;
-import site.krip.global.common.exception.ApiException;
+import site.krip.domain.notification.port.GlobalMutePort;
+import site.krip.domain.notification.port.RoomMutePort;
 
 /**
  * 알림 차단(mute) — 전역(유저) / 방별(멤버) 두 레벨.
- * True 만 저장, 해제는 NULL.
+ * 실제 엔티티 적용은 각 소유 도메인 어댑터(auth/chat)에 위임. True 만 저장, 해제는 NULL.
  */
 @Service
 public class MuteService {
 
-    private final UserRepository userRepo;
-    private final ChatRoomMemberRepository memberRepo;
+    private final GlobalMutePort globalMutePort;
+    private final RoomMutePort roomMutePort;
 
-    public MuteService(UserRepository userRepo, ChatRoomMemberRepository memberRepo) {
-        this.userRepo = userRepo;
-        this.memberRepo = memberRepo;
+    public MuteService(GlobalMutePort globalMutePort, RoomMutePort roomMutePort) {
+        this.globalMutePort = globalMutePort;
+        this.roomMutePort = roomMutePort;
     }
 
-    @Transactional
     public void setGlobalMute(String userId, boolean muted) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
-        user.applyNotificationMute(muted);
+        globalMutePort.setGlobalMute(userId, muted);
     }
 
-    @Transactional
     public void setRoomMute(String userId, String chatRoomId, boolean muted) {
-        ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(chatRoomId, userId)).orElse(null);
-        if (member == null || member.isLeft()) {
-            throw ApiException.badRequest("이 방의 활성 멤버가 아닙니다.");
-        }
-        member.applyNotificationMute(muted);
+        roomMutePort.setRoomMute(userId, chatRoomId, muted);
     }
 }

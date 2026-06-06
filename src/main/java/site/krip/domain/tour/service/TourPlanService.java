@@ -63,7 +63,6 @@ public class TourPlanService {
 
     // ──────────────────── 플랜 생성 ────────────────────
 
-    @Transactional
     public PlanDetailResponse createPlan(String userId, CreatePlanRequest body) {
         int travelDays = body.travelDays();
         List<CreatePlanRequest.Item> items = body.items();
@@ -73,7 +72,7 @@ public class TourPlanService {
             }
         }
 
-        // MongoDB 배치 조회 → place_id 스냅샷
+        // MongoDB 배치 조회 → place_id 스냅샷 (RDB 트랜잭션 밖 — 커넥션 미점유)
         Set<String> placeIds = items.stream()
                 .map(CreatePlanRequest.Item::placeId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
@@ -84,8 +83,8 @@ public class TourPlanService {
             throw ApiException.badRequest("존재하지 않는 장소가 있습니다: " + missing);
         }
 
-        TourPlan plan = planRepo.saveAndFlush(new TourPlan(userId, normalizeTitle(body.title()), travelDays));
-
+        // planId 는 생성자에서 부여되므로 트랜잭션 전에 카드 엔티티를 미리 구성.
+        TourPlan plan = new TourPlan(userId, normalizeTitle(body.title()), travelDays);
         // day 별 position 을 SPACING 간격으로 부여 (같은 day 안에서는 시퀀셜이라 race 무관)
         Map<Integer, Double> dayPositions = new LinkedHashMap<>();
         List<TourPlanItem> entities = items.stream().map(it -> {
@@ -94,8 +93,12 @@ public class TourPlanService {
             return new TourPlanItem(plan.getPlanId(), it.dayNumber(), pos, it.placeId(),
                     raw.getDisplayName(), raw.getAddress(), it.visitTime());
         }).toList();
-        itemRepo.saveAll(entities);
-        itemRepo.flush();
+
+        // RDB 쓰기만 트랜잭션 — plan 을 먼저 flush 해 item 의 plan_id 참조 순서를 보장.
+        txTemplate.executeWithoutResult(s -> {
+            planRepo.saveAndFlush(plan);
+            itemRepo.saveAll(entities);
+        });
 
         List<TourPlanItem> sorted = entities.stream()
                 .sorted(Comparator.comparingInt(TourPlanItem::getDayNumber)
