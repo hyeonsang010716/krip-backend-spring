@@ -120,13 +120,12 @@ public class ProfileService {
     public ProfileImageResponse addProfileImage(String userId, InputStream content, long contentLength,
                                                 String fileName, String contentType) {
         // 1) 사전 검증 (짧은 읽기 트랜잭션) — 미등록 404, 이미 존재 409
-        txTemplate.execute(status -> {
+        txTemplate.executeWithoutResult(status -> {
             UserDetailInform detail = detailRepository.findById(userId)
                     .orElseThrow(ProfileNotRegisteredException::new);
             if (detail.getProfileImageUrl() != null) {
                 throw new ProfileImageAlreadyExistsException();
             }
-            return null;
         });
 
         // 2) S3 업로드 (트랜잭션 밖 — DB 커넥션을 외부 I/O 동안 점유하지 않음)
@@ -135,14 +134,13 @@ public class ProfileService {
 
         // 3) 컬럼 반영 (짧은 쓰기 트랜잭션) — 동시 추가로 이미 채워졌으면 방금 올린 파일 정리 후 409
         try {
-            txTemplate.execute(status -> {
+            txTemplate.executeWithoutResult(status -> {
                 UserDetailInform detail = detailRepository.findById(userId)
                         .orElseThrow(ProfileNotRegisteredException::new);
                 if (detail.getProfileImageUrl() != null) {
                     throw new ProfileImageAlreadyExistsException();
                 }
                 detail.changeProfileImageUrl(url);
-                return null;
             });
         } catch (RuntimeException e) {
             safeDelete(url, userId, "추가 실패 cleanup");
@@ -155,13 +153,12 @@ public class ProfileService {
     public ProfileImageResponse updateProfileImage(String userId, InputStream content, long contentLength,
                                                    String fileName, String contentType) {
         // 1) 사전 검증 (짧은 읽기 트랜잭션) — 기존 이미지 없으면 404
-        txTemplate.execute(status -> {
+        txTemplate.executeWithoutResult(status -> {
             UserDetailInform detail = detailRepository.findById(userId)
                     .orElseThrow(ProfileNotRegisteredException::new);
             if (detail.getProfileImageUrl() == null) {
                 throw new ProfileImageNotFoundException("수정할 프로필 이미지가 없습니다. 먼저 POST 로 추가해주세요.");
             }
-            return null;
         });
 
         // 2) S3 업로드 (트랜잭션 밖)

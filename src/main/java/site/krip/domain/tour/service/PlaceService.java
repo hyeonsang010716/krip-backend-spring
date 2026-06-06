@@ -8,6 +8,7 @@ import site.krip.domain.tour.dto.response.PlaceResponse;
 import site.krip.domain.tour.repository.FavoritePlaceRepository;
 import site.krip.domain.tour.repository.PlaceRepository;
 import site.krip.domain.tour.repository.PlaceRepository.NearbyPlace;
+import site.krip.global.common.exception.ApiException;
 
 import java.util.List;
 import java.util.Set;
@@ -41,13 +42,11 @@ public class PlaceService {
         return toListResponse(placeRepo.searchNearby(lat, lng, keyword, cursor, maxDistance), userId);
     }
 
-    /** place_id 단건 조회 — 없으면 null (컨트롤러가 404). 거리는 제공 안 되므로 0. */
+    /** place_id 단건 조회 — 없으면 404. 거리는 제공 안 되므로 0. */
     @Transactional(readOnly = true)
     public PlaceResponse getPlaceById(String placeId, String userId) {
-        Place place = placeRepo.findByPlaceId(placeId).orElse(null);
-        if (place == null) {
-            return null;
-        }
+        Place place = placeRepo.findByPlaceId(placeId)
+                .orElseThrow(() -> ApiException.notFound("장소를 찾을 수 없습니다."));
         Set<String> favorited = favoritedSet(List.of(place.getPlaceId()), userId);
         return PlaceResponse.of(place, 0.0, isFavorite(favorited, place.getPlaceId()));
     }

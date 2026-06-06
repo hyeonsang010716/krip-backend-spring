@@ -102,10 +102,6 @@ public class PlaceController {
 
     @GetMapping("/{place_id}")
     public PlaceResponse getPlace(@CurrentUserId String userId, @PathVariable("place_id") String placeId) {
-        PlaceResponse result = placeService.getPlaceById(placeId, userId);
-        if (result == null) {
-            throw ApiException.notFound("장소를 찾을 수 없습니다.");
-        }
-        return result;
+        return placeService.getPlaceById(placeId, userId);
     }
 }
