@@ -29,7 +29,6 @@ public class MuteService {
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new ApiException(400, "존재하지 않는 유저입니다."));
         user.applyNotificationMute(muted);
-        userRepo.flush();
     }
 
     @Transactional
@@ -39,6 +38,5 @@ public class MuteService {
             throw new ApiException(400, "이 방의 활성 멤버가 아닙니다.");
         }
         member.applyNotificationMute(muted);
-        memberRepo.flush();
     }
 }

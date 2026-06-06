@@ -177,7 +177,6 @@ public class TourPlanService {
         }
         itemRepo.deleteByPlanIdAndDayNumber(planId, dayNumber);
         plan.touch();
-        planRepo.flush();
     }
 
     @Transactional
@@ -238,7 +237,6 @@ public class TourPlanService {
 
         item.replace(placeId, raw.getDisplayName(), raw.getAddress(), visitTime);
         plan.touch();
-        itemRepo.flush();
         return PlanItemResponse.of(item, raw.getRating(), raw.getPhotos());
     }
 
@@ -288,7 +286,6 @@ public class TourPlanService {
         }
         itemRepo.delete(item);
         plan.touch();
-        planRepo.flush();
     }
 
     // ──────────────────── position 계산 / 조회 헬퍼 ────────────────────
