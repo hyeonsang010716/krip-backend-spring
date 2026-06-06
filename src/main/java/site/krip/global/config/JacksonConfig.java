@@ -16,9 +16,10 @@ import java.time.Instant;
 /**
  * 모든 {@link Instant} 응답을 고정 형식으로 직렬화한다.
  *
- * <p>형식: {@code +00:00} 오프셋 + 마이크로초 6자리(0이면 소수부 생략)
- * (예: {@code 2026-07-03T12:34:56.789000+00:00}, {@code 2026-07-03T12:34:56+00:00}).
- * Jackson 기본은 {@code Z} 로 출력하므로 Instant 시리얼라이저만 교체하고 나머지 설정은 Boot 자동구성을 따른다.
+ * <p>형식: {@code Z}(UTC) 표기 + 마이크로초 6자리(0이면 소수부 생략)
+ * (예: {@code 2026-07-03T12:34:56.789000Z}, {@code 2026-07-03T12:34:56Z}).
+ * Jackson 기본은 나노초 가변 정밀도라 마이크로초 고정 계약을 위해 Instant 시리얼라이저만 교체하고
+ * 나머지 설정은 Boot 자동구성을 따른다.
  */
 @Configuration
 public class JacksonConfig {
