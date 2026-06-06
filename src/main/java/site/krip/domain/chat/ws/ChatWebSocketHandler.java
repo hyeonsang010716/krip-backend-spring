@@ -3,6 +3,8 @@ package site.krip.domain.chat.ws;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.SubProtocolCapable;
@@ -21,14 +23,13 @@ import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.IsoTimestamp;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 채팅 WebSocket 핸들러 — {@code /api/ws/chat}.
@@ -53,13 +54,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     private final JwtProvider jwtProvider;
     private final ObjectMapper mapper;
 
-    private final ScheduledExecutorService heartbeatPool = Executors.newScheduledThreadPool(2);
+    // 채팅 WS 전용 스케줄러(스프링 관리) — 블로킹 @Scheduled 잡과 격리, 종료 시 자동 정리.
+    private final ThreadPoolTaskScheduler heartbeatScheduler;
     private final Map<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
 
     public ChatWebSocketHandler(SessionService sessionService, RoomService roomService,
                                 MessageService messageService, MessageHistoryService historyService,
                                 UnreadRecoveryService unreadRecovery, FanoutService fanout,
-                                JwtProvider jwtProvider, ObjectMapper mapper) {
+                                JwtProvider jwtProvider, ObjectMapper mapper,
+                                @Qualifier("chatWsScheduler") ThreadPoolTaskScheduler heartbeatScheduler) {
         this.sessionService = sessionService;
         this.roomService = roomService;
         this.messageService = messageService;
@@ -68,6 +71,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         this.fanout = fanout;
         this.jwtProvider = jwtProvider;
         this.mapper = mapper;
+        this.heartbeatScheduler = heartbeatScheduler;
     }
 
     @Override
@@ -116,13 +120,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             log.warn("unread 동기화 실패 (무시): user_id={}, err={}", userId, e.toString());
         }
 
-        ScheduledFuture<?> hb = heartbeatPool.scheduleAtFixedRate(() -> {
+        Duration interval = Duration.ofSeconds(HEARTBEAT_INTERVAL_SEC);
+        ScheduledFuture<?> hb = heartbeatScheduler.scheduleAtFixedRate(() -> {
             try {
                 sessionService.heartbeat(sessionId, userId);
             } catch (Exception e) {
                 log.warn("heartbeat 실패 (계속): session_id={}, err={}", sessionId, e.toString());
             }
-        }, HEARTBEAT_INTERVAL_SEC, HEARTBEAT_INTERVAL_SEC, TimeUnit.SECONDS);
+        }, Instant.now().plus(interval), interval);
         heartbeatTasks.put(sessionId, hb);
     }
 
@@ -252,7 +257,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     private void spawnRecoverUnread(WebSocketSession session, String userId) {
-        heartbeatPool.execute(() -> {
+        heartbeatScheduler.execute(() -> {
             try {
                 Map<String, Integer> counts = unreadRecovery.recoverUnreadForUser(userId);
                 if (!counts.isEmpty() && session.isOpen()) {

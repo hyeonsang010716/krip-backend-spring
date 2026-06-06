@@ -46,17 +46,13 @@ spring:
     database: ${REDIS_DB:0}
     timeout: 5s
 
-  # ──────────────────── 스케줄러 ────────────────────
-  # 멀티 스레드 풀: reconcile 블로킹 drain 이 heartbeat 를 밀지 않도록 분리.
-  task:
-    scheduling:
-      pool:
-        size: ${SCHEDULING_POOL_SIZE:4}
-      thread-name-prefix: scheduled-
-
 # ──────────────────── 애플리케이션 설정 (krip.*) ────────────────────
 krip:
   environment: ${ENVIRONMENT:DEV}
+  # 스케줄러 스레드 풀: 전역 @Scheduled 와 채팅 WS 하트비트를 분리해 상호 밀림 방지.
+  scheduling:
+    pool-size: ${SCHEDULING_POOL_SIZE:4}
+    chat-ws-pool-size: ${CHAT_WS_POOL_SIZE:4}
   auth:
     access-token: ${ACCESS_TOKEN:dev-access-token}
     jwt:
