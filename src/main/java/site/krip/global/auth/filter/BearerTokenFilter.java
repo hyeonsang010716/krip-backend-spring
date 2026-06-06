@@ -5,37 +5,37 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import site.krip.global.common.exception.ErrorResponse;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.List;
 
-
+/**
+ * 글로벌 정적 액세스 토큰(게이트웨이 공유 비밀) 검증.
+ */
 public class BearerTokenFilter extends OncePerRequestFilter {
-
-    private static final List<String> EXCLUDE_PREFIXES =
-            List.of("/api/auth/login", "/api/public", "/api/ws");
 
     private final byte[] accessTokenBytes;
     private final ObjectMapper mapper;
+    private final RequestMatcher skip;
 
-    public BearerTokenFilter(String accessToken, ObjectMapper mapper) {
+    public BearerTokenFilter(String accessToken, ObjectMapper mapper, RequestMatcher skip) {
         this.accessTokenBytes = accessToken.getBytes(StandardCharsets.UTF_8);
         this.mapper = mapper;
+        this.skip = skip;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return skip.matches(request);
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        if (FilterSupport.isExcluded(request.getRequestURI(),
-                EXCLUDE_PREFIXES)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
         String authorization = request.getHeader("Authorization");
         if (authorization == null) {
             FilterSupport.writeError(response, mapper, 401,

@@ -8,8 +8,10 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
-import site.krip.global.auth.RequestAttributes;
 import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.common.exception.ErrorResponse;
 
@@ -17,23 +19,29 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * 유저 로그인 JWT 검증 → request 에 user_id 주입.
+ * 유저 로그인 JWT 검증 → {@link SecurityContextHolder} 에 인증 주입.
  *
  * <p>토큰 소스: {@code X-Auth-Token} 헤더(앱) → {@code utk} 쿠키(웹) 순.
+ * 토큰 부재 시엔 인증을 비워 두고, 401 응답은 {@code AuthenticationEntryPoint} 가 낸다.
  */
 public class LoginAuthFilter extends OncePerRequestFilter {
-
-    private static final List<String> EXCLUDE_PREFIXES =
-            List.of("/api/auth/login", "/api/public", "/api/ws");
 
     private final JwtProvider jwtProvider;
     private final String cookieName;
     private final ObjectMapper mapper;
+    private final RequestMatcher skip;
 
-    public LoginAuthFilter(JwtProvider jwtProvider, String cookieName, ObjectMapper mapper) {
+    public LoginAuthFilter(JwtProvider jwtProvider, String cookieName, ObjectMapper mapper,
+                           RequestMatcher skip) {
         this.jwtProvider = jwtProvider;
         this.cookieName = cookieName;
         this.mapper = mapper;
+        this.skip = skip;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return skip.matches(request);
     }
 
     private String extractToken(HttpServletRequest request) {
@@ -55,15 +63,9 @@ public class LoginAuthFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        if (FilterSupport.isExcluded(request.getRequestURI(),
-                EXCLUDE_PREFIXES)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
         String token = extractToken(request);
         if (token == null) {
-            FilterSupport.writeError(response, mapper, 401, ErrorResponse.of("로그인이 필요합니다."));
+            chain.doFilter(request, response);
             return;
         }
 
@@ -83,7 +85,8 @@ public class LoginAuthFilter extends OncePerRequestFilter {
             return;
         }
 
-        request.setAttribute(RequestAttributes.USER_ID, userId);
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(userId, null, List.of()));
         chain.doFilter(request, response);
     }
 }

@@ -80,6 +80,44 @@ class AuthFilterChainE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("정적 토큰(Bearer) 불일치 → 401")
+    void wrongStaticTokenRejected() throws Exception {
+        String u = fixtures.createActiveUser("정적토큰틀림");
+        mockMvc.perform(get("/api/friend/friendships")
+                        .header("Authorization", "Bearer wrong-token")
+                        .header("X-Auth-Token", userToken(u)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("형식이 깨진 로그인 토큰 → 401")
+    void malformedLoginTokenRejected() throws Exception {
+        mockMvc.perform(get("/api/friend/friendships")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", "not-a-jwt"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("2차 회원가입 미완료(detail=null) → 403")
+    void preRegisterUserGets403() throws Exception {
+        String u = fixtures.createPreRegisterUser();
+        mockMvc.perform(get("/api/friend/friendships")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(u)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("세그먼트 경계 — /api/publicxxx 는 화이트리스트로 우회되지 않는다 → 401")
+    void prefixBoundaryNotBypassed() throws Exception {
+        mockMvc.perform(get("/api/publicxxx"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("INACTIVE(탈퇴 유예) 유저 → 419 + status=withdrawal_pending")
     void inactiveUserGets419() throws Exception {
         String u = fixtures.createActiveUser("탈퇴유예유저");

@@ -7,16 +7,18 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import site.krip.domain.auth.entity.User;
 import site.krip.domain.auth.entity.UserStatus;
 import site.krip.domain.auth.repository.UserRepository;
-import site.krip.global.auth.RequestAttributes;
 import site.krip.global.cache.RegisteredCacheManager;
 import site.krip.global.common.exception.ErrorResponse;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Optional;
 
 /**
@@ -36,36 +38,28 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
     private static final int WITHDRAWAL_PENDING_STATUS_CODE = 419;
     private static final Logger log = LoggerFactory.getLogger(RegisterCheckFilter.class);
 
-    private static final List<String> EXCLUDE_PREFIXES = List.of(
-            "/api/auth/login",
-            "/api/auth/register",
-            "/api/auth/logout",
-            "/api/auth/withdraw",
-            "/api/public",
-            "/api/ws"
-    );
-
     private final UserRepository userRepository;
     private final RegisteredCacheManager cache;
     private final ObjectMapper mapper;
+    private final RequestMatcher skip;
 
     public RegisterCheckFilter(UserRepository userRepository, RegisteredCacheManager cache,
-                               ObjectMapper mapper) {
+                               ObjectMapper mapper, RequestMatcher skip) {
         this.userRepository = userRepository;
         this.cache = cache;
         this.mapper = mapper;
+        this.skip = skip;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return skip.matches(request);
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
-        if (FilterSupport.isExcluded(request.getRequestURI(),
-                EXCLUDE_PREFIXES)) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        String userId = (String) request.getAttribute(RequestAttributes.USER_ID);
+        String userId = authenticatedUserId();
         if (userId == null) {
             chain.doFilter(request, response);
             return;
@@ -111,5 +105,13 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
         // 3. 양성 결과 캐싱 후 통과
         cache.setFlag(userId);
         chain.doFilter(request, response);
+    }
+
+    private String authenticatedUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        return auth.getName();
     }
 }
