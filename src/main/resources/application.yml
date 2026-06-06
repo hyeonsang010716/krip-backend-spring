@@ -10,9 +10,9 @@ spring:
 
   # ──────────────────── PostgreSQL (JPA) ────────────────────
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_NAME:magic7}
-    username: ${POSTGRES_USER:magic7}
-    password: ${POSTGRES_PASSWORD:ZAvEjgkEzu8K**}
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_NAME:krip}
+    username: ${POSTGRES_USER:krip}
+    password: ${POSTGRES_PASSWORD}
     hikari:
       maximum-pool-size: 20
       pool-name: krip-hikari
@@ -36,7 +36,7 @@ spring:
   # ──────────────────── MongoDB ────────────────────
   data:
     mongodb:
-      uri: mongodb://${MONGODB_USER:magic7}:${MONGODB_PASSWORD:ZAvEjgkEzu8K**}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_NAME:magic7}?authSource=admin
+      uri: mongodb://${MONGODB_USER:krip}:${MONGODB_PASSWORD}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_NAME:krip}?authSource=admin
       auto-index-creation: true
 
   # ──────────────────── Redis ────────────────────

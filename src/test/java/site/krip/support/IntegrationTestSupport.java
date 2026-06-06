@@ -39,8 +39,8 @@ public abstract class IntegrationTestSupport {
 
     static {
         POSTGRES = new PostgreSQLContainer<>(DockerImageName.parse("postgres:16-alpine"))
-                .withDatabaseName("magic7")
-                .withUsername("magic7")
+                .withDatabaseName("krip")
+                .withUsername("krip")
                 .withPassword("test-pass");
         MONGO = new MongoDBContainer(DockerImageName.parse("mongo:7"));
         REDIS = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
