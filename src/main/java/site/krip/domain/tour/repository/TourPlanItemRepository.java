@@ -1,6 +1,5 @@
 package site.krip.domain.tour.repository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -25,7 +24,6 @@ public interface TourPlanItemRepository extends JpaRepository<TourPlanItem, Stri
      * <p>벌크 DELETE 라 영속성 컨텍스트와 어긋날 수 있어 clearAutomatically 로 1차 캐시를 비운다.
      */
     @Modifying(clearAutomatically = true)
-    @Transactional
     @Query("delete from TourPlanItem i where i.planId = :planId and i.dayNumber = :dayNumber")
     void deleteByPlanIdAndDayNumber(@Param("planId") String planId, @Param("dayNumber") int dayNumber);
 }

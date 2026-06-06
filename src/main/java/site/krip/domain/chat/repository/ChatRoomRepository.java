@@ -1,11 +1,11 @@
 package site.krip.domain.chat.repository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.chat.entity.ChatRoom;
 import site.krip.domain.chat.entity.ChatRoomType;
 
@@ -42,6 +42,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
             + "order by r.effectiveLastAt desc")
     List<RoomListRow> findRoomsOfUser(@Param("uid") String userId, Pageable pageable);
 
+    /** 호출부(메시지 핫패스)가 비-트랜잭션 best-effort 라 자체 tx 로 last_message 역정규화. */
     @Modifying(clearAutomatically = true)
     @Transactional
     @Query("update ChatRoom r set r.lastMessageId = :messageId, r.lastMessageServerSeq = :seq, "
@@ -49,6 +50,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
     void updateLastMessage(@Param("roomId") String roomId, @Param("messageId") String messageId,
                            @Param("seq") long serverSeq, @Param("at") Instant at);
 
+    /** 호출부(reconcile 배치)가 비-트랜잭션이라 자체 tx 로 방별 독립 수렴. */
     @Modifying(clearAutomatically = true)
     @Transactional
     @Query("update ChatRoom r set r.lastMessageId = :messageId, r.lastMessageServerSeq = :seq, "

@@ -1,6 +1,7 @@
 package site.krip.domain.tripmate.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.krip.domain.tripmate.entity.TripmatePostLike;
@@ -17,7 +18,10 @@ public interface TripmatePostLikeRepository extends JpaRepository<TripmatePostLi
 
     boolean existsByUserIdAndPostId(String userId, String postId);
 
-    void deleteByUserIdAndPostId(String userId, String postId);
+    /** 단일 bulk DELETE — 영향 row 수 반환(0 이면 미좋아요). tx 경계는 호출 서비스가 소유. */
+    @Modifying(clearAutomatically = true)
+    @Query("delete from TripmatePostLike l where l.userId = :userId and l.postId = :postId")
+    int deleteByUserIdAndPostId(@Param("userId") String userId, @Param("postId") String postId);
 
     @Query("select l.userId from TripmatePostLike l where l.postId = :postId order by l.createdAt desc")
     List<String> findUserIdsByPostId(@Param("postId") String postId);

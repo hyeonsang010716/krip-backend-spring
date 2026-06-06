@@ -1,6 +1,5 @@
 package site.krip.domain.feed.repository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -28,7 +27,8 @@ public interface FeedPostLikeRepository extends JpaRepository<FeedPostLike, Feed
     @Query("select l from FeedPostLike l where l.postId = :postId order by l.createdAt desc")
     List<FeedPostLike> findByPostIdOrderByCreatedAtDesc(@Param("postId") String postId);
 
+    /** 단일 bulk DELETE — 영향 row 수 반환(0 이면 미좋아요). tx 경계는 호출 서비스가 소유. */
     @Modifying(clearAutomatically = true)
-    @Transactional
-    void deleteByUserIdAndPostId(String userId, String postId);
+    @Query("delete from FeedPostLike l where l.userId = :userId and l.postId = :postId")
+    int deleteByUserIdAndPostId(@Param("userId") String userId, @Param("postId") String postId);
 }

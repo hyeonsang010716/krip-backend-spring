@@ -86,10 +86,9 @@ public class FeedPostLikeService {
     @Transactional
     public long removeLike(String userId, String postId) {
         FeedPost post = access.loadViewablePost(userId, postId).post();
-        if (!likeRepo.existsByUserIdAndPostId(userId, post.getPostId())) {
+        if (likeRepo.deleteByUserIdAndPostId(userId, post.getPostId()) == 0) {
             throw ApiException.badRequest("좋아요를 누르지 않은 게시물입니다.");
         }
-        likeRepo.deleteByUserIdAndPostId(userId, post.getPostId());
         long likeCount = likeRepo.countByPostId(post.getPostId());
         log.info("피드 좋아요 취소 (user_id={}, post_id={})", userId, post.getPostId());
         return likeCount;

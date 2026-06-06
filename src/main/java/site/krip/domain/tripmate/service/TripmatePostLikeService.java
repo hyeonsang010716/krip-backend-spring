@@ -88,10 +88,9 @@ public class TripmatePostLikeService {
 
     @Transactional
     public long removeLike(String userId, String postId) {
-        if (!likeRepository.existsByUserIdAndPostId(userId, postId)) {
+        if (likeRepository.deleteByUserIdAndPostId(userId, postId) == 0) {
             throw ApiException.badRequest("좋아요를 누르지 않은 게시글입니다.");
         }
-        likeRepository.deleteByUserIdAndPostId(userId, postId);
         return likeRepository.countByPostId(postId);
     }
 }

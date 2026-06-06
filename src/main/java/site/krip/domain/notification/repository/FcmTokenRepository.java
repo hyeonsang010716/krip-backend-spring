@@ -1,8 +1,8 @@
 package site.krip.domain.notification.repository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.notification.entity.FcmToken;
 
 import java.util.Collection;
@@ -20,10 +20,11 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, String> {
     /** 그룹방 fan-out bulk. */
     List<FcmToken> findByUserIdIn(Collection<String> userIds);
 
+    /** tx 경계는 호출 서비스(@Transactional unregisterToken)가 소유. */
     @Modifying
-    @Transactional
     void deleteByUserIdAndToken(String userId, String token);
 
+    /** 호출부(sendChatPush)가 비-트랜잭션(FCM 호출 중 DB 커넥션 미점유)이라 자체 tx 로 만료 토큰 정리. */
     @Modifying
     @Transactional
     void deleteByTokenIn(Collection<String> tokens);

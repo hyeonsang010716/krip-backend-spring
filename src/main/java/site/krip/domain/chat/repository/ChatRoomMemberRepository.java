@@ -1,6 +1,5 @@
 package site.krip.domain.chat.repository;
 
-import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -54,7 +53,6 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
      * @return 영향받은 row 수(0 이면 탈퇴자/미존재 → 서비스가 403).
      */
     @Modifying(clearAutomatically = true)
-    @Transactional
     @Query(value = "UPDATE chat_room_member "
             + "SET last_read_message_server_seq = GREATEST(COALESCE(last_read_message_server_seq, 0), :seq), "
             + "    last_read_at = now() "
