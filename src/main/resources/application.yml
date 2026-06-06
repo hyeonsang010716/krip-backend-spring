@@ -46,6 +46,14 @@ spring:
     database: ${REDIS_DB:0}
     timeout: 5s
 
+  # ──────────────────── 스케줄러 ────────────────────
+  # 멀티 스레드 풀: reconcile 블로킹 drain 이 heartbeat 를 밀지 않도록 분리.
+  task:
+    scheduling:
+      pool:
+        size: ${SCHEDULING_POOL_SIZE:4}
+      thread-name-prefix: scheduled-
+
 # ──────────────────── 애플리케이션 설정 (krip.*) ────────────────────
 krip:
   environment: ${ENVIRONMENT:DEV}
