@@ -9,7 +9,6 @@ import site.krip.domain.auth.entity.User;
 import site.krip.domain.chat.entity.ChatRoomMember;
 import site.krip.domain.chat.entity.ChatRoomMemberId;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -46,14 +45,9 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
                                            @Param("userIds") java.util.Collection<String> userIds);
 
     /** 유저 전체 활성 방의 last_read seq (NULL 포함 — 서비스가 0 으로 정규화). */
-    @Query("select m.chatRoomId, m.lastReadMessageServerSeq from ChatRoomMember m "
-            + "where m.userId = :userId and m.left = false")
-    List<Object[]> findLastReadSeqsAll(@Param("userId") String userId);
-
-    @Query("select m.chatRoomId, m.lastReadMessageServerSeq from ChatRoomMember m "
-            + "where m.userId = :userId and m.left = false and m.chatRoomId in :roomIds")
-    List<Object[]> findLastReadSeqsIn(@Param("userId") String userId,
-                                      @Param("roomIds") Collection<String> roomIds);
+    @Query("select new site.krip.domain.chat.repository.LastReadSeq(m.chatRoomId, m.lastReadMessageServerSeq) "
+            + "from ChatRoomMember m where m.userId = :userId and m.left = false")
+    List<LastReadSeq> findLastReadSeqsAll(@Param("userId") String userId);
 
     /**
      * 읽음 마킹 — last_read = GREATEST(COALESCE(기존,0), :seq) + last_read_at=now. 활성 멤버만.

@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import site.krip.domain.chat.repository.ChatMessageRepository;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
+import site.krip.domain.chat.repository.LastReadSeq;
 import site.krip.global.chat.ChatRedisKeys;
 
 import java.util.LinkedHashMap;
@@ -81,10 +82,8 @@ public class UnreadRecoveryService {
     // (Spring Data 리포지토리 호출 자체가 트랜잭션) — self-invocation 으로 무효화되던 @Transactional 제거.
     private Map<String, Long> loadLastReads(String userId) {
         Map<String, Long> result = new LinkedHashMap<>();
-        for (Object[] row : memberRepo.findLastReadSeqsAll(userId)) {
-            String roomId = (String) row[0];
-            Long seq = (Long) row[1];
-            result.put(roomId, seq != null ? seq : 0L);
+        for (LastReadSeq row : memberRepo.findLastReadSeqsAll(userId)) {
+            result.put(row.roomId(), row.seq() != null ? row.seq() : 0L);
         }
         return result;
     }

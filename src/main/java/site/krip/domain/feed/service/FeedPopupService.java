@@ -11,7 +11,6 @@ import site.krip.domain.feed.dto.response.FeedPostResponse;
 import site.krip.domain.feed.entity.FeedVisibility;
 import site.krip.domain.feed.exception.PopupTargetNotFoundException;
 import site.krip.domain.feed.repository.FeedPostRepository;
-import site.krip.domain.feed.repository.FeedPostRow;
 
 import java.util.List;
 
@@ -50,7 +49,6 @@ public class FeedPopupService {
         List<FeedPostResponse> feedItems = feedPostRepo
                 .findByOwnerFirstPage(ownerId, visibilities, viewerId, PageRequest.of(0, POPUP_FEED_LIMIT))
                 .stream()
-                .map(FeedPostRow::fromTuple)
                 .map(FeedPostResponse::from)
                 .toList();
 

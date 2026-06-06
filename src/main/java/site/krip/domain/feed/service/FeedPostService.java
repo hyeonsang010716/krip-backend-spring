@@ -158,11 +158,11 @@ public class FeedPostService {
     // ──────────────────── 헬퍼 ────────────────────
 
     private FeedPostRow loadOwnedPost(String userId, String postId) {
-        List<Object[]> rows = feedPostRepo.findRowByPostId(postId, userId);
+        List<FeedPostRow> rows = feedPostRepo.findRowByPostId(postId, userId);
         if (rows.isEmpty()) {
             throw new FeedNotFoundException("존재하지 않는 게시물입니다.");
         }
-        FeedPostRow row = FeedPostRow.fromTuple(rows.get(0));
+        FeedPostRow row = rows.get(0);
         if (!row.post().getUserId().equals(userId)) {
             throw new ApiException(403, "게시물에 대한 권한이 없습니다.");
         }
@@ -175,10 +175,9 @@ public class FeedPostService {
             return List.of();
         }
         PageRequest page = PageRequest.of(0, FeedPostRepository.PAGE_SIZE);
-        List<Object[]> tuples = cursor == null
+        return cursor == null
                 ? feedPostRepo.findByOwnerFirstPage(ownerId, visibilities, viewerId, page)
                 : feedPostRepo.findByOwnerAfterCursor(ownerId, visibilities, viewerId, cursor, page);
-        return tuples.stream().map(FeedPostRow::fromTuple).toList();
     }
 
     private static FeedPostListResponse toListResponse(List<FeedPostRow> rows) {

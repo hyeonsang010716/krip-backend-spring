@@ -132,6 +132,27 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     }
 
     @Test
+    @DisplayName("가시성 PATCH 후 재조회 시 변경이 영속된다 — 생성자 투영 엔티티 dirty checking 검증")
+    void updateVisibilityPersists() throws Exception {
+        String owner = fixtures.createActiveUser("주인7b");
+        String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
+
+        mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"visibility\": \"private\"}"))
+                .andExpect(status().isOk());
+
+        // 별도 요청(새 트랜잭션)으로 재조회 — DB 영속 확인
+        mockMvc.perform(get("/api/feed/posts/" + postId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.visibility").value("private"));
+    }
+
+    @Test
     @DisplayName("잘못된 visibility 값 → 400")
     void updateVisibilityBadValue() throws Exception {
         String owner = fixtures.createActiveUser("주인8");

@@ -24,6 +24,7 @@ import site.krip.domain.chat.exception.ChatRoomNotFoundException;
 import site.krip.domain.chat.repository.ChatMessageRepository;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.chat.repository.ChatRoomRepository;
+import site.krip.domain.chat.repository.RoomListRow;
 import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
@@ -64,15 +65,15 @@ public class MessageHistoryService {
 
     @Transactional(readOnly = true)
     public ChatRoomListResponse listRooms(String meId) {
-        List<Object[]> rows = roomRepo.findRoomsOfUser(meId, PageRequest.of(0, ChatRoomRepository.PAGE_SIZE));
+        List<RoomListRow> rows = roomRepo.findRoomsOfUser(meId, PageRequest.of(0, ChatRoomRepository.PAGE_SIZE));
 
         Set<String> peerIds = new LinkedHashSet<>();
         Set<String> messageIds = new LinkedHashSet<>();
-        for (Object[] row : rows) {
-            if (row[1] != null) {
-                peerIds.add((String) row[1]);
+        for (RoomListRow row : rows) {
+            if (row.peerUserId() != null) {
+                peerIds.add(row.peerUserId());
             }
-            ChatRoom r = (ChatRoom) row[0];
+            ChatRoom r = row.room();
             if (r.getLastMessageId() != null) {
                 messageIds.add(r.getLastMessageId());
             }
@@ -83,10 +84,10 @@ public class MessageHistoryService {
         Map<String, Document> messagesById = messageRepo.findByIds(messageIds);
 
         List<ChatRoomResponse> items = new ArrayList<>();
-        for (Object[] row : rows) {
-            ChatRoom room = (ChatRoom) row[0];
-            String peerUserId = (String) row[1];
-            Boolean mute = (Boolean) row[2];
+        for (RoomListRow row : rows) {
+            ChatRoom room = row.room();
+            String peerUserId = row.peerUserId();
+            Boolean mute = row.notificationMuted();
             Document lastDoc = room.getLastMessageId() != null
                     ? messagesById.get(room.getLastMessageId()) : null;
             items.add(roomToResponse(room, peerUserId,

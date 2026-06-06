@@ -6,6 +6,7 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import site.krip.domain.chat.repository.ChatMessageRepository;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
+import site.krip.domain.chat.repository.LastReadSeq;
 
 import java.util.List;
 import java.util.Map;
@@ -40,9 +41,9 @@ class UnreadRecoveryServiceTest {
 
     private void seedRooms() {
         when(memberRepo.findLastReadSeqsAll("U")).thenReturn(List.of(
-                new Object[]{"R1", 0L},
-                new Object[]{"R2", 0L},
-                new Object[]{"R3", 0L}));
+                new LastReadSeq("R1", 0L),
+                new LastReadSeq("R2", 0L),
+                new LastReadSeq("R3", 0L)));
         when(redis.opsForHash()).thenReturn(hashOps);
     }
 
