@@ -53,6 +53,10 @@ krip:
   scheduling:
     pool-size: ${SCHEDULING_POOL_SIZE:4}
     chat-ws-pool-size: ${CHAT_WS_POOL_SIZE:4}
+  # 비동기 executor: 채팅 FCM 푸시(블로킹 I/O)를 공용 ForkJoinPool 과 격리.
+  executor:
+    push-pool-size: ${PUSH_EXECUTOR_POOL_SIZE:4}
+    push-queue-capacity: ${PUSH_EXECUTOR_QUEUE_CAPACITY:500}
   auth:
     access-token: ${ACCESS_TOKEN:dev-access-token}
     jwt:

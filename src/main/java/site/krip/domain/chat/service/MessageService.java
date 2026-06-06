@@ -33,7 +33,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -60,12 +60,14 @@ public class MessageService {
     private final ChatPushPort push;
     private final StringRedisTemplate redis;
     private final StringRedisTemplate dedupeRedis;
+    private final Executor pushExecutor;
 
     public MessageService(ChatRoomMemberRepository memberRepo, ChatRoomRepository roomRepo,
                           ChatMessageRepository messageRepo, UserBlockRepository blockRepo,
                           FanoutService fanout, ChatSeqAllocator seq, ChatPushPort push,
                           StringRedisTemplate redis,
-                          @Qualifier("dedupeRedisTemplate") StringRedisTemplate dedupeRedis) {
+                          @Qualifier("dedupeRedisTemplate") StringRedisTemplate dedupeRedis,
+                          @Qualifier("pushExecutor") Executor pushExecutor) {
         this.memberRepo = memberRepo;
         this.roomRepo = roomRepo;
         this.messageRepo = messageRepo;
@@ -75,6 +77,7 @@ public class MessageService {
         this.push = push;
         this.redis = redis;
         this.dedupeRedis = dedupeRedis;
+        this.pushExecutor = pushExecutor;
     }
 
     // ──────────────────── 메시지 송신 ────────────────────
@@ -372,7 +375,7 @@ public class MessageService {
     }
 
     private void spawnPush(String roomId, String senderUserId, String content) {
-        CompletableFuture.runAsync(() -> {
+        pushExecutor.execute(() -> {
             try {
                 Set<String> members = redis.opsForSet().members(ChatRedisKeys.roomMembers(roomId));
                 if (members == null || members.isEmpty()) {
