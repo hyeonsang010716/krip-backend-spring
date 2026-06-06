@@ -5,7 +5,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.User;
@@ -45,11 +44,11 @@ public class FriendshipService {
     public FriendshipService(FriendshipRepository friendshipRepository,
                              UserBlockRepository userBlockRepository,
                              UserRepository userRepository,
-                             PlatformTransactionManager txManager) {
+                             TransactionTemplate txTemplate) {
         this.friendshipRepository = friendshipRepository;
         this.userBlockRepository = userBlockRepository;
         this.userRepository = userRepository;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     // ──────────────────── 친구 요청 ────────────────────

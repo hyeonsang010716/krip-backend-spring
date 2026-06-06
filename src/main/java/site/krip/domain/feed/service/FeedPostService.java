@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.feed.dto.response.FeedPostListResponse;
@@ -45,13 +44,13 @@ public class FeedPostService {
 
     public FeedPostService(FeedPostRepository feedPostRepo, FeedAccessService access,
                            FeedImageProcessor imageProcessor, ObjectStorage storage,
-                           FeedInboxPort inboxPort, PlatformTransactionManager txManager) {
+                           FeedInboxPort inboxPort, TransactionTemplate txTemplate) {
         this.feedPostRepo = feedPostRepo;
         this.access = access;
         this.imageProcessor = imageProcessor;
         this.storage = storage;
         this.inboxPort = inboxPort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     // ──────────────────── 업로드 ────────────────────

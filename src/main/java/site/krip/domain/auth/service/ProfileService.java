@@ -3,7 +3,6 @@ package site.krip.domain.auth.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.dto.request.ProfileUpdateRequest;
@@ -52,13 +51,13 @@ public class ProfileService {
                           ObjectStorage storage,
                           FeedLikeCountPort feedLikeCountPort,
                           FriendCountPort friendCountPort,
-                          PlatformTransactionManager txManager) {
+                          TransactionTemplate txTemplate) {
         this.userRepository = userRepository;
         this.detailRepository = detailRepository;
         this.storage = storage;
         this.feedLikeCountPort = feedLikeCountPort;
         this.friendCountPort = friendCountPort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     @Transactional(readOnly = true)

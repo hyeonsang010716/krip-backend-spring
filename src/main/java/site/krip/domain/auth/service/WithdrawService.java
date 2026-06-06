@@ -3,7 +3,6 @@ package site.krip.domain.auth.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.User;
@@ -66,7 +65,7 @@ public class WithdrawService {
                            UserPurgeCachePort chatPurge,
                            InboxCascadePort inboxCascade,
                            List<ExternalUserDataPurgePort> externalPurges,
-                           PlatformTransactionManager txManager,
+                           TransactionTemplate txTemplate,
                            WithdrawProperties props) {
         this.userRepository = userRepository;
         this.withdrawalRequestRepository = withdrawalRequestRepository;
@@ -75,7 +74,7 @@ public class WithdrawService {
         this.chatPurge = chatPurge;
         this.inboxCascade = inboxCascade;
         this.externalPurges = externalPurges;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
         this.graceDays = props.gracePeriodDays();
     }
 

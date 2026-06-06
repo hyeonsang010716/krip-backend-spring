@@ -2,7 +2,6 @@ package site.krip.domain.tour.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.tour.document.Place;
@@ -54,12 +53,12 @@ public class TourPlanService {
 
     public TourPlanService(TourPlanRepository planRepo, TourPlanItemRepository itemRepo,
                            PlaceRepository placeRepo, ShareTokenProvider shareTokenProvider,
-                           PlatformTransactionManager txManager) {
+                           TransactionTemplate txTemplate) {
         this.planRepo = planRepo;
         this.itemRepo = itemRepo;
         this.placeRepo = placeRepo;
         this.shareTokenProvider = shareTokenProvider;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     // ──────────────────── 플랜 생성 ────────────────────

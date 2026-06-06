@@ -6,7 +6,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
@@ -69,7 +68,7 @@ public class TripmatePostService {
                                TripmateImageRepository mongoImageRepository,
                                ObjectStorage storage,
                                TripmateNotificationPort notificationPort,
-                               PlatformTransactionManager txManager) {
+                               TransactionTemplate txTemplate) {
         this.postRepository = postRepository;
         this.postImageRepository = postImageRepository;
         this.likeRepository = likeRepository;
@@ -78,7 +77,7 @@ public class TripmatePostService {
         this.mongoImageRepository = mongoImageRepository;
         this.storage = storage;
         this.notificationPort = notificationPort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     // ──────────────────── 생성 ────────────────────

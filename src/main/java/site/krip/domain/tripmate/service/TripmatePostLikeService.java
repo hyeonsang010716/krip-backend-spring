@@ -1,7 +1,6 @@
 package site.krip.domain.tripmate.service;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
@@ -36,12 +35,12 @@ public class TripmatePostLikeService {
                                    TripmatePostLikeRepository likeRepository,
                                    UserDetailInformRepository detailRepository,
                                    TripmateNotificationPort notificationPort,
-                                   PlatformTransactionManager txManager) {
+                                   TransactionTemplate txTemplate) {
         this.postRepository = postRepository;
         this.likeRepository = likeRepository;
         this.detailRepository = detailRepository;
         this.notificationPort = notificationPort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     @Transactional(readOnly = true)

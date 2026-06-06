@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.User;
@@ -42,12 +41,12 @@ public class FeedPostLikeService {
 
     public FeedPostLikeService(FeedAccessService access, FeedPostLikeRepository likeRepo,
                                UserRepository userRepo, FeedInboxPort inboxPort,
-                               PlatformTransactionManager txManager) {
+                               TransactionTemplate txTemplate) {
         this.access = access;
         this.likeRepo = likeRepo;
         this.userRepo = userRepo;
         this.inboxPort = inboxPort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     public long addLike(String userId, String postId) {

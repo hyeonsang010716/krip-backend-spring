@@ -5,7 +5,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.User;
@@ -45,12 +44,12 @@ public class UserBlockService {
                             FriendshipRepository friendshipRepository,
                             UserRepository userRepository,
                             BlockCachePort blockCachePort,
-                            PlatformTransactionManager txManager) {
+                            TransactionTemplate txTemplate) {
         this.userBlockRepository = userBlockRepository;
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
         this.blockCachePort = blockCachePort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     public UserBlockResponse blockUser(String userId, String targetUserId) {

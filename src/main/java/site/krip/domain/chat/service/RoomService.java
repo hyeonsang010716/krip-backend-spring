@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.User;
@@ -59,7 +58,7 @@ public class RoomService {
                        UserBlockRepository blockRepo, FriendshipRepository friendshipRepo,
                        UserRepository userRepo, FanoutService fanout, MessageService messageService,
                        site.krip.domain.chat.repository.ChatMessageRepository messageRepo,
-                       StringRedisTemplate redis, PlatformTransactionManager txManager) {
+                       StringRedisTemplate redis, TransactionTemplate txTemplate) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
         this.blockRepo = blockRepo;
@@ -69,7 +68,7 @@ public class RoomService {
         this.messageService = messageService;
         this.messageRepo = messageRepo;
         this.redis = redis;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     // ──────────────────── 1:1 방 ────────────────────

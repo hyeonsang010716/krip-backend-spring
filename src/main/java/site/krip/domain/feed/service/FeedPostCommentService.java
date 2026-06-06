@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.User;
@@ -43,12 +42,12 @@ public class FeedPostCommentService {
 
     public FeedPostCommentService(FeedAccessService access, FeedPostCommentRepository commentRepo,
                                   UserRepository userRepo, FeedInboxPort inboxPort,
-                                  PlatformTransactionManager txManager) {
+                                  TransactionTemplate txTemplate) {
         this.access = access;
         this.commentRepo = commentRepo;
         this.userRepo = userRepo;
         this.inboxPort = inboxPort;
-        this.txTemplate = new TransactionTemplate(txManager);
+        this.txTemplate = txTemplate;
     }
 
     public CommentResponse createComment(String userId, String postId, String content) {
