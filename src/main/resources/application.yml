@@ -80,6 +80,12 @@ krip:
     # Firebase 서비스 계정 JSON 경로. 미설정/파일 부재 시 FCM 발송 비활성(토큰/뮤트/인박스는 정상).
     enabled: ${FCM_ENABLED:true}
     credentials-path: ${FCM_CREDENTIALS_PATH:}
+    # 전송 타임아웃(ms) — FCM 행 시 push 워커 스레드 무한 점유 방지.
+    connect-timeout-ms: ${FCM_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${FCM_READ_TIMEOUT_MS:5000}
+    # 서킷 브레이커 — 전송 연속 실패 N회 시 cooldown(ms) 동안 발송 단락(fast-fail).
+    circuit-failure-threshold: ${FCM_CIRCUIT_FAILURE_THRESHOLD:5}
+    circuit-open-ms: ${FCM_CIRCUIT_OPEN_MS:30000}
   oauth:
     redirect-base-url: ${OAUTH_REDIRECT_BASE_URL:http://localhost:8000}
     frontend-url: ${FRONTEND_URL:https://krip.site}

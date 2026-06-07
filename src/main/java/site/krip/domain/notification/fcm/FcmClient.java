@@ -28,6 +28,7 @@ import java.util.Map;
  *
  * <p>자격증명 JSON 이 있으면 초기화하고, 없으면 비활성(no-op)으로 부팅한다 — 푸시는 best-effort 라
  * 미설정 dev 환경에서도 토큰/뮤트/인박스가 정상 동작. 동기 SDK 라 호출측이 트랜잭션 밖 fire-and-forget 로 호출.
+ * 전송에는 명시 타임아웃 + 서킷 브레이커를 적용해 FCM 장애가 push 워커 풀을 고갈시키지 않게 한다.
  */
 @Component
 public class FcmClient {
@@ -38,10 +39,12 @@ public class FcmClient {
     static final int MAX_MULTICAST_BATCH = 500;
 
     private final FcmProperties props;
+    private final FcmCircuitBreaker circuit;
     private volatile FirebaseMessaging messaging;
 
     public FcmClient(FcmProperties props) {
         this.props = props;
+        this.circuit = new FcmCircuitBreaker(props.circuitFailureThreshold(), props.circuitOpenMs());
     }
 
     @PostConstruct
@@ -56,8 +59,12 @@ public class FcmClient {
             return;
         }
         try (FileInputStream in = new FileInputStream(path.toFile())) {
+            // 명시 타임아웃 — 미설정 시 SDK 기본(사실상 무한)이라 FCM 행 시 워커 스레드가 묶인다.
             FirebaseOptions options = FirebaseOptions.builder()
                     .setCredentials(GoogleCredentials.fromStream(in))
+                    .setConnectTimeout(props.connectTimeoutMs())
+                    .setReadTimeout(props.readTimeoutMs())
+                    .setWriteTimeout(props.readTimeoutMs())
                     .build();
             FirebaseApp app = FirebaseApp.getApps().isEmpty()
                     ? FirebaseApp.initializeApp(options) : FirebaseApp.getInstance();
@@ -80,6 +87,11 @@ public class FcmClient {
         if (messaging == null || tokens.isEmpty()) {
             return new SendResult(0, List.of());
         }
+        if (circuit.isOpen()) {
+            // FCM 장애로 단락 중 — 워커 스레드를 타임아웃에 묶지 않고 즉시 포기(다음 cooldown 후 probe).
+            log.debug("FCM 서킷 open — 발송 단락 (count={})", tokens.size());
+            return new SendResult(0, List.of());
+        }
         Notification notification = Notification.builder().setTitle(title).setBody(body).build();
         int successCount = 0;
         List<String> invalid = new ArrayList<>();
@@ -100,8 +112,10 @@ public class FcmClient {
         BatchResponse batch;
         try {
             batch = messaging.sendEachForMulticast(message);
+            circuit.recordSuccess();
         } catch (FirebaseMessagingException | RuntimeException e) {
-            // 글로벌 실패(인증·쿼터 등)는 이 배치만 포기하고 다음 배치를 계속 시도한다.
+            // 글로벌 실패(인증·쿼터·네트워크)는 이 배치만 포기하고 서킷에 기록 — 연속 실패 시 단락된다.
+            circuit.recordFailure();
             log.warn("FCM multicast 배치 실패 (count={})", tokens.size(), e);
             return 0;
         }

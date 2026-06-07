@@ -3,6 +3,7 @@ package site.krip.domain.chat.worker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import site.krip.domain.chat.repository.ChatMessageRepository;
@@ -13,6 +14,7 @@ import site.krip.global.chat.ChatRedisKeys;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,6 +23,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -94,5 +97,20 @@ class ReconcileWorkerTest {
 
         assertThat(worker.reconcileOnce()).isEqualTo(1);
         verify(setOps).add(KEY, "r1");
+    }
+
+    @Test
+    @Timeout(10)
+    @DisplayName("백로그가 끝없어도 tick 은 배치 예산(50회)에서 멈춘다 — 무한 drain 방지")
+    void tickIsBoundedByBatchBudget() {
+        // 매 배치가 가득 차고(500) Mongo hit 0 → reconcileOnce 가 매번 BATCH_SIZE 반환 → 끝없이 drain 가능
+        List<String> full = IntStream.range(0, 500).mapToObj(i -> "r" + i).toList();
+        when(setOps.pop(eq(KEY), anyLong())).thenReturn(full);
+        when(messageRepo.findLastByRooms(any())).thenReturn(Map.of());
+
+        worker.reconcileTick();
+
+        // MAX_BATCHES_PER_TICK(50) 에서 멈춰야 한다 — 무한 루프면 @Timeout 으로 실패.
+        verify(setOps, times(50)).pop(eq(KEY), anyLong());
     }
 }
