@@ -4,6 +4,8 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -18,6 +20,8 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.sql.SQLException;
 
 /**
  * 전역 예외 → {@code {"detail": ...}} 응답 매핑.
@@ -128,6 +132,38 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMediaTypeNotAcceptable(HttpMediaTypeNotAcceptableException e) {
         return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE)
                 .body(ErrorResponse.of("요청한 표현 형식을 제공할 수 없습니다."));
+    }
+
+    /**
+     * DB 무결성 위반 — UNIQUE 위반(동시성 race)만 409, 그 외(NOT NULL/FK/CHECK 등 서버측 결함)는 500.
+     * 도메인 코드가 사전 검사로 막지 못한 경쟁 상태를 표준 409 로 변환하되, 진짜 결함은 500 으로 남겨 관측성을 보존한다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException e) {
+        if (isUniqueViolation(e)) {
+            log.warn("UNIQUE 제약 위반 → 409: {}", e.getMostSpecificCause().toString());
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(ErrorResponse.of("이미 존재하거나 동시에 처리 중인 요청입니다."));
+        }
+        log.error("데이터 무결성 위반", e);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ErrorResponse.of("서버 내부 오류가 발생했습니다."));
+    }
+
+    /** PostgreSQL UNIQUE 위반(SQLState 23505) 또는 {@link DuplicateKeyException} 여부 — 원인 체인을 따라 확인. */
+    private static boolean isUniqueViolation(DataIntegrityViolationException e) {
+        if (e instanceof DuplicateKeyException) {
+            return true;
+        }
+        Throwable t = e;
+        while (t != null) {
+            if (t instanceof SQLException sql && "23505".equals(sql.getSQLState())) {
+                return true;
+            }
+            Throwable cause = t.getCause();
+            t = (cause == t) ? null : cause;
+        }
+        return false;
     }
 
     @ExceptionHandler(Exception.class)
