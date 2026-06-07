@@ -21,7 +21,7 @@ import java.util.Map;
 /**
  * FCM 토큰 등록/해제 + 채팅 푸시 발송.
  *
- * <p>채팅 푸시 게이팅 순서: 방별(활성+방 미차단) → 전역(미차단) → 토큰 일괄 → multicast. 만료 토큰은 즉시 정리.
+ * <p>채팅 푸시 게이팅 순서: 방별(활성+방 미차단) → 전역(미차단) → 토큰 일괄 → multicast. 무효 토큰은 즉시 정리.
  * FCM 비활성(자격증명 미설정) 시 게이팅까지만 수행하고 발송은 skip(반환 0).
  */
 @Service
@@ -106,7 +106,7 @@ public class FcmService {
         FcmClient.SendResult result = fcmClient.sendMulticast(tokens, finalTitle, body, data);
         if (!result.invalidTokens().isEmpty()) {
             tokenRepo.deleteByTokenIn(result.invalidTokens());
-            log.info("FCM 만료 토큰 정리 chat_room_id={} count={}", chatRoomId, result.invalidTokens().size());
+            log.info("FCM 무효 토큰 정리 chat_room_id={} count={}", chatRoomId, result.invalidTokens().size());
         }
         return result.successCount();
     }
