@@ -18,6 +18,7 @@ import site.krip.domain.auth.repository.WithdrawalRequestRepository;
 import site.krip.global.cache.RegisteredCacheManager;
 import site.krip.global.config.WithdrawProperties;
 import site.krip.global.storage.ObjectStorage;
+import site.krip.global.support.AfterCommit;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -81,9 +82,9 @@ public class WithdrawService {
     // ──────────────────── HTTP: 탈퇴 요청 (soft) ────────────────────
 
     /**
-     * 탈퇴 요청 — INACTIVE 전환 + MongoDB 적재.
+     * 탈퇴 요청 — INACTIVE 전환 + MongoDB 적재. 커밋 후 캐시 무효화 + chat 세션 종료.
      *
-     * @return 영구 삭제 예정 시각 (UTC). 호출자(컨트롤러)는 commit 이후 캐시 무효화 + chat revoke 수행.
+     * @return 영구 삭제 예정 시각 (UTC).
      */
     @Transactional
     public Instant requestWithdraw(String userId) {
@@ -98,13 +99,14 @@ public class WithdrawService {
         Instant purgeAt = now.plus(graceDays, ChronoUnit.DAYS);
         withdrawalRequestRepository.upsert(userId, now, purgeAt);
 
+        // 미커밋 ACTIVE 재캐싱 race 차단을 위해 커밋 이후에만 무효화/종료.
+        AfterCommit.run(() -> {
+            registeredCache.invalidate(userId);
+            chatPurge.revokeAllSessions(userId);
+        });
+
         log.info("탈퇴 요청 접수 (user_id={}, purge_at={})", userId, purgeAt);
         return purgeAt;
-    }
-
-    /** request_withdraw post-commit 훅 — chat 활성 세션 즉시 종료. */
-    public void revokeUserChatState(String userId) {
-        chatPurge.revokeAllSessions(userId);
     }
 
     // ──────────────────── 스케줄러: 영구 삭제 (hard) ────────────────────

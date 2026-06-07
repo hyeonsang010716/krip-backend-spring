@@ -7,8 +7,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
 import site.krip.domain.auth.repository.UserDetailInformRepository;
@@ -28,6 +26,7 @@ import site.krip.domain.tripmate.repository.TripmatePostImageRepository;
 import site.krip.domain.tripmate.repository.TripmatePostLikeRepository;
 import site.krip.domain.tripmate.repository.TripmatePostRepository;
 import site.krip.global.storage.ObjectStorage;
+import site.krip.global.support.AfterCommit;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,8 +40,7 @@ import java.util.Set;
  * 여행 메이트 게시글.
  *
  * <p>목록/검색은 (created_at, post_id) 커서 페이지네이션 30개. like_count·is_liked 는
- * 페이지 단위로 일괄 집계해 N+1 을 피한다. 삭제는 트랜잭션 안(DB+스토리지) + 트랜잭션 밖
- * 인박스 cascade 로 분리.
+ * 페이지 단위로 일괄 집계해 N+1 을 피한다. 스토리지 정리·인박스 cascade 는 커밋 후 수행한다.
  */
 @Service
 public class TripmatePostService {
@@ -181,20 +179,17 @@ public class TripmatePostService {
             postImageRepository.saveAll(toImageEntities(postId, newUrls));
         }
 
-        // 제거된 이미지 → Object Storage + MongoDB 정리. 커밋 이후에만 수행해 롤백 시 아직 참조 중인 객체 삭제를 막는다(best-effort).
+        // 제거된 이미지 → 커밋 이후 Object Storage + MongoDB 정리 (롤백 시 참조 중인 객체 삭제 방지).
         Set<String> removed = new HashSet<>(oldUrls);
         removed.removeAll(new HashSet<>(newUrls));
         if (!removed.isEmpty()) {
             List<String> removedList = new ArrayList<>(removed);
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    try {
-                        storage.deleteMany(removedList);
-                        mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
-                    } catch (Exception e) {
-                        log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
-                    }
+            AfterCommit.run(() -> {
+                try {
+                    storage.deleteMany(removedList);
+                    mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
+                } catch (Exception e) {
+                    log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
                 }
             });
         }
@@ -218,8 +213,6 @@ public class TripmatePostService {
 
     public void deletePost(String postId, String userId) {
         txTemplate.executeWithoutResult(status -> deletePostTx(postId, userId));
-        // (트랜잭션 밖) 인박스 cascade — best-effort, 포트가 self-swallow.
-        notificationPort.cascadePostDeleted(postId);
     }
 
     private void deletePostTx(String postId, String userId) {
@@ -233,14 +226,17 @@ public class TripmatePostService {
 
         postRepository.delete(post); // DB CASCADE → 이미지·좋아요 자동 삭제
 
-        if (!imageUrls.isEmpty()) {
-            try {
-                storage.deleteMany(imageUrls);
-                mongoImageRepository.deleteByUserIdAndUrls(userId, imageUrls);
-            } catch (Exception e) {
-                log.warn("삭제 시 이미지 정리 실패 (post_id={})", postId, e);
+        AfterCommit.run(() -> {
+            if (!imageUrls.isEmpty()) {
+                try {
+                    storage.deleteMany(imageUrls);
+                    mongoImageRepository.deleteByUserIdAndUrls(userId, imageUrls);
+                } catch (Exception e) {
+                    log.warn("삭제 시 이미지 정리 실패 (post_id={})", postId, e);
+                }
             }
-        }
+            notificationPort.cascadePostDeleted(postId);
+        });
     }
 
     // ──────────────────── Display 토글 ────────────────────

@@ -6,19 +6,19 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
 import site.krip.domain.auth.repository.UserDetailInformRepository;
-import site.krip.domain.tripmate.dto.AddLikePayload;
 import site.krip.domain.tripmate.entity.TripmatePost;
 import site.krip.domain.tripmate.entity.TripmatePostLike;
 import site.krip.domain.tripmate.port.TripmateNotificationPort;
 import site.krip.domain.tripmate.repository.TripmatePostLikeRepository;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.AfterCommit;
 
 import java.util.List;
 
 /**
  * 게시글 좋아요.
  *
- * <p>좋아요 추가는 트랜잭션 안 INSERT → 트랜잭션 밖 인박스 fan-out(best-effort).
+ * <p>좋아요 추가는 INSERT 후 커밋 시점에 인박스 fan-out(best-effort).
  * 본인→본인 좋아요는 fan-out skip. 게시글 미존재/중복/미좋아요는 모두 400.
  */
 @Service
@@ -49,16 +49,11 @@ public class TripmatePostLikeService {
     }
 
     public long addLike(String userId, String postId) {
-        AddLikePayload payload = txTemplate.execute(status -> addLikeTx(userId, postId));
-        if (payload != null && !payload.recipientId().equals(userId)) {
-            notificationPort.notifyTripmateLike(
-                    payload.recipientId(), userId, payload.actorName(),
-                    payload.actorProfileImageUrl(), postId, payload.postPreview());
-        }
-        return payload == null ? 0 : payload.likeCount();
+        Long likeCount = txTemplate.execute(status -> addLikeTx(userId, postId));
+        return likeCount == null ? 0 : likeCount;
     }
 
-    private AddLikePayload addLikeTx(String userId, String postId) {
+    private long addLikeTx(String userId, String postId) {
         TripmatePost post = accessGuard.loadViewablePost(userId, postId);
 
         if (likeRepository.existsByUserIdAndPostId(userId, postId)) {
@@ -73,18 +68,16 @@ public class TripmatePostLikeService {
         }
         long likeCount = likeRepository.countByPostId(postId);
 
-        // 본인→본인 — 호출부에서 fan-out skip (더미값)
-        if (post.getUserId().equals(userId)) {
-            return new AddLikePayload(likeCount, post.getUserId(), "", null, null);
+        if (!post.getUserId().equals(userId)) {
+            String recipientId = post.getUserId();
+            String preview = post.getTitle();
+            UserDetailInform detail = detailRepository.findById(userId).orElse(null);
+            String actorName = detail != null ? detail.getUserName() : "";
+            String actorImage = detail != null ? detail.getProfileImageUrl() : null;
+            AfterCommit.run(() -> notificationPort.notifyTripmateLike(
+                    recipientId, userId, actorName, actorImage, postId, preview));
         }
-
-        UserDetailInform detail = detailRepository.findById(userId).orElse(null);
-        return new AddLikePayload(
-                likeCount,
-                post.getUserId(),
-                detail != null ? detail.getUserName() : "",
-                detail != null ? detail.getProfileImageUrl() : null,
-                post.getTitle());
+        return likeCount;
     }
 
     @Transactional

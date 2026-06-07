@@ -16,6 +16,7 @@ import site.krip.domain.feed.entity.FeedPostLike;
 import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostLikeRepository;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.AfterCommit;
 
 import java.util.List;
 import java.util.Map;
@@ -50,15 +51,10 @@ public class FeedPostLikeService {
     }
 
     public long addLike(String userId, String postId) {
-        AddLikeResult r = txTemplate.execute(s -> doAddLike(userId, postId));
-        if (!r.self()) {
-            inboxPort.notifyFeedLike(r.recipientId(), userId, r.actorName(),
-                    r.actorProfileImageUrl(), postId, r.postPreview());
-        }
-        return r.likeCount();
+        return txTemplate.execute(s -> doAddLike(userId, postId));
     }
 
-    private AddLikeResult doAddLike(String userId, String postId) {
+    private long doAddLike(String userId, String postId) {
         FeedPost post = access.loadViewablePost(userId, postId).post();
         if (likeRepo.existsByUserIdAndPostId(userId, post.getPostId())) {
             throw ApiException.badRequest("이미 좋아요를 누른 게시물입니다.");
@@ -72,15 +68,17 @@ public class FeedPostLikeService {
         long likeCount = likeRepo.countByPostId(post.getPostId());
         log.info("피드 좋아요 추가 (user_id={}, post_id={})", userId, post.getPostId());
 
-        if (post.getUserId().equals(userId)) {
-            return new AddLikeResult(likeCount, true, post.getUserId(), "", null, null);
+        if (!post.getUserId().equals(userId)) {
+            String recipientId = post.getUserId();
+            String preview = post.getThumbnailSmallUrl();
+            UserDetailInform detail = userRepo.findByIdWithProfile(userId)
+                    .map(User::getDetail).orElse(null);
+            String actorName = detail != null ? detail.getUserName() : "";
+            String actorImage = detail != null ? detail.getProfileImageUrl() : null;
+            AfterCommit.run(() -> inboxPort.notifyFeedLike(
+                    recipientId, userId, actorName, actorImage, postId, preview));
         }
-        UserDetailInform detail = userRepo.findByIdWithProfile(userId)
-                .map(User::getDetail).orElse(null);
-        return new AddLikeResult(likeCount, false, post.getUserId(),
-                detail != null ? detail.getUserName() : "",
-                detail != null ? detail.getProfileImageUrl() : null,
-                post.getThumbnailSmallUrl());
+        return likeCount;
     }
 
     @Transactional
@@ -110,9 +108,5 @@ public class FeedPostLikeService {
                     d != null ? d.getProfileImageUrl() : null);
         }).toList();
         return new LikedUsersResponse(postId, items);
-    }
-
-    private record AddLikeResult(long likeCount, boolean self, String recipientId,
-                                 String actorName, String actorProfileImageUrl, String postPreview) {
     }
 }

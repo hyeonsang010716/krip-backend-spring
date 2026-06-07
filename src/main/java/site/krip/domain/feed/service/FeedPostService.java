@@ -19,6 +19,7 @@ import site.krip.global.common.image.ProcessedImageSet;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
+import site.krip.global.support.AfterCommit;
 import site.krip.global.support.IdGenerator;
 
 import java.io.ByteArrayInputStream;
@@ -136,22 +137,24 @@ public class FeedPostService {
     // ──────────────────── 삭제 ────────────────────
 
     public void deletePost(String userId, String postId) {
-        String prefix = txTemplate.execute(s -> deletePostRow(userId, postId));
-        try {
-            storage.deleteByPathPrefix(prefix);
-        } catch (Exception e) {
-            log.warn("S3 prefix 삭제 실패 — orphan 잔존 (prefix={})", prefix, e);
-        }
-        inboxPort.cascadeFeedPostDeleted(postId);
+        txTemplate.executeWithoutResult(s -> deletePostRow(userId, postId));
     }
 
-    private String deletePostRow(String userId, String postId) {
+    private void deletePostRow(String userId, String postId) {
         FeedPostRow row = loadOwnedPost(userId, postId);
         FeedPost post = row.post();
         String prefix = StoragePrefix.feedPostPrefix(post.getUserId(), post.getPostId());
         feedPostRepo.delete(post);
         log.info("피드 게시물 삭제 완료 (user_id={}, post_id={})", userId, postId);
-        return prefix;
+
+        AfterCommit.run(() -> {
+            try {
+                storage.deleteByPathPrefix(prefix);
+            } catch (Exception e) {
+                log.warn("S3 prefix 삭제 실패 — orphan 잔존 (prefix={})", prefix, e);
+            }
+            inboxPort.cascadeFeedPostDeleted(postId);
+        });
     }
 
     // ──────────────────── 헬퍼 ────────────────────

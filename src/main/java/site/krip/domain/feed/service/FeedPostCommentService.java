@@ -17,6 +17,7 @@ import site.krip.domain.feed.exception.FeedPostCommentNotFoundException;
 import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostCommentRepository;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.AfterCommit;
 
 import java.util.List;
 import java.util.Map;
@@ -51,16 +52,10 @@ public class FeedPostCommentService {
     }
 
     public CommentResponse createComment(String userId, String postId, String content) {
-        CreateResult r = txTemplate.execute(s -> doCreateComment(userId, postId, content));
-        if (r.notifyRecipientId() != null) {
-            inboxPort.notifyFeedComment(r.notifyRecipientId(), userId, r.dto().userName(),
-                    r.dto().profileImageUrl(), postId, r.notifyPostPreview(),
-                    r.dto().commentId(), r.dto().content());
-        }
-        return r.dto();
+        return txTemplate.execute(s -> doCreateComment(userId, postId, content));
     }
 
-    private CreateResult doCreateComment(String userId, String postId, String content) {
+    private CommentResponse doCreateComment(String userId, String postId, String content) {
         FeedPost post = access.loadViewablePost(userId, postId).post();
         String normalized = normalizeContent(content);
 
@@ -74,10 +69,13 @@ public class FeedPostCommentService {
                 detail != null ? detail.getUserName() : "",
                 detail != null ? detail.getProfileImageUrl() : null);
 
-        if (post.getUserId().equals(userId)) {
-            return new CreateResult(dto, null, null);
+        if (!post.getUserId().equals(userId)) {
+            String recipientId = post.getUserId();
+            String preview = post.getThumbnailSmallUrl();
+            AfterCommit.run(() -> inboxPort.notifyFeedComment(recipientId, userId, dto.userName(),
+                    dto.profileImageUrl(), postId, preview, dto.commentId(), dto.content()));
         }
-        return new CreateResult(dto, post.getUserId(), post.getThumbnailSmallUrl());
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -123,8 +121,5 @@ public class FeedPostCommentService {
             throw ApiException.badRequest("댓글 내용이 비어 있습니다.");
         }
         return stripped;
-    }
-
-    private record CreateResult(CommentResponse dto, String notifyRecipientId, String notifyPostPreview) {
     }
 }

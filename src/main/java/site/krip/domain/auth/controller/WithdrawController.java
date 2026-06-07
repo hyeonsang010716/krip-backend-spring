@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.RestController;
 import site.krip.domain.auth.dto.response.WithdrawResponse;
 import site.krip.domain.auth.service.WithdrawService;
 import site.krip.global.auth.CurrentUserId;
-import site.krip.global.cache.RegisteredCacheManager;
 import site.krip.global.common.dto.MessageResponse;
 import site.krip.global.support.IsoTimestamp;
 
@@ -28,13 +27,10 @@ public class WithdrawController {
     private static final Logger log = LoggerFactory.getLogger(WithdrawController.class);
 
     private final WithdrawService withdrawService;
-    private final RegisteredCacheManager registeredCache;
     private final LoginCookieFactory cookieFactory;
 
-    public WithdrawController(WithdrawService withdrawService, RegisteredCacheManager registeredCache,
-                              LoginCookieFactory cookieFactory) {
+    public WithdrawController(WithdrawService withdrawService, LoginCookieFactory cookieFactory) {
         this.withdrawService = withdrawService;
-        this.registeredCache = registeredCache;
         this.cookieFactory = cookieFactory;
     }
 
@@ -42,10 +38,6 @@ public class WithdrawController {
     @DeleteMapping
     public ResponseEntity<WithdrawResponse> withdraw(@CurrentUserId String userId) {
         Instant purgeAt = withdrawService.requestWithdraw(userId);
-
-        // commit 이후 캐시 무효화 + chat 세션 즉시 종료 (미커밋 ACTIVE 재캐싱 race 차단).
-        registeredCache.invalidate(userId);
-        withdrawService.revokeUserChatState(userId);
 
         ResponseCookie expired = cookieFactory.expired();
         WithdrawResponse body = new WithdrawResponse(
