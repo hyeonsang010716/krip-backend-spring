@@ -31,7 +31,8 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
     Optional<ChatRoom> findDirectByPair(@Param("a") String userAId, @Param("b") String userBId);
 
     /**
-     * 유저의 활성 방 (effective_last_at DESC). 1:1 peer 는 CASE 로 함께 파생, 그룹은 null.
+     * 유저의 활성 방 (effective_last_at DESC, chat_room_id DESC). 1:1 peer 는 CASE 로 함께 파생, 그룹은 null.
+     * chat_room_id tie-breaker 로 동률 시각의 순서를 결정화한다(커서 도입 시 skip/중복 방지).
      */
     @Query("select new site.krip.domain.chat.repository.RoomListRow(r, "
             + "(case when r.type = site.krip.domain.chat.entity.ChatRoomType.DIRECT then "
@@ -40,7 +41,7 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
             + "m.notificationMuted) "
             + "from ChatRoom r, ChatRoomMember m "
             + "where m.chatRoomId = r.chatRoomId and m.userId = :uid and m.left = false "
-            + "order by r.effectiveLastAt desc")
+            + "order by r.effectiveLastAt desc, r.chatRoomId desc")
     List<RoomListRow> findRoomsOfUser(@Param("uid") String userId, Pageable pageable);
 
     /**

@@ -1,5 +1,6 @@
 package site.krip.domain.notification.repository;
 
+import com.mongodb.client.MongoCollection;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
@@ -40,10 +41,12 @@ public class InboxRepository {
     @PostConstruct
     void createIndexes() {
         var coll = mongo.getCollection("inbox");
+        // 페이지네이션 — keyset (created_at DESC, _id DESC) 정렬·predicate 를 완전히 커버하도록 _id 까지 포함.
         coll.createIndex(
                 Indexes.compoundIndex(Indexes.ascending("recipient_id"), Indexes.ascending("display"),
-                        Indexes.descending("created_at")),
-                new IndexOptions().name("ix_inbox_recipient_display_created"));
+                        Indexes.descending("created_at"), Indexes.descending("_id")),
+                new IndexOptions().name("ix_inbox_recipient_display_created_id"));
+        dropIndexQuietly(coll, "ix_inbox_recipient_display_created"); // _id 미포함 구 인덱스 정리(best-effort)
         coll.createIndex(
                 Indexes.compoundIndex(Indexes.ascending("recipient_id"), Indexes.ascending("actor_id"),
                         Indexes.ascending("type"), Indexes.ascending("target_id"), Indexes.ascending("comment_id")),
@@ -59,13 +62,23 @@ public class InboxRepository {
         mongo.insert(item);
     }
 
-    /** display=true 최신순, limit+1 fetch(has_more 판정). cursor 이전(created_at &lt; cursor)만. */
-    public List<InboxItem> findByRecipient(String recipientId, Instant cursor, int limit) {
-        Criteria c = Criteria.where("recipient_id").is(recipientId).and("display").is(true);
-        if (cursor != null) {
-            c = c.and("created_at").lt(cursor);
+    /**
+     * display=true 최신순(created_at DESC, _id DESC), limit+1 fetch(has_more 판정).
+     * 커서는 (created_at, _id) keyset — 2키 정렬과 일치시켜 동일 시각 경계의 항목 skip/중복을 막는다.
+     * {@code cursorId} 가 null 이면 timestamp-only(구 커서 하위호환): created_at &lt; cursorTs.
+     */
+    public List<InboxItem> findByRecipient(String recipientId, Instant cursorTs, ObjectId cursorId, int limit) {
+        Criteria base = Criteria.where("recipient_id").is(recipientId).and("display").is(true);
+        Criteria filter = base;
+        if (cursorTs != null) {
+            Criteria keyset = (cursorId == null)
+                    ? Criteria.where("created_at").lt(cursorTs)
+                    : new Criteria().orOperator(
+                            Criteria.where("created_at").lt(cursorTs),
+                            Criteria.where("created_at").is(cursorTs).and("_id").lt(cursorId));
+            filter = new Criteria().andOperator(base, keyset);
         }
-        Query q = Query.query(c)
+        Query q = Query.query(filter)
                 .with(Sort.by(Sort.Order.desc("created_at"), Sort.Order.desc("_id")))
                 .limit(limit + 1);
         return mongo.find(q, InboxItem.class);
@@ -108,5 +121,14 @@ public class InboxRepository {
                 Criteria.where("recipient_id").is(userId),
                 Criteria.where("actor_id").is(userId)));
         return mongo.remove(q, InboxItem.class).getDeletedCount();
+    }
+
+    /** 인덱스 정리용 — 없으면(최초 부팅 등) 무시. */
+    private void dropIndexQuietly(MongoCollection<Document> coll, String name) {
+        try {
+            coll.dropIndex(name);
+        } catch (RuntimeException e) {
+            // index not found 등은 무시 (best-effort).
+        }
     }
 }

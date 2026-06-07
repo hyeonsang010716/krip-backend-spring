@@ -65,21 +65,15 @@ public class InboxService {
     // ──────────────────── 조회 / hide ────────────────────
 
     public InboxListResponse listItems(String recipientId, String cursor, boolean markAsRead) {
-        Instant cursorDt = null;
-        if (cursor != null) {
-            try {
-                cursorDt = Instant.parse(cursor);
-            } catch (Exception e) {
-                throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
-            }
-        }
-        List<InboxItem> items = repo.findByRecipient(recipientId, cursorDt, InboxRepository.PAGE_SIZE);
+        InboxCursor parsed = parseCursor(cursor);
+        List<InboxItem> items = repo.findByRecipient(
+                recipientId, parsed.ts(), parsed.id(), InboxRepository.PAGE_SIZE);
         boolean hasMore = items.size() > InboxRepository.PAGE_SIZE;
         if (hasMore) {
             items = items.subList(0, InboxRepository.PAGE_SIZE);
         }
         String nextCursor = (hasMore && !items.isEmpty())
-                ? IsoTimestamp.format(items.get(items.size() - 1).getCreatedAt()) : null;
+                ? encodeCursor(items.get(items.size() - 1)) : null;
         // 읽음 처리 전 상태로 응답(클라가 "방금 본 항목" 강조 가능).
         InboxListResponse response = new InboxListResponse(
                 items.stream().map(InboxItemResponse::from).toList(), nextCursor);
@@ -141,6 +135,32 @@ public class InboxService {
     }
 
     // ──────────────────── 헬퍼 ────────────────────
+
+    /** 커서 = {@code {isoCreatedAt}_{objectIdHex}}. created_at·_id 둘 다 ISO/hex 라 '_' 가 안전한 구분자. */
+    private static String encodeCursor(InboxItem last) {
+        return IsoTimestamp.format(last.getCreatedAt()) + "_" + last.getId();
+    }
+
+    /** null=첫 페이지. '_' 없으면 timestamp-only 구 커서로 하위호환(created_at &lt; ts). 손상 시 400. */
+    private static InboxCursor parseCursor(String cursor) {
+        if (cursor == null) {
+            return new InboxCursor(null, null);
+        }
+        int sep = cursor.indexOf('_');
+        try {
+            if (sep < 0) {
+                return new InboxCursor(Instant.parse(cursor), null);
+            }
+            Instant ts = Instant.parse(cursor.substring(0, sep));
+            ObjectId id = new ObjectId(cursor.substring(sep + 1));
+            return new InboxCursor(ts, id);
+        } catch (Exception e) {
+            throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
+        }
+    }
+
+    private record InboxCursor(Instant ts, ObjectId id) {
+    }
 
     private void safeInsert(InboxItem item) {
         try {
