@@ -128,13 +128,13 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("존재하지 않는 게시글 좋아요 추가 → 400")
+    @DisplayName("존재하지 않는 게시글 좋아요 추가 → 404 (단건 조회와 동일한 존재 은닉)")
     void likeMissingPost() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(post("/api/tripmate/posts/no-such-post/like")
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(userId)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test

@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import site.krip.support.IntegrationTestSupport;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -176,5 +177,45 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
                         .header("X-Auth-Token", userToken(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
+    }
+
+    @Test
+    @DisplayName("좋아요: 차단 관계 작성자 글은 좋아요/likers 조회/취소 모두 404 (IDOR 차단)")
+    void likesBlockedByVisibility() throws Exception {
+        String owner = fixtures.createActiveUser("tmbvLikeBlkOwner");
+        String viewer = fixtures.createActiveUser("tmbvLikeBlkViewer");
+        String postId = createPost(owner, "차단 글", "차단 관계 좋아요 게이트 테스트 본문입니다.");
+        block(owner, viewer);
+
+        mockMvc.perform(post(POSTS + "/" + postId + "/like")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get(POSTS + "/" + postId + "/likes")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete(POSTS + "/" + postId + "/like")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("좋아요: 숨김(display=false) 글은 타인이 좋아요/likers 조회 불가 404")
+    void likesHiddenPostBlocked() throws Exception {
+        String owner = fixtures.createActiveUser("tmbvLikeHideOwner");
+        String viewer = fixtures.createActiveUser("tmbvLikeHideViewer");
+        String postId = createPost(owner, "숨김 글", "숨김 글 좋아요 게이트 테스트 본문입니다.");
+        hide(owner, postId);
+
+        mockMvc.perform(post(POSTS + "/" + postId + "/like")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get(POSTS + "/" + postId + "/likes")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
     }
 }

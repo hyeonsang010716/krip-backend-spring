@@ -7,10 +7,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
 import site.krip.domain.auth.repository.UserDetailInformRepository;
-import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.domain.tripmate.dto.request.CreatePostRequest;
 import site.krip.domain.tripmate.dto.request.UpdatePostRequest;
 import site.krip.domain.tripmate.dto.response.AuthorResponse;
@@ -58,7 +59,7 @@ public class TripmatePostService {
     private final TripmatePostDraftService draftService;
     private final TripmateImageRepository mongoImageRepository;
     private final TripmateImageOwnershipValidator imageOwnershipValidator;
-    private final UserBlockRepository blockRepository;
+    private final TripmatePostAccessGuard accessGuard;
     private final ObjectStorage storage;
     private final TripmateNotificationPort notificationPort;
     private final TransactionTemplate txTemplate;
@@ -70,7 +71,7 @@ public class TripmatePostService {
                                TripmatePostDraftService draftService,
                                TripmateImageRepository mongoImageRepository,
                                TripmateImageOwnershipValidator imageOwnershipValidator,
-                               UserBlockRepository blockRepository,
+                               TripmatePostAccessGuard accessGuard,
                                ObjectStorage storage,
                                TripmateNotificationPort notificationPort,
                                TransactionTemplate txTemplate) {
@@ -81,7 +82,7 @@ public class TripmatePostService {
         this.draftService = draftService;
         this.mongoImageRepository = mongoImageRepository;
         this.imageOwnershipValidator = imageOwnershipValidator;
-        this.blockRepository = blockRepository;
+        this.accessGuard = accessGuard;
         this.storage = storage;
         this.notificationPort = notificationPort;
         this.txTemplate = txTemplate;
@@ -128,15 +129,7 @@ public class TripmatePostService {
     public PostDetailResponse getPost(String postId, String userId) {
         TripmatePost post = postRepository.findByIdWithUserDetail(postId)
                 .orElseThrow(PostNotFoundException::new);
-        // 비-작성자에게 숨김(display=false)·차단 관계 글은 미노출 — 존재 은닉 위해 404 일원화.
-        if (!post.getUserId().equals(userId)) {
-            if (!post.isDisplayed()) {
-                throw new PostNotFoundException();
-            }
-            if (userId != null && !blockRepository.findBlocksBetween(userId, post.getUserId()).isEmpty()) {
-                throw new PostNotFoundException();
-            }
-        }
+        accessGuard.verifyViewable(post, userId);
         long likeCount = likeRepository.countByPostId(postId);
         boolean liked = userId != null && likeRepository.existsByUserIdAndPostId(userId, postId);
         return toDetailResponse(post, likeCount, liked);
@@ -188,17 +181,22 @@ public class TripmatePostService {
             postImageRepository.saveAll(toImageEntities(postId, newUrls));
         }
 
-        // 제거된 이미지 → Object Storage + MongoDB 정리 (best-effort)
+        // 제거된 이미지 → Object Storage + MongoDB 정리. 커밋 이후에만 수행해 롤백 시 아직 참조 중인 객체 삭제를 막는다(best-effort).
         Set<String> removed = new HashSet<>(oldUrls);
         removed.removeAll(new HashSet<>(newUrls));
         if (!removed.isEmpty()) {
-            try {
-                List<String> removedList = new ArrayList<>(removed);
-                storage.deleteMany(removedList);
-                mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
-            } catch (Exception e) {
-                log.warn("수정 시 이미지 정리 실패 (post_id={}): {}", postId, e.toString());
-            }
+            List<String> removedList = new ArrayList<>(removed);
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    try {
+                        storage.deleteMany(removedList);
+                        mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
+                    } catch (Exception e) {
+                        log.warn("수정 시 이미지 정리 실패 (post_id={}): {}", postId, e.toString());
+                    }
+                }
+            });
         }
 
         // flush → @PreUpdate 가 updated_at 을 즉시 갱신해 응답에 반영.

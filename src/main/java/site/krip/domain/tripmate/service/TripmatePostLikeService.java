@@ -8,10 +8,8 @@ import site.krip.domain.auth.repository.UserDetailInformRepository;
 import site.krip.domain.tripmate.dto.AddLikePayload;
 import site.krip.domain.tripmate.entity.TripmatePost;
 import site.krip.domain.tripmate.entity.TripmatePostLike;
-import site.krip.domain.tripmate.exception.PostNotFoundException;
 import site.krip.domain.tripmate.port.TripmateNotificationPort;
 import site.krip.domain.tripmate.repository.TripmatePostLikeRepository;
-import site.krip.domain.tripmate.repository.TripmatePostRepository;
 import site.krip.global.common.exception.ApiException;
 
 import java.util.List;
@@ -25,18 +23,18 @@ import java.util.List;
 @Service
 public class TripmatePostLikeService {
 
-    private final TripmatePostRepository postRepository;
+    private final TripmatePostAccessGuard accessGuard;
     private final TripmatePostLikeRepository likeRepository;
     private final UserDetailInformRepository detailRepository;
     private final TripmateNotificationPort notificationPort;
     private final TransactionTemplate txTemplate;
 
-    public TripmatePostLikeService(TripmatePostRepository postRepository,
+    public TripmatePostLikeService(TripmatePostAccessGuard accessGuard,
                                    TripmatePostLikeRepository likeRepository,
                                    UserDetailInformRepository detailRepository,
                                    TripmateNotificationPort notificationPort,
                                    TransactionTemplate txTemplate) {
-        this.postRepository = postRepository;
+        this.accessGuard = accessGuard;
         this.likeRepository = likeRepository;
         this.detailRepository = detailRepository;
         this.notificationPort = notificationPort;
@@ -44,10 +42,8 @@ public class TripmatePostLikeService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> getLikedUserIds(String postId) {
-        if (!postRepository.existsById(postId)) {
-            throw new PostNotFoundException();
-        }
+    public List<String> getLikedUserIds(String viewerId, String postId) {
+        accessGuard.loadViewablePost(viewerId, postId);
         return likeRepository.findUserIdsByPostId(postId);
     }
 
@@ -62,8 +58,7 @@ public class TripmatePostLikeService {
     }
 
     private AddLikePayload addLikeTx(String userId, String postId) {
-        TripmatePost post = postRepository.findById(postId)
-                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 게시글입니다."));
+        TripmatePost post = accessGuard.loadViewablePost(userId, postId);
 
         if (likeRepository.existsByUserIdAndPostId(userId, postId)) {
             throw ApiException.badRequest("이미 좋아요를 누른 게시글입니다.");
@@ -88,6 +83,7 @@ public class TripmatePostLikeService {
 
     @Transactional
     public long removeLike(String userId, String postId) {
+        accessGuard.loadViewablePost(userId, postId);
         if (likeRepository.deleteByUserIdAndPostId(userId, postId) == 0) {
             throw ApiException.badRequest("좋아요를 누르지 않은 게시글입니다.");
         }
