@@ -128,8 +128,7 @@ public class TripmatePostService {
     public PostDetailResponse getPost(String postId, String userId) {
         TripmatePost post = postRepository.findByIdWithUserDetail(postId)
                 .orElseThrow(PostNotFoundException::new);
-        // 비-작성자에게는 숨김(display=false) 글과 차단 관계 작성자의 글을 노출하지 않는다.
-        // 존재 자체를 숨기기 위해 모두 404 로 일원화한다.
+        // 비-작성자에게 숨김(display=false)·차단 관계 글은 미노출 — 존재 은닉 위해 404 일원화.
         if (!post.getUserId().equals(userId)) {
             if (!post.isDisplayed()) {
                 throw new PostNotFoundException();

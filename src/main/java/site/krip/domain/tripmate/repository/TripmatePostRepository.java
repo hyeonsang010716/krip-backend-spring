@@ -17,8 +17,7 @@ import java.util.Optional;
  * 하여 LIMIT 호환을 유지하고, 이미지는 {@code @BatchSize} lazy 로 로드한다.
  * like_count·is_liked 는 {@link TripmatePostLikeRepository} 로 별도 집계.
  *
- * <p>차단 관계(방향 무관)인 작성자의 글은 상관 {@code not exists} 서브쿼리로 DB 레벨에서 제외해
- * 커서 페이지 크기를 정확히 유지한다(스칼라 {@code :viewerId} 1개라 빈 컬렉션 엣지케이스가 없다).
+ * <p>차단 관계(방향 무관) 작성자의 글은 {@code not exists} 서브쿼리로 DB 에서 제외한다.
  */
 public interface TripmatePostRepository extends JpaRepository<TripmatePost, String> {
 

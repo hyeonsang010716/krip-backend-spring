@@ -220,20 +220,22 @@ public class TourPlanService {
 
     // ──────────────────── 카드 교체 (PUT) ────────────────────
 
-    @Transactional
     public PlanItemResponse updateItem(String itemId, String userId, String placeId,
                                        String visitTime, String expectedPlanId) {
-        TourPlanItem item = findItemInPlan(itemId, expectedPlanId);
-        TourPlan plan = requirePlanOfItem(item.getPlanId());
-        if (!plan.getUserId().equals(userId)) {
-            throw ApiException.forbidden("카드 수정 권한이 없습니다.");
-        }
+        // 장소 조회(Mongo)는 트랜잭션 밖에서 — 네트워크 왕복 동안 RDB 커넥션을 점유하지 않는다(addItem 과 동일).
         Place raw = placeRepo.findByPlaceId(placeId)
                 .orElseThrow(() -> ApiException.badRequest("존재하지 않는 장소입니다."));
 
-        item.replace(placeId, raw.getDisplayName(), raw.getAddress(), visitTime);
-        plan.touch();
-        return PlanItemResponse.of(item, raw.getRating(), raw.getPhotos());
+        return txTemplate.execute(s -> {
+            TourPlanItem item = findItemInPlan(itemId, expectedPlanId);
+            TourPlan plan = requirePlanOfItem(item.getPlanId());
+            if (!plan.getUserId().equals(userId)) {
+                throw ApiException.forbidden("카드 수정 권한이 없습니다.");
+            }
+            item.replace(placeId, raw.getDisplayName(), raw.getAddress(), visitTime);
+            plan.touch();
+            return PlanItemResponse.of(item, raw.getRating(), raw.getPhotos());
+        });
     }
 
     // ──────────────────── 카드 이동 (position 경합 재시도) ────────────────────

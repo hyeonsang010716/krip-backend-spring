@@ -51,10 +51,7 @@ public class TripmateImageRepository {
         mongo.remove(Query.query(Criteria.where("image_id").in(imageIds)), TripmateImage.class);
     }
 
-    /**
-     * 주어진 URL 중 해당 유저가 업로드한 것만 추려 반환 (소유권 검증용).
-     * 게시글 첨부 시 타인 이미지 URL 주입(IDOR)을 차단한다.
-     */
+    /** 주어진 URL 중 해당 유저 소유만 추려 반환 (소유권 검증용). */
     public Set<String> findOwnedUrls(String userId, Collection<String> imageUrls) {
         if (imageUrls.isEmpty()) {
             return Set.of();

@@ -73,10 +73,8 @@ public class FcmClient {
     }
 
     /**
-     * multicast 발송 — 성공 수 + 무효 토큰 목록 반환. 비활성/글로벌 실패 시 빈 결과.
-     *
-     * <p>토큰이 {@link #MAX_MULTICAST_BATCH} 를 넘으면 SDK 가 예외를 던지므로 500 개 단위로 분할 발송하고
-     * 결과를 합산한다. 배치 단위로 예외를 격리해 한 배치 실패가 나머지 배치 발송을 막지 않게 한다.
+     * multicast 발송 — 500 개 단위로 분할(SDK 한계) 발송 후 성공 수 + 무효 토큰 합산.
+     * 비활성 시 빈 결과, 배치 실패 시 해당 배치만 건너뛴다.
      */
     public SendResult sendMulticast(List<String> tokens, String title, String body, Map<String, String> data) {
         if (messaging == null || tokens.isEmpty()) {
@@ -91,7 +89,7 @@ public class FcmClient {
         return new SendResult(successCount, invalid);
     }
 
-    /** 단일 배치(≤ {@link #MAX_MULTICAST_BATCH}) 발송. 성공 수 반환, 만료 토큰은 {@code invalidOut} 에 누적. */
+    /** 단일 배치(≤ {@link #MAX_MULTICAST_BATCH}) 발송. 성공 수 반환, 무효 토큰은 {@code invalidOut} 에 누적. */
     private int sendBatch(List<String> tokens, Notification notification, Map<String, String> data,
                           List<String> invalidOut) {
         MulticastMessage message = MulticastMessage.builder()
@@ -130,7 +128,6 @@ public class FcmClient {
             }
         }
         if (invalidArgHeld > 0) {
-            // 배치 전건이 INVALID_ARGUMENT — 토큰이 아니라 페이로드 결함일 가능성이 커 삭제를 보류한다.
             log.warn("FCM INVALID_ARGUMENT 전건 실패 — 페이로드 결함 의심, 토큰 삭제 보류 (count={})", invalidArgHeld);
         }
         return batch.getSuccessCount();
@@ -146,12 +143,8 @@ public class FcmClient {
     }
 
     /**
-     * 영구 무효(삭제 대상) 토큰 여부.
-     *
-     * <p>{@code UNREGISTERED}(앱 삭제/토큰 만료)·{@code SENDER_ID_MISMATCH}(타 프로젝트 토큰)는 토큰 자체가
-     * 무효이므로 즉시 삭제. {@code INVALID_ARGUMENT}는 토큰 형식 문제일 수도, 페이로드 결함일 수도 있어 —
-     * 배치에 성공이 하나라도 있을 때만(=페이로드 정상, 토큰 문제로 확정) 삭제해, 페이로드 버그로 인한
-     * 전체 토큰 대량 삭제를 막는다. 그 외(쿼터·서버 일시오류 등)는 일시적이므로 보존.
+     * 영구 무효(삭제 대상) 토큰 여부. UNREGISTERED·SENDER_ID_MISMATCH 는 즉시 삭제,
+     * INVALID_ARGUMENT 는 배치에 성공이 있을 때만 삭제(페이로드 결함으로 인한 대량 삭제 방지).
      */
     static boolean isPermanentlyInvalid(MessagingErrorCode code, boolean batchHadSuccess) {
         if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.SENDER_ID_MISMATCH) {

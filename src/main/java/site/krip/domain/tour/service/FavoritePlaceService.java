@@ -1,5 +1,6 @@
 package site.krip.domain.tour.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -43,12 +44,17 @@ public class FavoritePlaceService {
         if (placeRepo.findByPlaceIds(List.of(placeId)).isEmpty()) {
             throw ApiException.badRequest("존재하지 않는 장소입니다.");
         }
-        txTemplate.executeWithoutResult(s -> {
-            if (favRepo.existsByUserIdAndPlaceId(userId, placeId)) {
-                throw ApiException.badRequest("이미 즐겨찾기한 장소입니다.");
-            }
-            favRepo.save(new FavoritePlace(userId, placeId));
-        });
+        try {
+            txTemplate.executeWithoutResult(s -> {
+                if (favRepo.existsByUserIdAndPlaceId(userId, placeId)) {
+                    throw ApiException.badRequest("이미 즐겨찾기한 장소입니다.");
+                }
+                favRepo.saveAndFlush(new FavoritePlace(userId, placeId));
+            });
+        } catch (DataIntegrityViolationException e) {
+            // 동시 추가 race — UNIQUE(user_id, place_id) 충돌. 이 흐름의 유일 제약이라 "이미 즐겨찾기"로 매핑(500 방지).
+            throw ApiException.badRequest("이미 즐겨찾기한 장소입니다.");
+        }
     }
 
     @Transactional

@@ -122,6 +122,10 @@ public class FriendshipService {
         if (f.getStatus() != FriendshipStatus.PENDING) {
             throw ApiException.badRequest("대기 중인 요청만 수락할 수 있습니다.");
         }
+        // 차단-친구요청 TOCTOU 방어: 경합으로 PENDING 이 남았어도, 수락(차단 우회의 유일 경로)에서 차단 재검사.
+        if (!userBlockRepository.findBlocksBetween(f.getAddresseeId(), f.getRequesterId()).isEmpty()) {
+            throw ApiException.badRequest("차단 관계인 유저의 친구 요청은 수락할 수 없습니다.");
+        }
         f.accept();
     }
 

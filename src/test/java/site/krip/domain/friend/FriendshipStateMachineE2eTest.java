@@ -178,6 +178,38 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("TOCTOU 방어: PENDING 요청과 차단이 공존(경합 산물)하면 수락 → 400 (addressee 가 requester 차단)")
+    void acceptBlockedByAddressee() throws Exception {
+        String requester = fixtures.createActiveUser("수락차단요청자");
+        String addressee = fixtures.createActiveUser("수락차단상대");
+        String friendshipId = sendRequest(requester, addressee);
+
+        // 경합으로 friendship 이 정리되지 않은 채 차단만 들어간 상태를 직접 재현(repo 직삽입)
+        blockRepo.save(new UserBlock(addressee, requester));
+
+        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(addressee)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
+    @DisplayName("TOCTOU 방어: requester 가 addressee 를 차단한 경우에도 수락 → 400 (방향 무관)")
+    void acceptBlockedByRequester() throws Exception {
+        String requester = fixtures.createActiveUser("역방향차단요청자");
+        String addressee = fixtures.createActiveUser("역방향차단상대");
+        String friendshipId = sendRequest(requester, addressee);
+
+        blockRepo.save(new UserBlock(requester, addressee));
+
+        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(addressee)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("존재하지 않는 친구 요청 수락 → 400")
     void acceptMissingFriendship() throws Exception {
         String a = fixtures.createActiveUser("미존재수락자");
