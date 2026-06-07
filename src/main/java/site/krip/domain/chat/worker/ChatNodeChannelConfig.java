@@ -69,7 +69,7 @@ public class ChatNodeChannelConfig {
         try {
             nodeRegistry.deregisterSelf();
         } catch (Exception e) {
-            log.warn("node deregister 실패 (TTL 만료로 fallback): {}", e.toString());
+            log.warn("node deregister 실패 (TTL 만료로 fallback)", e);
         }
     }
 
@@ -79,7 +79,7 @@ public class ChatNodeChannelConfig {
         try {
             nodeRegistry.heartbeatSelf();
         } catch (Exception e) {
-            log.warn("node heartbeat 실패 (계속 진행): {}", e.toString());
+            log.warn("node heartbeat 실패 (계속 진행)", e);
         }
     }
 
@@ -90,7 +90,7 @@ public class ChatNodeChannelConfig {
             Map<String, Object> envelope = mapper.readValue(json, Map.class);
             fanout.dispatchEnvelope(envelope);
         } catch (Exception e) {
-            log.warn("envelope 파싱/처리 실패 (drop): {}", e.toString());
+            log.warn("envelope 파싱/처리 실패 (drop)", e);
         }
     }
 

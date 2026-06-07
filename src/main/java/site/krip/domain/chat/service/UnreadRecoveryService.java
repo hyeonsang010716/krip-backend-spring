@@ -70,7 +70,7 @@ public class UnreadRecoveryService {
             try {
                 redis.delete(ChatRedisKeys.unread(userId));
             } catch (Exception delErr) {
-                log.warn("recover_unread: cleanup DEL 실패 — partial state 잔존 위험: {}", delErr.toString());
+                log.warn("recover_unread: cleanup DEL 실패 — partial state 잔존 위험", delErr);
             }
             return Map.of();
         }

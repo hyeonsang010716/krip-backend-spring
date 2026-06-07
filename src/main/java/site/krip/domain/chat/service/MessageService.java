@@ -312,7 +312,7 @@ public class MessageService {
                 return null;
             });
         } catch (Exception e) {
-            log.warn("unread 증가 실패 (무시): room_id={}, err={}", roomId, e.toString());
+            log.warn("unread 증가 실패 (무시): room_id={}", roomId, e);
         }
     }
 
@@ -394,7 +394,7 @@ public class MessageService {
                         ? content.substring(0, PUSH_BODY_PREVIEW_LIMIT) + "..." : content;
                 push.sendChatPush(recipients, roomId, senderUserId, body);
             } catch (Exception e) {
-                log.warn("FCM 푸시 helper 실패 (무시): room_id={}, err={}", roomId, e.toString());
+                log.warn("FCM 푸시 helper 실패 (무시): room_id={}", roomId, e);
             }
         });
     }

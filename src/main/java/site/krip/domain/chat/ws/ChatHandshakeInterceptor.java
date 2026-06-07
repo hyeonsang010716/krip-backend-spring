@@ -15,6 +15,7 @@ import site.krip.domain.auth.entity.User;
 import site.krip.domain.auth.entity.UserStatus;
 import site.krip.domain.auth.repository.UserRepository;
 import site.krip.global.auth.jwt.JwtProvider;
+import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.global.cache.RegisteredCacheManager;
 import site.krip.global.config.AuthProperties;
 import site.krip.global.config.CorsProperties;
@@ -43,15 +44,17 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
     public static final String ATTR_WS_JTI = "ws_token_jti";
 
     private final JwtProvider jwtProvider;
+    private final TokenRevocationService revocation;
     private final AuthProperties authProps;
     private final CorsProperties corsProps;
     private final RegisteredCacheManager registeredCache;
     private final UserRepository userRepository;
 
-    public ChatHandshakeInterceptor(JwtProvider jwtProvider, AuthProperties authProps,
-                                    CorsProperties corsProps, RegisteredCacheManager registeredCache,
-                                    UserRepository userRepository) {
+    public ChatHandshakeInterceptor(JwtProvider jwtProvider, TokenRevocationService revocation,
+                                    AuthProperties authProps, CorsProperties corsProps,
+                                    RegisteredCacheManager registeredCache, UserRepository userRepository) {
         this.jwtProvider = jwtProvider;
+        this.revocation = revocation;
         this.authProps = authProps;
         this.corsProps = corsProps;
         this.registeredCache = registeredCache;
@@ -74,16 +77,22 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
             response.setStatusCode(HttpStatus.FORBIDDEN);
             return false;
         }
-        String userId;
+        JwtProvider.ParsedToken parsed;
         try {
-            userId = jwtProvider.parseUserId(token);
+            parsed = jwtProvider.parse(token);
         } catch (Exception e) {
             // 핸드셰이크 거부 = HTTP 403 (구분 가능한 close code 는 accept 이후 receive loop 에서).
             response.setStatusCode(HttpStatus.FORBIDDEN);
             return false;
         }
+        String userId = parsed.userId();
         if (userId == null || userId.isEmpty()) {
             // 핸드셰이크 거부 = HTTP 403 (구분 가능한 close code 는 accept 이후 receive loop 에서).
+            response.setStatusCode(HttpStatus.FORBIDDEN);
+            return false;
+        }
+        if (revocation.isRevoked(parsed.jti())) {
+            log.warn("WS 연결 거부 — 폐기된 토큰: user_id={}", userId);
             response.setStatusCode(HttpStatus.FORBIDDEN);
             return false;
         }
@@ -156,7 +165,7 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
         try {
             user = userRepository.findByIdWithProfile(userId).orElse(null);
         } catch (Exception e) {
-            log.warn("WS status 가드 — DB 조회 실패 (fail-closed): user_id={}, err={}", userId, e.toString());
+            log.warn("WS status 가드 — DB 조회 실패 (fail-closed): user_id={}", userId, e);
             return false;
         }
         if (user == null || user.getStatus() != UserStatus.ACTIVE || user.getDetail() == null) {

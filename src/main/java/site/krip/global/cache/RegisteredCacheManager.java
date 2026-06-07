@@ -57,7 +57,7 @@ public class RegisteredCacheManager {
         try {
             redis.delete(key(userId));
         } catch (Exception e) {
-            log.warn("REGISTERED 캐시 무효화 실패 (user_id={}): {}", userId, e.toString());
+            log.warn("REGISTERED 캐시 무효화 실패 (user_id={})", userId, e);
         }
     }
 }

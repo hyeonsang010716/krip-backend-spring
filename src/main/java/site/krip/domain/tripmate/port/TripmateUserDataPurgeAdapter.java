@@ -49,7 +49,7 @@ public class TripmateUserDataPurgeAdapter implements ExternalUserDataPurgePort {
             delete.run();
             return 0;
         } catch (Exception e) {
-            log.error("탈퇴 purge — {} 삭제 실패 (user_id={}): {}", collection, userId, e.toString());
+            log.error("탈퇴 purge — {} 삭제 실패 (user_id={})", collection, userId, e);
             return 1;
         }
     }

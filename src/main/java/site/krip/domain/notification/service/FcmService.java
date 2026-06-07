@@ -122,7 +122,7 @@ public class FcmService {
                 return detail.getUserName();
             }
         } catch (Exception e) {
-            log.warn("발신자 이름 조회 실패 sender_id={}: {}", senderId, e.toString());
+            log.warn("발신자 이름 조회 실패 sender_id={}", senderId, e);
         }
         return DEFAULT_CHAT_PUSH_TITLE;
     }

@@ -91,7 +91,7 @@ public class InboxService {
                     log.info("인박스 자동 읽음 처리 (recipient_id={}, count={})", recipientId, modified);
                 }
             } catch (Exception e) {
-                log.warn("인박스 자동 읽음 처리 실패 (recipient_id={}): {}", recipientId, e.toString());
+                log.warn("인박스 자동 읽음 처리 실패 (recipient_id={})", recipientId, e);
             }
         }
         return response;
@@ -125,7 +125,7 @@ public class InboxService {
                         targetTypeValue, targetId, modified);
             }
         } catch (Exception e) {
-            log.warn("인박스 cascade post_deleted 실패 (target_id={}): {}", targetId, e.toString());
+            log.warn("인박스 cascade post_deleted 실패 (target_id={})", targetId, e);
         }
     }
 
@@ -136,7 +136,7 @@ public class InboxService {
                 log.info("인박스 cascade user_withdrawn (user_id={}, deleted={})", userId, deleted);
             }
         } catch (Exception e) {
-            log.warn("인박스 cascade user_withdrawn 실패 (user_id={}): {}", userId, e.toString());
+            log.warn("인박스 cascade user_withdrawn 실패 (user_id={})", userId, e);
         }
     }
 
@@ -148,7 +148,7 @@ public class InboxService {
         } catch (DuplicateKeyException e) {
             // uq_inbox_dedup — display=true 중복은 멱등 skip.
         } catch (Exception e) {
-            log.warn("인박스 fan-out 실패: {}", e.toString());
+            log.warn("인박스 fan-out 실패", e);
         }
     }
 

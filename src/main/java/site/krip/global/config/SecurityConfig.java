@@ -20,6 +20,7 @@ import site.krip.global.auth.filter.BearerTokenFilter;
 import site.krip.global.auth.filter.LoginAuthFilter;
 import site.krip.global.auth.filter.RegisterCheckFilter;
 import site.krip.global.auth.jwt.JwtProvider;
+import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.global.cache.RegisteredCacheManager;
 
 import java.util.ArrayList;
@@ -51,6 +52,7 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
                                             AuthProperties authProps,
                                             JwtProvider jwtProvider,
+                                            TokenRevocationService tokenRevocation,
                                             UserRepository userRepository,
                                             RegisteredCacheManager registeredCache,
                                             CorsConfigurationSource corsConfigurationSource,
@@ -61,7 +63,7 @@ public class SecurityConfig {
 
         BearerTokenFilter bearer = new BearerTokenFilter(authProps.accessToken(), mapper, publicMatcher);
         LoginAuthFilter login =
-                new LoginAuthFilter(jwtProvider, authProps.jwt().cookieName(), mapper, publicMatcher);
+                new LoginAuthFilter(jwtProvider, tokenRevocation, authProps.jwt().cookieName(), mapper, publicMatcher);
         RegisterCheckFilter register =
                 new RegisterCheckFilter(userRepository, registeredCache, mapper, registrationExempt);
 

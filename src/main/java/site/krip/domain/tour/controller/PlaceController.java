@@ -69,7 +69,7 @@ public class PlaceController {
                 try {
                     searchHistoryService.saveSearch(userId, keyword);
                 } catch (Exception e) {
-                    log.warn("검색어 저장 키워드({}) 실패 (무시) - 에러: {}", keyword, e.toString());
+                    log.warn("검색어 저장 실패 (무시)", e);
                 }
             }
             return placeService.searchNearbyPlaces(actualLat, actualLng, keyword, cursor, maxDistance, userId);

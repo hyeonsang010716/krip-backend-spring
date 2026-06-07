@@ -8,6 +8,7 @@ import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import site.krip.domain.auth.repository.UserRepository;
 import site.krip.global.auth.jwt.JwtProvider;
+import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.global.cache.RegisteredCacheManager;
 import site.krip.global.config.AuthProperties;
 import site.krip.global.config.CorsProperties;
@@ -36,6 +37,7 @@ class ChatHandshakeInterceptorTest {
 
     private final RegisteredCacheManager registeredCache = mock(RegisteredCacheManager.class);
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final TokenRevocationService revocation = mock(TokenRevocationService.class);
     private final ChatHandshakeInterceptor interceptor = newInterceptor();
 
     private ChatHandshakeInterceptor newInterceptor() {
@@ -43,7 +45,8 @@ class ChatHandshakeInterceptorTest {
         AuthProperties authProps = new AuthProperties("dev-access-token", jwt, 300L);
         JwtProvider jwtProvider = new JwtProvider(authProps);
         CorsProperties corsProps = new CorsProperties(List.of(ALLOWED_ORIGIN), List.of(APP_ORIGIN));
-        return new ChatHandshakeInterceptor(jwtProvider, authProps, corsProps, registeredCache, userRepository);
+        return new ChatHandshakeInterceptor(jwtProvider, revocation, authProps, corsProps,
+                registeredCache, userRepository);
     }
 
     /** Sec-WebSocket-Protocol / Origin 만 노출하는 비-서블릿 ServerHttpRequest mock(쿠키 분기는 건너뜀). */

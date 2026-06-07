@@ -105,7 +105,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         try {
             sessionId = sessionService.createSession(userId, jti);
         } catch (Exception e) {
-            log.warn("세션 생성 실패: user_id={}, err={}", userId, e.toString());
+            log.warn("세션 생성 실패: user_id={}", userId, e);
             safeSend(session, Map.of("type", "server_error", "reason", "session_create_failed"));
             session.close(CloseStatus.SERVICE_RESTARTED);
             return;
@@ -121,7 +121,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
                 fanout.registerWsToRoom(session, rid);
             }
         } catch (Exception e) {
-            log.warn("방 목록 로드 실패: user_id={}, err={}", userId, e.toString());
+            log.warn("방 목록 로드 실패: user_id={}", userId, e);
         }
 
         fanout.sendToSessionDirect(session, Map.of("type", "connected", "session_id", sessionId));
@@ -173,7 +173,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         } catch (Exception e) {
             // ChatUpstreamException(저장 재시도 소진)·DataAccessException·런타임 오류 등 비-ApiException 도
             // 소켓을 조용히 끊지 않고 server_error 로 통지한다. 내부 상세는 노출하지 않는다.
-            log.warn("WS op 처리 실패: op={}, session_id={}, err={}", op, sessionId, e.toString());
+            log.warn("WS op 처리 실패: op={}, session_id={}", op, sessionId, e);
             sendOpError(session, op, req, "server_error");
         }
     }
@@ -270,7 +270,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
                     fanout.sendToSessionDirect(session, Map.of("type", "unread_synced", "counts", counts));
                 }
             } catch (Exception e) {
-                log.warn("unread 백그라운드 복구 실패: user_id={}, err={}", userId, e.toString());
+                log.warn("unread 백그라운드 복구 실패: user_id={}", userId, e);
             }
         });
     }

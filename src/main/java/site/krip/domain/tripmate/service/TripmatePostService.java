@@ -111,7 +111,7 @@ public class TripmatePostService {
         try {
             draftService.deleteDraft(userId);
         } catch (Exception e) {
-            log.warn("임시저장 삭제 실패 (user_id={}): {}", userId, e.toString());
+            log.warn("임시저장 삭제 실패 (user_id={})", userId, e);
         }
 
         UserDetailInform detail = detailRepository.findById(userId).orElse(null);
@@ -193,7 +193,7 @@ public class TripmatePostService {
                         storage.deleteMany(removedList);
                         mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
                     } catch (Exception e) {
-                        log.warn("수정 시 이미지 정리 실패 (post_id={}): {}", postId, e.toString());
+                        log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
                     }
                 }
             });
@@ -238,7 +238,7 @@ public class TripmatePostService {
                 storage.deleteMany(imageUrls);
                 mongoImageRepository.deleteByUserIdAndUrls(userId, imageUrls);
             } catch (Exception e) {
-                log.warn("삭제 시 이미지 정리 실패 (post_id={}): {}", postId, e.toString());
+                log.warn("삭제 시 이미지 정리 실패 (post_id={})", postId, e);
             }
         }
     }

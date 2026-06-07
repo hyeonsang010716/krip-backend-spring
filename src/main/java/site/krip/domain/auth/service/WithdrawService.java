@@ -118,7 +118,7 @@ public class WithdrawService {
             try {
                 withdrawalRequestRepository.deleteByUserId(userId);
             } catch (Exception e) {
-                log.error("탈퇴 영구 삭제 — stale doc 정리 실패, 다음 tick 재시도 (user_id={}): {}", userId, e.toString());
+                log.error("탈퇴 영구 삭제 — stale doc 정리 실패, 다음 tick 재시도 (user_id={})", userId, e);
             }
             return;
         }
@@ -190,7 +190,7 @@ public class WithdrawService {
             storage.deleteByPrefix(userId);
             log.info("탈퇴 영구 삭제 — Object Storage 삭제 완료 (user_id={})", userId);
         } catch (Exception e) {
-            log.error("탈퇴 영구 삭제 — Object Storage 삭제 실패 (user_id={}): {}", userId, e.toString());
+            log.error("탈퇴 영구 삭제 — Object Storage 삭제 실패 (user_id={})", userId, e);
         }
 
         registeredCache.invalidate(userId);

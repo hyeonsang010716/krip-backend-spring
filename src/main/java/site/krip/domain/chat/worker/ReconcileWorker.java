@@ -47,7 +47,7 @@ public class ReconcileWorker {
                 processed = reconcileOnce();
             } while (processed >= BATCH_SIZE);
         } catch (Exception e) {
-            log.error("reconcile tick 전역 실패 (다음 tick 재시도): {}", e.toString());
+            log.error("reconcile tick 전역 실패 (다음 tick 재시도)", e);
         }
     }
 
@@ -62,7 +62,7 @@ public class ReconcileWorker {
         try {
             lastByRoom = messageRepo.findLastByRooms(roomIds);
         } catch (Exception e) {
-            log.warn("reconcile: Mongo aggregate 실패 → {}개 방 재적재: {}", roomIds.size(), e.toString());
+            log.warn("reconcile: Mongo aggregate 실패 → {}개 방 재적재", roomIds.size(), e);
             redis.opsForSet().add(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, roomIds.toArray(new String[0]));
             return 0;
         }
@@ -80,7 +80,7 @@ public class ReconcileWorker {
                         doc.createdAt().toInstant());
                 updated++;
             } catch (Exception ex) {
-                log.warn("reconcile: 방 {} UPDATE 실패 — 재적재: {}", e.getKey(), ex.toString());
+                log.warn("reconcile: 방 {} UPDATE 실패 — 재적재", e.getKey(), ex);
                 failed.add(e.getKey());
             }
         }

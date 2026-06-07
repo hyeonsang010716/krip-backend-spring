@@ -41,6 +41,8 @@ public interface UserRepository extends JpaRepository<User, String> {
     @Query("select u.userId from User u where u.userId in :userIds and u.notificationMuted is not true")
     List<String> findUnmutedUserIds(@Param("userIds") java.util.Collection<String> userIds);
 
+    // TODO 운영 전환 시 — 무한정 전체 조회. (created_at, user_id) 커서 페이지네이션 +
+    //  travelStyles 컬렉션 fetch 제거(별도 IN 배치 로드) 필요. 현재는 DEV 전용 API.
     /** 탐색 목록 — 본인 제외 ACTIVE 유저 + 프로필, 최신 가입순. */
     @Query("select distinct u from User u "
             + "left join fetch u.detail left join fetch u.travelStyles "

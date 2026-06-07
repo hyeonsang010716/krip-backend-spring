@@ -35,8 +35,8 @@ import java.util.TreeSet;
  * 채팅방 생성/멤버십/읽음.
  *
  * <p>DIRECT 생성은 canonical 정렬(a&lt;b) + partial UNIQUE 로 idempotent — 경합은 새 트랜잭션 재조회.
- * 멤버 변경 순서: Redis(room:members SADD/SREM) → RDB → 구독(subscribe/unsubscribe) → 시스템 메시지.
- * (퇴장/강퇴는 SREM 을 먼저 해 in-flight 송신이 즉시 거절되게, 시스템 메시지 전에 구독 해제해 자기 에코 차단.)
+ * 퇴장/강퇴는 RDB 커밋 후 Redis(room:members SREM) 정리 — tx 롤백 시 멤버십 불일치 방지.
+ * 구독 해제는 시스템 메시지 이전에 수행해 leaver 가 자기 에코를 받지 않게 한다.
  */
 @Service
 public class RoomService {
@@ -267,9 +267,6 @@ public class RoomService {
             throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
-        redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), meId);
-        redis.opsForHash().delete(ChatRedisKeys.unread(meId), roomId);
-
         txTemplate.executeWithoutResult(s -> {
             ChatRoomMember m = memberRepo.findById(
                     new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, meId))
@@ -277,6 +274,10 @@ public class RoomService {
             m.markLeft();
             memberRepo.save(m);
         });
+
+        // 커밋 성공 후에만 Redis 정리 — tx 롤백 시 캐시가 RDB 보다 앞서지 않게.
+        redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), meId);
+        redis.opsForHash().delete(ChatRedisKeys.unread(meId), roomId);
 
         fanout.fanOutToUser(meId, Map.of("type", "room_left", "room_id", roomId));
         // 시스템 메시지 이전에 구독 해제 — leaver 가 자기 "방 나감" 메시지를 받지 않도록.
@@ -307,9 +308,6 @@ public class RoomService {
             throw ApiException.badRequest("강퇴 대상이 활성 멤버가 아닙니다.");
         }
 
-        redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), targetUserId);
-        redis.opsForHash().delete(ChatRedisKeys.unread(targetUserId), roomId);
-
         txTemplate.executeWithoutResult(s -> {
             ChatRoomMember m = memberRepo.findById(
                     new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, targetUserId))
@@ -317,6 +315,10 @@ public class RoomService {
             m.markLeft();
             memberRepo.save(m);
         });
+
+        // 커밋 성공 후에만 Redis 정리 — tx 롤백 시 캐시가 RDB 보다 앞서지 않게.
+        redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), targetUserId);
+        redis.opsForHash().delete(ChatRedisKeys.unread(targetUserId), roomId);
 
         fanout.fanOutToUser(targetUserId, Map.of("type", "room_left", "room_id", roomId));
         fanout.unsubscribeUserFromRoom(targetUserId, roomId);

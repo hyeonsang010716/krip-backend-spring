@@ -60,6 +60,8 @@ public class ProfileService {
         this.txTemplate = txTemplate;
     }
 
+    // TODO 운영 전환 시 — 무한정 전체 조회(대규모 시 메모리/지연 위험). 커서 페이지네이션 +
+    //  travelStyles 별도 IN 배치 로드로 전환 필요. 현재는 DEV 전용 API 라 단순 전체 반환.
     @Transactional(readOnly = true)
     public OtherUserProfileListResponse getAllOtherUsers(String userId) {
         List<User> users = userRepository.findActiveOthersWithProfile(userId, UserStatus.ACTIVE);
@@ -213,7 +215,7 @@ public class ProfileService {
         try {
             storage.delete(url);
         } catch (Exception e) {
-            log.warn("{} 실패 — orphan 잔존 (user_id={}): {}", ctx, userId, e.toString());
+            log.warn("{} 실패 — orphan 잔존 (user_id={})", ctx, userId, e);
         }
     }
 }

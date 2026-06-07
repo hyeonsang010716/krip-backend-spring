@@ -10,17 +10,23 @@ import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * 유저 로그인 JWT 발급/검증 (HS256).
  *
- * <p>페이로드: {@code user_id}, {@code iat}, {@code exp}.
+ * <p>페이로드: {@code user_id}, {@code jti}, {@code iat}, {@code exp}.
+ * jti 는 로그아웃 단건 폐기({@link TokenRevocationService})용 식별자.
  * secret 은 {@link SecretKeys} 가 SHA-256 으로 파생하며, 약한/누락 secret 은 부팅 시 거부한다.
  */
 @Component
 public class JwtProvider {
 
     private static final String CLAIM_USER_ID = "user_id";
+
+    /** 검증된 토큰에서 추출한 폐기·인증용 클레임. */
+    public record ParsedToken(String userId, String jti, Instant expiresAt) {
+    }
 
     private final SecretKey key;
     private final long expirationSeconds;
@@ -30,10 +36,11 @@ public class JwtProvider {
         this.expirationSeconds = props.jwt().expirationSeconds();
     }
 
-    /** user_id 로 로그인 JWT 발급. */
+    /** user_id 로 로그인 JWT 발급 (jti 포함). */
     public String issue(String userId) {
         Instant now = Instant.now();
         return Jwts.builder()
+                .id(UUID.randomUUID().toString())
                 .claim(CLAIM_USER_ID, userId)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(now.plus(expirationSeconds, ChronoUnit.SECONDS)))
@@ -42,17 +49,23 @@ public class JwtProvider {
     }
 
     /**
-     * JWT 를 검증하고 user_id 추출.
+     * JWT 를 검증하고 user_id·jti·만료를 추출.
      *
      * @throws io.jsonwebtoken.ExpiredJwtException 만료
      * @throws io.jsonwebtoken.JwtException 그 외 무효 토큰
      */
-    public String parseUserId(String token) {
+    public ParsedToken parse(String token) {
         Claims claims = Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-        return claims.get(CLAIM_USER_ID, String.class);
+        Instant exp = claims.getExpiration() != null ? claims.getExpiration().toInstant() : null;
+        return new ParsedToken(claims.get(CLAIM_USER_ID, String.class), claims.getId(), exp);
+    }
+
+    /** user_id 만 필요할 때(WS 등). {@link #parse} 의 축약. */
+    public String parseUserId(String token) {
+        return parse(token).userId();
     }
 }

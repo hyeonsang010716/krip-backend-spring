@@ -100,7 +100,7 @@ public class ImageProcessor {
         } catch (ApiException e) {
             throw e;
         } catch (Exception e) {
-            log.warn("이미지 헤더 probe 실패: {}", e.toString());
+            log.warn("이미지 헤더 probe 실패", e);
             throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
 
@@ -109,7 +109,7 @@ public class ImageProcessor {
         try {
             image = ImageIO.read(new ByteArrayInputStream(src));
         } catch (Exception e) {
-            log.warn("이미지 디코딩 실패: {}", e.toString());
+            log.warn("이미지 디코딩 실패", e);
             throw ApiException.badRequest("이미지를 처리할 수 없습니다.");
         }
         if (image == null) {

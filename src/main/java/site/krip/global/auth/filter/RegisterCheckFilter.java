@@ -76,7 +76,7 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
         try {
             found = userRepository.findByIdWithDetail(userId);
         } catch (Exception e) {
-            log.error("회원가입 상태 확인 DB 조회 실패 (user_id={}): {}", userId, e.toString());
+            log.error("회원가입 상태 확인 DB 조회 실패 (user_id={})", userId, e);
             FilterSupport.writeError(response, mapper, 500,
                     ErrorResponse.of("회원가입 상태 확인 중 오류가 발생했습니다."));
             return;

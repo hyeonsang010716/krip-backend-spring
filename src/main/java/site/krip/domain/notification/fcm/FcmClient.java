@@ -64,7 +64,7 @@ public class FcmClient {
             this.messaging = FirebaseMessaging.getInstance(app);
             log.info("FCM 초기화 완료 (project_id={})", app.getOptions().getProjectId());
         } catch (Exception e) {
-            log.warn("FCM 초기화 실패 — 푸시 발송 비활성: {}", e.toString());
+            log.warn("FCM 초기화 실패 — 푸시 발송 비활성", e);
         }
     }
 
@@ -102,7 +102,7 @@ public class FcmClient {
             batch = messaging.sendEachForMulticast(message);
         } catch (FirebaseMessagingException | RuntimeException e) {
             // 글로벌 실패(인증·쿼터 등)는 이 배치만 포기하고 다음 배치를 계속 시도한다.
-            log.warn("FCM multicast 배치 실패 (count={}): {}", tokens.size(), e.toString());
+            log.warn("FCM multicast 배치 실패 (count={})", tokens.size(), e);
             return 0;
         }
 

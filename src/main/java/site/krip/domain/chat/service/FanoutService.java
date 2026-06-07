@@ -172,7 +172,7 @@ public class FanoutService {
                 default -> log.warn("알 수 없는 envelope op (drop): {}", op);
             }
         } catch (Exception e) {
-            log.warn("envelope 처리 실패 (drop): op={}, err={}", op, e.toString());
+            log.warn("envelope 처리 실패 (drop): op={}", op, e);
         }
     }
 
@@ -264,7 +264,7 @@ public class FanoutService {
         try {
             return mapper.writeValueAsString(value);
         } catch (Exception e) {
-            log.warn("envelope 직렬화 실패 (drop): {}", e.toString());
+            log.warn("envelope 직렬화 실패 (drop)", e);
             return null;
         }
     }

@@ -140,7 +140,7 @@ public class FeedPostService {
         try {
             storage.deleteByPathPrefix(prefix);
         } catch (Exception e) {
-            log.warn("S3 prefix 삭제 실패 — orphan 잔존 (prefix={}): {}", prefix, e.toString());
+            log.warn("S3 prefix 삭제 실패 — orphan 잔존 (prefix={})", prefix, e);
         }
         inboxPort.cascadeFeedPostDeleted(postId);
     }
@@ -193,7 +193,7 @@ public class FeedPostService {
         try {
             storage.deleteByPathPrefix(prefix);
         } catch (Exception e) {
-            log.warn("업로드 실패 cleanup 실패 — orphan 잔존 (prefix={}): {}", prefix, e.toString());
+            log.warn("업로드 실패 cleanup 실패 — orphan 잔존 (prefix={})", prefix, e);
         }
     }
 

@@ -1,5 +1,7 @@
 package site.krip.domain.auth.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +14,7 @@ import site.krip.domain.auth.entity.OAuthProvider;
 import site.krip.domain.auth.oauth.OAuthClient;
 import site.krip.domain.auth.oauth.OAuthConfig;
 import site.krip.domain.auth.oauth.OAuthConfigs;
+import site.krip.domain.auth.oauth.OAuthStateService;
 import site.krip.domain.auth.service.OAuthCallbackService;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.config.OAuthProperties;
@@ -28,12 +31,14 @@ public class AppLoginController {
 
     private final OAuthConfigs oauthConfigs;
     private final OAuthCallbackService callbackService;
+    private final OAuthStateService stateService;
     private final OAuthProperties oauthProperties;
 
     public AppLoginController(OAuthConfigs oauthConfigs, OAuthCallbackService callbackService,
-                             OAuthProperties oauthProperties) {
+                             OAuthStateService stateService, OAuthProperties oauthProperties) {
         this.oauthConfigs = oauthConfigs;
         this.callbackService = callbackService;
+        this.stateService = stateService;
         this.oauthProperties = oauthProperties;
     }
 
@@ -42,19 +47,23 @@ public class AppLoginController {
         OAuthConfig config = oauthConfigs.appConfig(type);
         OAuthClient client = oauthConfigs.client(type);
 
-        String state = "app:" + type.getValue();
-        String authorizationUrl = client.buildAuthorizationUrl(config, state);
-        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(authorizationUrl)).build();
+        OAuthStateService.Issued st = stateService.create("app", type.getValue());
+        String authorizationUrl = client.buildAuthorizationUrl(config, st.state());
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(authorizationUrl))
+                .header(HttpHeaders.SET_COOKIE, st.cookie().toString())
+                .build();
     }
 
     @GetMapping("/callback")
     public ResponseEntity<Void> appCallback(@RequestParam("code") String code,
-                                            @RequestParam("state") String state) {
-        int idx = state.lastIndexOf(':');
-        if (idx < 0 || !"app".equals(state.substring(0, idx))) {
+                                            @RequestParam("state") String state,
+                                            HttpServletRequest request) {
+        OAuthStateService.Parsed parsed = stateService.verify(state, request);
+        if (!"app".equals(parsed.routing())) {
             throw ApiException.badRequest("잘못된 state 값");
         }
-        OAuthProvider provider = callbackService.parseProvider(state.substring(idx + 1));
+        OAuthProvider provider = callbackService.parseProvider(parsed.provider());
         OAuthConfig config = oauthConfigs.appConfig(provider);
 
         OAuthCallbackResult result = callbackService.exchangeAndRegister(provider, config, code);
@@ -67,6 +76,7 @@ public class AppLoginController {
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(builder.build().encode().toUriString()))
+                .header(HttpHeaders.SET_COOKIE, stateService.expiredCookie().toString())
                 .build();
     }
 }
