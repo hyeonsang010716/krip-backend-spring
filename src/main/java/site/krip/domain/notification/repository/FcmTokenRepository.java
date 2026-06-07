@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.notification.entity.FcmToken;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -24,8 +25,12 @@ public interface FcmTokenRepository extends JpaRepository<FcmToken, String> {
     @Modifying
     void deleteByUserIdAndToken(String userId, String token);
 
-    /** 호출부(sendChatPush)가 비-트랜잭션(FCM 호출 중 DB 커넥션 미점유)이라 자체 tx 로 만료 토큰 정리. */
+    /**
+     * 무효 토큰 정리 — 발송 시작 시점({@code asOf}) 이후 갱신된 행은 제외한다.
+     * 발송~정리 사이 동일 토큰이 재등록(reassign 으로 updated_at 갱신)되면 방금 유효해진 행을 지우지 않는다.
+     * 호출부(sendChatPush)가 비-트랜잭션이라 자체 tx 로 정리. 반환값은 실제 삭제 건수.
+     */
     @Modifying
     @Transactional
-    void deleteByTokenIn(Collection<String> tokens);
+    int deleteByTokenInAndUpdatedAtLessThanEqual(Collection<String> tokens, Instant asOf);
 }

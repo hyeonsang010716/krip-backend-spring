@@ -14,6 +14,7 @@ import site.krip.domain.notification.entity.FcmToken;
 import site.krip.domain.notification.fcm.FcmClient;
 import site.krip.domain.notification.repository.FcmTokenRepository;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -87,6 +88,8 @@ public class FcmService {
         if (allowed.isEmpty()) {
             return 0;
         }
+        // 무효 토큰 정리 가드 기준 — 이 시점 이후 재등록(updated_at 갱신)된 토큰은 정리에서 제외한다.
+        Instant asOf = Instant.now();
         List<FcmToken> rows = tokenRepo.findByUserIdIn(allowed);
         if (rows.isEmpty()) {
             return 0;
@@ -105,8 +108,9 @@ public class FcmService {
 
         FcmClient.SendResult result = fcmClient.sendMulticast(tokens, finalTitle, body, data);
         if (!result.invalidTokens().isEmpty()) {
-            tokenRepo.deleteByTokenIn(result.invalidTokens());
-            log.info("FCM 무효 토큰 정리 chat_room_id={} count={}", chatRoomId, result.invalidTokens().size());
+            int removed = tokenRepo.deleteByTokenInAndUpdatedAtLessThanEqual(result.invalidTokens(), asOf);
+            log.info("FCM 무효 토큰 정리 chat_room_id={} invalid={} removed={}",
+                    chatRoomId, result.invalidTokens().size(), removed);
         }
         return result.successCount();
     }

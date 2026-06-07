@@ -159,6 +159,21 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("발송 중 재등록된 토큰은 무효 정리에서 제외된다(race 가드)")
+    void reRegisteredTokenSpared() throws Exception {
+        Group g = setupGroupWithTokens("race");
+        when(fcmClient.sendMulticast(anyList(), anyString(), anyString(), anyMap()))
+                .thenAnswer(inv -> {
+                    fcmService.registerToken(g.c(), g.tokenC()); // 발송 중 동일 토큰 재등록(updated_at 갱신)
+                    return new FcmClient.SendResult(1, List.of(g.tokenC()));
+                });
+
+        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), "본문", "제목");
+
+        assertThat(tokenRepo.findByToken(g.tokenC())).isPresent();
+    }
+
+    @Test
     @DisplayName("FCM 비활성 모드면 게이팅 통과해도 multicast 없이 0 반환")
     void disabledModeReturnsZero() throws Exception {
         Group g = setupGroupWithTokens("dis");
