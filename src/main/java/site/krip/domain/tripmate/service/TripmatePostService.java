@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
 import site.krip.domain.auth.repository.UserDetailInformRepository;
+import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.domain.tripmate.dto.request.CreatePostRequest;
 import site.krip.domain.tripmate.dto.request.UpdatePostRequest;
 import site.krip.domain.tripmate.dto.response.AuthorResponse;
@@ -56,6 +57,8 @@ public class TripmatePostService {
     private final UserDetailInformRepository detailRepository;
     private final TripmatePostDraftService draftService;
     private final TripmateImageRepository mongoImageRepository;
+    private final TripmateImageOwnershipValidator imageOwnershipValidator;
+    private final UserBlockRepository blockRepository;
     private final ObjectStorage storage;
     private final TripmateNotificationPort notificationPort;
     private final TransactionTemplate txTemplate;
@@ -66,6 +69,8 @@ public class TripmatePostService {
                                UserDetailInformRepository detailRepository,
                                TripmatePostDraftService draftService,
                                TripmateImageRepository mongoImageRepository,
+                               TripmateImageOwnershipValidator imageOwnershipValidator,
+                               UserBlockRepository blockRepository,
                                ObjectStorage storage,
                                TripmateNotificationPort notificationPort,
                                TransactionTemplate txTemplate) {
@@ -75,6 +80,8 @@ public class TripmatePostService {
         this.detailRepository = detailRepository;
         this.draftService = draftService;
         this.mongoImageRepository = mongoImageRepository;
+        this.imageOwnershipValidator = imageOwnershipValidator;
+        this.blockRepository = blockRepository;
         this.storage = storage;
         this.notificationPort = notificationPort;
         this.txTemplate = txTemplate;
@@ -84,6 +91,9 @@ public class TripmatePostService {
 
     @Transactional
     public PostCreateResponse createPost(String userId, CreatePostRequest req) {
+        List<String> savedUrls = req.imageUrls() == null ? List.of() : req.imageUrls();
+        imageOwnershipValidator.verify(userId, savedUrls);
+
         TripmatePost post = new TripmatePost(
                 userId, req.title(), req.content(), req.preferredAgeMin(), req.preferredAgeMax(),
                 req.preferredGender(), req.region(), req.travelStartDate(), req.travelEndDate(),
@@ -92,7 +102,6 @@ public class TripmatePostService {
         // @PrePersist 로 채워진 시각이 생성 응답에 반영된다.
         post = postRepository.saveAndFlush(post);
 
-        List<String> savedUrls = req.imageUrls() == null ? List.of() : req.imageUrls();
         if (!savedUrls.isEmpty()) {
             postImageRepository.saveAll(toImageEntities(post.getPostId(), savedUrls));
         }
@@ -119,6 +128,16 @@ public class TripmatePostService {
     public PostDetailResponse getPost(String postId, String userId) {
         TripmatePost post = postRepository.findByIdWithUserDetail(postId)
                 .orElseThrow(PostNotFoundException::new);
+        // 비-작성자에게는 숨김(display=false) 글과 차단 관계 작성자의 글을 노출하지 않는다.
+        // 존재 자체를 숨기기 위해 모두 404 로 일원화한다.
+        if (!post.getUserId().equals(userId)) {
+            if (!post.isDisplayed()) {
+                throw new PostNotFoundException();
+            }
+            if (userId != null && !blockRepository.findBlocksBetween(userId, post.getUserId()).isEmpty()) {
+                throw new PostNotFoundException();
+            }
+        }
         long likeCount = likeRepository.countByPostId(postId);
         boolean liked = userId != null && likeRepository.existsByUserIdAndPostId(userId, postId);
         return toDetailResponse(post, likeCount, liked);
@@ -126,7 +145,7 @@ public class TripmatePostService {
 
     @Transactional(readOnly = true)
     public PostListResponse getPosts(String cursor, String userId) {
-        List<TripmatePost> posts = fetchDisplayedPage(cursor);
+        List<TripmatePost> posts = fetchDisplayedPage(cursor, userId);
         return buildListResponse(posts, userId);
     }
 
@@ -136,11 +155,11 @@ public class TripmatePostService {
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
         List<TripmatePost> posts;
         if (cursor == null || cursor.isBlank()) {
-            posts = postRepository.searchFirstPage(pattern, pageable);
+            posts = postRepository.searchFirstPage(pattern, userId, pageable);
         } else {
             Instant cursorAt = postRepository.findCreatedAt(cursor).orElse(null);
             posts = (cursorAt == null) ? List.of()
-                    : postRepository.searchAfterCursor(pattern, cursorAt, cursor, pageable);
+                    : postRepository.searchAfterCursor(pattern, cursorAt, cursor, userId, pageable);
         }
         return buildListResponse(posts, userId);
     }
@@ -159,6 +178,8 @@ public class TripmatePostService {
                 req.companionType());
 
         List<String> newUrls = req.imageUrls() == null ? List.of() : req.imageUrls();
+        imageOwnershipValidator.verify(userId, newUrls);
+
         Set<String> oldUrls = new HashSet<>();
         postImageRepository.findByPostIdOrderByImageOrderAsc(postId)
                 .forEach(img -> oldUrls.add(img.getImageUrl()));
@@ -175,7 +196,7 @@ public class TripmatePostService {
             try {
                 List<String> removedList = new ArrayList<>(removed);
                 storage.deleteMany(removedList);
-                mongoImageRepository.deleteByUrls(removedList);
+                mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
             } catch (Exception e) {
                 log.warn("수정 시 이미지 정리 실패 (post_id={}): {}", postId, e.toString());
             }
@@ -218,7 +239,7 @@ public class TripmatePostService {
         if (!imageUrls.isEmpty()) {
             try {
                 storage.deleteMany(imageUrls);
-                mongoImageRepository.deleteByUrls(imageUrls);
+                mongoImageRepository.deleteByUserIdAndUrls(userId, imageUrls);
             } catch (Exception e) {
                 log.warn("삭제 시 이미지 정리 실패 (post_id={}): {}", postId, e.toString());
             }
@@ -246,16 +267,16 @@ public class TripmatePostService {
         return images;
     }
 
-    private List<TripmatePost> fetchDisplayedPage(String cursor) {
+    private List<TripmatePost> fetchDisplayedPage(String cursor, String viewerId) {
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
         if (cursor == null || cursor.isBlank()) {
-            return postRepository.findDisplayedFirstPage(pageable);
+            return postRepository.findDisplayedFirstPage(viewerId, pageable);
         }
         Instant cursorAt = postRepository.findCreatedAt(cursor).orElse(null);
         if (cursorAt == null) {
             return List.of();
         }
-        return postRepository.findDisplayedAfterCursor(cursorAt, cursor, pageable);
+        return postRepository.findDisplayedAfterCursor(cursorAt, cursor, viewerId, pageable);
     }
 
     private PostListResponse buildListResponse(List<TripmatePost> posts, String userId) {

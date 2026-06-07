@@ -7,8 +7,11 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 import site.krip.domain.tripmate.document.TripmateImage;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 업로드 이미지 메타데이터 MongoDB 접근.
@@ -48,11 +51,30 @@ public class TripmateImageRepository {
         mongo.remove(Query.query(Criteria.where("image_id").in(imageIds)), TripmateImage.class);
     }
 
-    public void deleteByUrls(List<String> imageUrls) {
+    /**
+     * 주어진 URL 중 해당 유저가 업로드한 것만 추려 반환 (소유권 검증용).
+     * 게시글 첨부 시 타인 이미지 URL 주입(IDOR)을 차단한다.
+     */
+    public Set<String> findOwnedUrls(String userId, Collection<String> imageUrls) {
+        if (imageUrls.isEmpty()) {
+            return Set.of();
+        }
+        Query query = Query.query(
+                Criteria.where("user_id").is(userId).and("image_url").in(imageUrls));
+        query.fields().include("image_url").exclude("_id");
+        return mongo.find(query, TripmateImage.class).stream()
+                .map(TripmateImage::getImageUrl)
+                .collect(Collectors.toSet());
+    }
+
+    /** 본인 소유 이미지에 한해 URL 로 삭제 (타인 이미지 교차 삭제 방지). */
+    public void deleteByUserIdAndUrls(String userId, List<String> imageUrls) {
         if (imageUrls.isEmpty()) {
             return;
         }
-        mongo.remove(Query.query(Criteria.where("image_url").in(imageUrls)), TripmateImage.class);
+        mongo.remove(Query.query(
+                        Criteria.where("user_id").is(userId).and("image_url").in(imageUrls)),
+                TripmateImage.class);
     }
 
     public void deleteByUserId(String userId) {

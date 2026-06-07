@@ -14,12 +14,17 @@ import java.util.Optional;
 public class TripmatePostDraftService {
 
     private final TripmatePostDraftRepository draftRepository;
+    private final TripmateImageOwnershipValidator imageOwnershipValidator;
 
-    public TripmatePostDraftService(TripmatePostDraftRepository draftRepository) {
+    public TripmatePostDraftService(TripmatePostDraftRepository draftRepository,
+                                    TripmateImageOwnershipValidator imageOwnershipValidator) {
         this.draftRepository = draftRepository;
+        this.imageOwnershipValidator = imageOwnershipValidator;
     }
 
     public TripmatePostDraft saveDraft(String userId, SaveDraftRequest req) {
+        // 첨부 이미지 URL 은 본인 업로드분만 허용 (타인 이미지 URL 주입 방지).
+        imageOwnershipValidator.verify(userId, req.imageUrls());
         return draftRepository.upsert(
                 userId, req.title(), req.content(),
                 req.preferredAgeMin(), req.preferredAgeMax(), req.preferredGender(),
