@@ -1,8 +1,6 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.validation.Valid;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,26 +21,26 @@ import site.krip.domain.auth.dto.response.ProfileStatsResponse;
 import site.krip.domain.auth.service.ProfileService;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.common.dto.MessageResponse;
-import site.krip.global.common.exception.ApiException;
+import site.krip.global.common.validation.ImageUploadValidator;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.List;
 
 /** 프로필 조회/수정 + 이미지 CRUD. */
 @RestController
 @RequestMapping("/api/auth/profile")
 public class ProfileController {
 
-    private static final Logger log = LoggerFactory.getLogger(ProfileController.class);
-
-    private static final Set<String> ALLOWED_CONTENT_TYPES =
-            Set.of("image/jpeg", "image/png", "image/webp", "image/gif");
+    private static final List<String> ALLOWED_CONTENT_TYPES =
+            List.of("image/jpeg", "image/png", "image/webp", "image/gif");
     private static final long MAX_FILE_SIZE = 5L * 1024 * 1024; // 5MB
 
     private final ProfileService profileService;
+    private final ImageUploadValidator imageValidator;
 
-    public ProfileController(ProfileService profileService) {
+    public ProfileController(ProfileService profileService, ImageUploadValidator imageValidator) {
         this.profileService = profileService;
+        this.imageValidator = imageValidator;
     }
 
     @GetMapping("/me")
@@ -71,67 +69,24 @@ public class ProfileController {
     @PostMapping("/image")
     @ResponseStatus(HttpStatus.CREATED)
     public ProfileImageResponse addProfileImage(@CurrentUserId String userId,
-                                                @RequestParam("file") MultipartFile file) {
-        validateContentType(file);
-        validateSize(file);
-        try {
-            return profileService.addProfileImage(
-                    userId, openStream(file), file.getSize(),
-                    filename(file), contentType(file));
-        } catch (ApiException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("프로필 이미지 추가 실패 (user_id={}): {}", userId, e.toString());
-            throw ApiException.internalError("프로필 이미지 업로드에 실패했습니다.");
-        }
+                                                @RequestParam("file") MultipartFile file) throws IOException {
+        imageValidator.validate(file, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE);
+        return profileService.addProfileImage(
+                userId, file.getInputStream(), file.getSize(), filename(file), contentType(file));
     }
 
     @PutMapping("/image")
     public ProfileImageResponse updateProfileImage(@CurrentUserId String userId,
-                                                   @RequestParam("file") MultipartFile file) {
-        validateContentType(file);
-        validateSize(file);
-        try {
-            return profileService.updateProfileImage(
-                    userId, openStream(file), file.getSize(),
-                    filename(file), contentType(file));
-        } catch (ApiException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("프로필 이미지 수정 실패 (user_id={}): {}", userId, e.toString());
-            throw ApiException.internalError("프로필 이미지 수정에 실패했습니다.");
-        }
+                                                   @RequestParam("file") MultipartFile file) throws IOException {
+        imageValidator.validate(file, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE);
+        return profileService.updateProfileImage(
+                userId, file.getInputStream(), file.getSize(), filename(file), contentType(file));
     }
 
     @DeleteMapping("/image")
     public MessageResponse deleteProfileImage(@CurrentUserId String userId) {
-        try {
-            profileService.deleteProfileImage(userId);
-        } catch (ApiException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("프로필 이미지 삭제 실패 (user_id={}): {}", userId, e.toString());
-            throw ApiException.internalError("프로필 이미지 삭제에 실패했습니다.");
-        }
+        profileService.deleteProfileImage(userId);
         return new MessageResponse("프로필 이미지가 삭제되었습니다.");
-    }
-
-    // ──────────────────── 검증 ────────────────────
-
-    private void validateContentType(MultipartFile file) {
-        if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
-            throw ApiException.badRequest("허용되지 않는 파일 형식입니다: " + file.getContentType() + " (jpeg, png, webp, gif만 가능)");
-        }
-    }
-
-    private void validateSize(MultipartFile file) {
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw ApiException.badRequest("파일 크기가 5MB를 초과합니다: " + file.getOriginalFilename());
-        }
-    }
-
-    private java.io.InputStream openStream(MultipartFile file) throws IOException {
-        return file.getInputStream();
     }
 
     private String filename(MultipartFile file) {

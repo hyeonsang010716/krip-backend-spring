@@ -7,14 +7,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.util.UriComponentsBuilder;
-import site.krip.domain.auth.dto.SignupResult;
+import site.krip.domain.auth.dto.OAuthCallbackResult;
 import site.krip.domain.auth.entity.OAuthProvider;
 import site.krip.domain.auth.oauth.OAuthClient;
 import site.krip.domain.auth.oauth.OAuthConfig;
 import site.krip.domain.auth.oauth.OAuthConfigs;
-import site.krip.domain.auth.oauth.OAuthUser;
-import site.krip.domain.auth.service.SignupService;
-import site.krip.global.auth.jwt.JwtProvider;
+import site.krip.domain.auth.service.OAuthCallbackService;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.config.OAuthProperties;
 
@@ -29,15 +27,13 @@ import java.net.URI;
 public class AppLoginController {
 
     private final OAuthConfigs oauthConfigs;
-    private final SignupService signupService;
-    private final JwtProvider jwtProvider;
+    private final OAuthCallbackService callbackService;
     private final OAuthProperties oauthProperties;
 
-    public AppLoginController(OAuthConfigs oauthConfigs, SignupService signupService,
-                              JwtProvider jwtProvider, OAuthProperties oauthProperties) {
+    public AppLoginController(OAuthConfigs oauthConfigs, OAuthCallbackService callbackService,
+                             OAuthProperties oauthProperties) {
         this.oauthConfigs = oauthConfigs;
-        this.signupService = signupService;
-        this.jwtProvider = jwtProvider;
+        this.callbackService = callbackService;
         this.oauthProperties = oauthProperties;
     }
 
@@ -58,29 +54,16 @@ public class AppLoginController {
         if (idx < 0 || !"app".equals(state.substring(0, idx))) {
             throw ApiException.badRequest("잘못된 state 값");
         }
-        String providerValue = state.substring(idx + 1);
-
-        OAuthProvider provider;
-        try {
-            provider = OAuthProvider.fromValue(providerValue);
-        } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("지원하지 않는 OAuth 제공자");
-        }
+        OAuthProvider provider = callbackService.parseProvider(state.substring(idx + 1));
         OAuthConfig config = oauthConfigs.appConfig(provider);
-        OAuthClient client = oauthConfigs.client(provider);
 
-        String accessToken = client.exchangeCodeForToken(config, code);
-        OAuthUser userInfo = client.fetchUserInfo(config, accessToken);
-
-        SignupResult result = signupService.checkAndRegister(provider, userInfo.id());
-
-        String jwt = jwtProvider.issue(result.userId());
+        OAuthCallbackResult result = callbackService.exchangeAndRegister(provider, config, code);
 
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(oauthProperties.appDeepLink())
                 .queryParam("status", result.status().getValue())
-                .queryParam("utk", jwt);
-        if (userInfo.email() != null) builder.queryParam("email", userInfo.email());
-        if (userInfo.name() != null) builder.queryParam("name", userInfo.name());
+                .queryParam("utk", result.jwt());
+        if (result.email() != null) builder.queryParam("email", result.email());
+        if (result.name() != null) builder.queryParam("name", result.name());
 
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(builder.build().encode().toUriString()))

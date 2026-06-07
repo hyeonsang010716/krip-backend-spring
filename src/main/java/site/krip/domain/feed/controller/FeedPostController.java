@@ -26,9 +26,10 @@ import site.krip.global.auth.CurrentUserId;
 import site.krip.global.common.dto.MessageResponse;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.common.validation.CodePointSize;
+import site.krip.global.common.validation.ImageUploadValidator;
 
 import java.io.IOException;
-import java.util.Set;
+import java.util.List;
 
 /**
  * 피드 게시물 CRUD + 타 유저 피드. 경로: {@code /api/feed}.
@@ -39,42 +40,33 @@ import java.util.Set;
 public class FeedPostController {
 
     // GIF 제외 (정지 이미지 전용). thumbnail 화이트리스트와 일치 — 라우터 fast-fail.
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
+    private static final List<String> ALLOWED_CONTENT_TYPES = List.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
 
     private final FeedPostService feedPostService;
+    private final ImageUploadValidator imageValidator;
 
-    public FeedPostController(FeedPostService feedPostService) {
+    public FeedPostController(FeedPostService feedPostService, ImageUploadValidator imageValidator) {
         this.feedPostService = feedPostService;
+        this.imageValidator = imageValidator;
     }
 
     @PostMapping(value = "/posts", consumes = "multipart/form-data")
     @ResponseStatus(HttpStatus.CREATED)
     public FeedPostResponse upload(@CurrentUserId String userId,
                                    @RequestPart("file") MultipartFile file,
-                                   @RequestParam(value = "visibility", defaultValue = "public") String visibility,
+                                   @RequestParam(value = "visibility", defaultValue = "public") FeedVisibility visibility,
                                    @RequestParam(value = "caption", required = false)
                                    @CodePointSize(max = FeedPost.CAPTION_MAX_LENGTH,
                                            message = "캡션은 최대 {max}자까지 가능합니다.") String caption) {
-        if (!ALLOWED_CONTENT_TYPES.contains(file.getContentType())) {
-            throw ApiException.badRequest("허용되지 않는 파일 형식입니다: " + file.getContentType() + " (jpeg, png, webp만 가능)");
-        }
-        if (file.getSize() > MAX_FILE_SIZE) {
-            throw ApiException.badRequest("파일 크기가 " + (MAX_FILE_SIZE / (1024 * 1024)) + "MB 를 초과합니다.");
-        }
+        imageValidator.validate(file, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE);
         byte[] bytes;
         try {
             bytes = file.getBytes();
         } catch (IOException e) {
             throw ApiException.badRequest("파일을 읽을 수 없습니다.");
         }
-        FeedVisibility parsedVisibility;
-        try {
-            parsedVisibility = FeedVisibility.from(visibility);
-        } catch (IllegalArgumentException e) {
-            throw ApiException.badRequest("알 수 없는 공개 범위: " + visibility);
-        }
-        return feedPostService.uploadPost(userId, bytes, parsedVisibility, caption);
+        return feedPostService.uploadPost(userId, bytes, visibility, caption);
     }
 
     @GetMapping("/me")

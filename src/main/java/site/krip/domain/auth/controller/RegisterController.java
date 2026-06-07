@@ -1,16 +1,15 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.validation.Valid;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import site.krip.domain.auth.dto.request.RegisterRequest;
-import site.krip.domain.auth.dto.response.RegisterResponse;
 import site.krip.domain.auth.service.RegisterService;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.cache.RegisteredCacheManager;
+import site.krip.global.common.dto.MessageResponse;
 
 /** 2차 회원가입. */
 @RestController
@@ -26,13 +25,13 @@ public class RegisterController {
     }
 
     @PostMapping
-    public ResponseEntity<RegisterResponse> register(@CurrentUserId String userId,
-                                                     @Valid @RequestBody RegisterRequest request) {
+    public MessageResponse register(@CurrentUserId String userId,
+                                    @Valid @RequestBody RegisterRequest request) {
         registerService.registerDetail(userId, request);
 
         // 2차 회원가입 완료 → REGISTERED 캐시 세팅
         registeredCache.setFlag(userId);
 
-        return ResponseEntity.ok(new RegisterResponse("회원가입이 완료되었습니다."));
+        return new MessageResponse("회원가입이 완료되었습니다.");
     }
 }
