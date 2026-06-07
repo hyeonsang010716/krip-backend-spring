@@ -6,7 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.global.cache.RegisteredCacheManager;
@@ -36,7 +36,7 @@ class ChatHandshakeInterceptorTest {
     private static final String APP_ORIGIN = "capacitor://localhost";
 
     private final RegisteredCacheManager registeredCache = mock(RegisteredCacheManager.class);
-    private final UserRepository userRepository = mock(UserRepository.class);
+    private final UserQueryPort userQuery = mock(UserQueryPort.class);
     private final TokenRevocationService revocation = mock(TokenRevocationService.class);
     private final ChatHandshakeInterceptor interceptor = newInterceptor();
 
@@ -46,7 +46,7 @@ class ChatHandshakeInterceptorTest {
         JwtProvider jwtProvider = new JwtProvider(authProps, java.time.Clock.systemUTC());
         CorsProperties corsProps = new CorsProperties(List.of(ALLOWED_ORIGIN), List.of(APP_ORIGIN));
         return new ChatHandshakeInterceptor(jwtProvider, revocation, authProps, corsProps,
-                registeredCache, userRepository);
+                registeredCache, userQuery);
     }
 
     /** Sec-WebSocket-Protocol / Origin 만 노출하는 비-서블릿 ServerHttpRequest mock(쿠키 분기는 건너뜀). */

@@ -6,9 +6,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.entity.UserDetailInform;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.feed.dto.response.CommentListResponse;
 import site.krip.domain.feed.dto.response.CommentResponse;
 import site.krip.domain.feed.entity.FeedPost;
@@ -21,8 +20,6 @@ import site.krip.global.support.AfterCommit;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 피드 댓글 서비스.
@@ -37,16 +34,16 @@ public class FeedPostCommentService {
 
     private final FeedAccessService access;
     private final FeedPostCommentRepository commentRepo;
-    private final UserRepository userRepo;
+    private final UserQueryPort userQuery;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
 
     public FeedPostCommentService(FeedAccessService access, FeedPostCommentRepository commentRepo,
-                                  UserRepository userRepo, FeedInboxPort inboxPort,
+                                  UserQueryPort userQuery, FeedInboxPort inboxPort,
                                   TransactionTemplate txTemplate) {
         this.access = access;
         this.commentRepo = commentRepo;
-        this.userRepo = userRepo;
+        this.userQuery = userQuery;
         this.inboxPort = inboxPort;
         this.txTemplate = txTemplate;
     }
@@ -64,10 +61,10 @@ public class FeedPostCommentService {
         log.info("피드 댓글 작성 (user_id={}, post_id={}, comment_id={})",
                 userId, post.getPostId(), saved.getCommentId());
 
-        UserDetailInform detail = userRepo.findByIdWithProfile(userId).map(User::getDetail).orElse(null);
+        UserProfileView actor = userQuery.findProfile(userId).orElse(null);
         CommentResponse dto = CommentResponse.of(saved,
-                detail != null ? detail.getUserName() : "",
-                detail != null ? detail.getProfileImageUrl() : null);
+                actor != null ? actor.userName() : "",
+                actor != null ? actor.profileImageUrl() : null);
 
         if (!post.getUserId().equals(userId)) {
             String recipientId = post.getUserId();
@@ -87,13 +84,12 @@ public class FeedPostCommentService {
                 : commentRepo.findByPostAfterCursor(post.getPostId(), cursor, page);
 
         List<String> userIds = comments.stream().map(FeedPostComment::getUserId).distinct().toList();
-        Map<String, User> userMap = userRepo.findByIdsWithProfile(userIds).stream()
-                .collect(Collectors.toMap(User::getUserId, Function.identity(), (a, b) -> a));
+        Map<String, UserProfileView> profiles = userQuery.findProfiles(userIds);
 
         List<CommentResponse> items = comments.stream().map(c -> {
-            UserDetailInform d = userMap.containsKey(c.getUserId()) ? userMap.get(c.getUserId()).getDetail() : null;
-            return CommentResponse.of(c, d != null ? d.getUserName() : "",
-                    d != null ? d.getProfileImageUrl() : null);
+            UserProfileView p = profiles.get(c.getUserId());
+            return CommentResponse.of(c, p != null ? p.userName() : "",
+                    p != null ? p.profileImageUrl() : null);
         }).toList();
 
         String nextCursor = comments.size() == FeedPostCommentRepository.PAGE_SIZE

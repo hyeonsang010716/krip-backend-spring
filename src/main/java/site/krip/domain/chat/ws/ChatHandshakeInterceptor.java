@@ -11,9 +11,7 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.entity.UserStatus;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.global.cache.RegisteredCacheManager;
@@ -48,17 +46,17 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
     private final AuthProperties authProps;
     private final CorsProperties corsProps;
     private final RegisteredCacheManager registeredCache;
-    private final UserRepository userRepository;
+    private final UserQueryPort userQuery;
 
     public ChatHandshakeInterceptor(JwtProvider jwtProvider, TokenRevocationService revocation,
                                     AuthProperties authProps, CorsProperties corsProps,
-                                    RegisteredCacheManager registeredCache, UserRepository userRepository) {
+                                    RegisteredCacheManager registeredCache, UserQueryPort userQuery) {
         this.jwtProvider = jwtProvider;
         this.revocation = revocation;
         this.authProps = authProps;
         this.corsProps = corsProps;
         this.registeredCache = registeredCache;
-        this.userRepository = userRepository;
+        this.userQuery = userQuery;
     }
 
     @Override
@@ -161,14 +159,14 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
         if (registeredCache.exists(userId)) {
             return true;
         }
-        User user;
+        boolean active;
         try {
-            user = userRepository.findByIdWithProfile(userId).orElse(null);
+            active = userQuery.isActiveRegistered(userId);
         } catch (Exception e) {
             log.warn("WS status 가드 — DB 조회 실패 (fail-closed): user_id={}", userId, e);
             return false;
         }
-        if (user == null || user.getStatus() != UserStatus.ACTIVE || user.getDetail() == null) {
+        if (!active) {
             return false;
         }
         registeredCache.setFlag(userId);

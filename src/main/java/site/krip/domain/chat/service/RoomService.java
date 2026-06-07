@@ -7,8 +7,8 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.chat.dto.response.ChatRoomPeerResponse;
 import site.krip.domain.chat.dto.response.ChatRoomResponse;
 import site.krip.domain.chat.entity.ChatRoom;
@@ -44,7 +44,7 @@ public class RoomService {
     private final ChatRoomRepository roomRepo;
     private final ChatRoomMemberRepository memberRepo;
     private final FriendQueryPort friendQuery;
-    private final UserRepository userRepo;
+    private final UserQueryPort userQuery;
     private final FanoutService fanout;
     private final MessageService messageService;
     private final UnreadService unreadService;
@@ -54,14 +54,14 @@ public class RoomService {
 
     public RoomService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
                        FriendQueryPort friendQuery,
-                       UserRepository userRepo, FanoutService fanout, MessageService messageService,
+                       UserQueryPort userQuery, FanoutService fanout, MessageService messageService,
                        UnreadService unreadService,
                        site.krip.domain.chat.repository.ChatMessageRepository messageRepo,
                        StringRedisTemplate redis, TransactionTemplate txTemplate) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
         this.friendQuery = friendQuery;
-        this.userRepo = userRepo;
+        this.userQuery = userQuery;
         this.fanout = fanout;
         this.messageService = messageService;
         this.unreadService = unreadService;
@@ -76,7 +76,7 @@ public class RoomService {
         if (meId.equals(peerUserId)) {
             throw ApiException.badRequest("자기 자신과의 방은 만들 수 없습니다.");
         }
-        User peer = userRepo.findByIdWithProfile(peerUserId)
+        UserProfileView peer = userQuery.findProfile(peerUserId)
                 .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
 
         List<FriendQueryPort.BlockPair> blocks = friendQuery.findBlocksBetween(meId, peerUserId);
@@ -372,12 +372,9 @@ public class RoomService {
         return messageRepo.getMaxServerSeq(roomId);
     }
 
-    private ChatRoomResponse toDirectDto(ChatRoom room, User peer) {
-        var detail = peer.getDetail();
+    private ChatRoomResponse toDirectDto(ChatRoom room, UserProfileView peer) {
         ChatRoomPeerResponse peerResp = new ChatRoomPeerResponse(
-                peer.getUserId(),
-                detail != null ? detail.getUserName() : null,
-                detail != null ? detail.getProfileImageUrl() : null);
+                peer.userId(), peer.userName(), peer.profileImageUrl());
         return new ChatRoomResponse(room.getChatRoomId(), room.getType(), room.getTitle(), peerResp,
                 null, 0, room.getLastMessageAt(), room.effectiveLastAtOrCreated(), false);
     }

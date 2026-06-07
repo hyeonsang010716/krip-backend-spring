@@ -5,9 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.entity.UserDetailInform;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.notification.dto.response.FcmTokenResponse;
 import site.krip.domain.notification.entity.FcmToken;
@@ -34,15 +33,15 @@ public class FcmService {
 
     private final FcmTokenRepository tokenRepo;
     private final ChatRoomMemberRepository memberRepo;
-    private final UserRepository userRepo;
+    private final UserQueryPort userQuery;
     private final FcmClient fcmClient;
     private final Clock clock;
 
     public FcmService(FcmTokenRepository tokenRepo, ChatRoomMemberRepository memberRepo,
-                      UserRepository userRepo, FcmClient fcmClient, Clock clock) {
+                      UserQueryPort userQuery, FcmClient fcmClient, Clock clock) {
         this.tokenRepo = tokenRepo;
         this.memberRepo = memberRepo;
-        this.userRepo = userRepo;
+        this.userQuery = userQuery;
         this.fcmClient = fcmClient;
         this.clock = clock;
     }
@@ -87,7 +86,7 @@ public class FcmService {
         if (pushableInRoom.isEmpty()) {
             return 0;
         }
-        List<String> allowed = userRepo.findUnmutedUserIds(pushableInRoom);
+        List<String> allowed = userQuery.retainGloballyUnmuted(pushableInRoom);
         if (allowed.isEmpty()) {
             return 0;
         }
@@ -120,9 +119,9 @@ public class FcmService {
 
     private String resolveSenderDisplayName(String senderId) {
         try {
-            UserDetailInform detail = userRepo.findByIdWithProfile(senderId).map(User::getDetail).orElse(null);
-            if (detail != null && detail.getUserName() != null && !detail.getUserName().isBlank()) {
-                return detail.getUserName();
+            UserProfileView sender = userQuery.findProfile(senderId).orElse(null);
+            if (sender != null && sender.userName() != null && !sender.userName().isBlank()) {
+                return sender.userName();
             }
         } catch (Exception e) {
             log.warn("발신자 이름 조회 실패 sender_id={}", senderId, e);

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.krip.domain.auth.entity.OAuthProvider;
+import site.krip.domain.auth.entity.TravelStyle;
 import site.krip.domain.auth.entity.User;
 import site.krip.domain.auth.entity.UserStatus;
 
@@ -40,6 +41,10 @@ public interface UserRepository extends JpaRepository<User, String> {
     /** 주어진 유저 중 전역 알림 미차단(NULL/false)만 (FCM 푸시 게이팅). */
     @Query("select u.userId from User u where u.userId in :userIds and u.notificationMuted is not true")
     List<String> findUnmutedUserIds(@Param("userIds") java.util.Collection<String> userIds);
+
+    /** 유저의 여행 스타일 값만 투영 (UserQueryPort.findTravelStyles 용 — UserTravelStyle 엔티티 노출 회피). */
+    @Query("select ts.style from User u join u.travelStyles ts where u.userId = :userId")
+    List<TravelStyle> findTravelStyleValues(@Param("userId") String userId);
 
     // TODO 운영 전환 시 — 무한정 전체 조회. (created_at, user_id) 커서 페이지네이션 +
     //  travelStyles 컬렉션 fetch 제거(별도 IN 배치 로드) 필요. 현재는 DEV 전용 API.

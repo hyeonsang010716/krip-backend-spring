@@ -9,7 +9,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.entity.UserDetailInform;
-import site.krip.domain.auth.repository.UserDetailInformRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.tripmate.dto.request.CreatePostRequest;
 import site.krip.domain.tripmate.dto.request.UpdatePostRequest;
 import site.krip.domain.tripmate.dto.response.AuthorResponse;
@@ -53,7 +54,7 @@ public class TripmatePostService {
     private final TripmatePostRepository postRepository;
     private final TripmatePostImageRepository postImageRepository;
     private final TripmatePostLikeRepository likeRepository;
-    private final UserDetailInformRepository detailRepository;
+    private final UserQueryPort userQuery;
     private final TripmatePostDraftService draftService;
     private final TripmateImageRepository mongoImageRepository;
     private final TripmateImageOwnershipValidator imageOwnershipValidator;
@@ -65,7 +66,7 @@ public class TripmatePostService {
     public TripmatePostService(TripmatePostRepository postRepository,
                                TripmatePostImageRepository postImageRepository,
                                TripmatePostLikeRepository likeRepository,
-                               UserDetailInformRepository detailRepository,
+                               UserQueryPort userQuery,
                                TripmatePostDraftService draftService,
                                TripmateImageRepository mongoImageRepository,
                                TripmateImageOwnershipValidator imageOwnershipValidator,
@@ -76,7 +77,7 @@ public class TripmatePostService {
         this.postRepository = postRepository;
         this.postImageRepository = postImageRepository;
         this.likeRepository = likeRepository;
-        this.detailRepository = detailRepository;
+        this.userQuery = userQuery;
         this.draftService = draftService;
         this.mongoImageRepository = mongoImageRepository;
         this.imageOwnershipValidator = imageOwnershipValidator;
@@ -112,13 +113,13 @@ public class TripmatePostService {
             log.warn("임시저장 삭제 실패 (user_id={})", userId, e);
         }
 
-        UserDetailInform detail = detailRepository.findById(userId).orElse(null);
+        UserProfileView author = userQuery.findProfile(userId).orElse(null);
         return new PostCreateResponse(
                 post.getPostId(), post.getUserId(), post.getTitle(), post.getContent(),
                 post.getPreferredAgeMin(), post.getPreferredAgeMax(), post.getPreferredGender(),
                 post.getRegion(), post.getTravelStartDate(), post.getTravelEndDate(),
                 post.getCompanionType(), post.isDisplayed(), post.getCreatedAt(), post.getUpdatedAt(),
-                savedUrls, detail != null ? detail.getProfileImageUrl() : null);
+                savedUrls, author != null ? author.profileImageUrl() : null);
     }
 
     // ──────────────────── 단건/목록/검색 조회 ────────────────────
@@ -197,16 +198,16 @@ public class TripmatePostService {
         // flush → @PreUpdate 가 updated_at 을 즉시 갱신해 응답에 반영.
         postRepository.flush();
 
-        UserDetailInform detail = detailRepository.findById(userId).orElse(null);
+        UserProfileView author = userQuery.findProfile(userId).orElse(null);
         long likeCount = likeRepository.countByPostId(postId);
         boolean liked = likeRepository.existsByUserIdAndPostId(userId, postId);
         return new PostDetailResponse(
-                post.getPostId(), post.getUserId(), AuthorResponse.from(detail),
+                post.getPostId(), post.getUserId(), AuthorResponse.from(author),
                 post.getTitle(), post.getContent(), post.getPreferredAgeMin(), post.getPreferredAgeMax(),
                 post.getPreferredGender(), post.getRegion(), post.getTravelStartDate(),
                 post.getTravelEndDate(), post.getCompanionType(), post.isDisplayed(),
                 post.getCreatedAt(), post.getUpdatedAt(), likeCount, liked, newUrls,
-                detail != null ? detail.getProfileImageUrl() : null);
+                author != null ? author.profileImageUrl() : null);
     }
 
     // ──────────────────── 삭제 ────────────────────

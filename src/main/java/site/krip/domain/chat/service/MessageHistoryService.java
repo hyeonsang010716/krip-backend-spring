@@ -4,9 +4,8 @@ import org.bson.Document;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.entity.UserDetailInform;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.chat.dto.response.ChatMessageResponse;
 import site.krip.domain.chat.dto.response.ChatRoomListResponse;
 import site.krip.domain.chat.dto.response.ChatRoomPeerResponse;
@@ -33,8 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 채팅 읽기 전용 — 방 리스트 / 방 상세 / 참여자 / 초대 가능 친구 / 메시지 히스토리.
@@ -45,17 +42,17 @@ public class MessageHistoryService {
     private final ChatRoomRepository roomRepo;
     private final ChatRoomMemberRepository memberRepo;
     private final ChatMessageRepository messageRepo;
-    private final UserRepository userRepo;
+    private final UserQueryPort userQuery;
     private final FriendQueryPort friendQuery;
     private final UnreadService unreadService;
 
     public MessageHistoryService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
-                                 ChatMessageRepository messageRepo, UserRepository userRepo,
+                                 ChatMessageRepository messageRepo, UserQueryPort userQuery,
                                  FriendQueryPort friendQuery, UnreadService unreadService) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
         this.messageRepo = messageRepo;
-        this.userRepo = userRepo;
+        this.userQuery = userQuery;
         this.friendQuery = friendQuery;
         this.unreadService = unreadService;
     }
@@ -75,8 +72,7 @@ public class MessageHistoryService {
                 messageIds.add(r.getLastMessageId());
             }
         }
-        Map<String, User> peerMap = userRepo.findByIdsWithProfile(peerIds).stream()
-                .collect(Collectors.toMap(User::getUserId, Function.identity(), (a, b) -> a));
+        Map<String, UserProfileView> peerMap = userQuery.findProfiles(peerIds);
         Map<String, Integer> unreadMap = unreadCounts(meId);
         Map<String, Document> messagesById = messageRepo.findByIds(messageIds);
 
@@ -109,7 +105,8 @@ public class MessageHistoryService {
             peerUserId = meId.equals(room.getDirectUserAId())
                     ? room.getDirectUserBId() : room.getDirectUserAId();
         }
-        User peerUser = peerUserId != null ? userRepo.findByIdWithProfile(peerUserId).orElse(null) : null;
+        UserProfileView peerUser = peerUserId != null
+                ? userQuery.findProfile(peerUserId).orElse(null) : null;
 
         int unread = unreadService.countForRoom(meId, roomId);
 
@@ -154,8 +151,7 @@ public class MessageHistoryService {
         if (friendIds.isEmpty()) {
             return new RoomMemberListResponse(List.of());
         }
-        Map<String, User> usersMap = userRepo.findByIdsWithProfile(friendIds).stream()
-                .collect(Collectors.toMap(User::getUserId, Function.identity(), (a, b) -> a));
+        Map<String, UserProfileView> usersMap = userQuery.findProfiles(friendIds);
         List<RoomMemberResponse> items = friendIds.stream()
                 .filter(usersMap::containsKey)
                 .map(uid -> RoomMemberResponse.from(usersMap.get(uid)))
@@ -186,16 +182,15 @@ public class MessageHistoryService {
         }
     }
 
-    private static ChatRoomResponse roomToResponse(ChatRoom room, String peerUserId, User peerUser,
+    private static ChatRoomResponse roomToResponse(ChatRoom room, String peerUserId, UserProfileView peerUser,
                                                    int unreadCount, Document lastMessageDoc, boolean muted) {
         ChatRoomPeerResponse peer = null;
         if (peerUserId != null) {
             if (peerUser == null) {
                 peer = new ChatRoomPeerResponse(peerUserId, null, null);
             } else {
-                UserDetailInform d = peerUser.getDetail();
-                peer = new ChatRoomPeerResponse(peerUser.getUserId(),
-                        d != null ? d.getUserName() : null, d != null ? d.getProfileImageUrl() : null);
+                peer = new ChatRoomPeerResponse(peerUser.userId(), peerUser.userName(),
+                        peerUser.profileImageUrl());
             }
         } else if (room.getType() == ChatRoomType.DIRECT) {
             peer = new ChatRoomPeerResponse(null, null, null);

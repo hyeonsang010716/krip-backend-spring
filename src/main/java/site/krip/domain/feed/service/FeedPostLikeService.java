@@ -6,9 +6,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import site.krip.domain.auth.entity.User;
-import site.krip.domain.auth.entity.UserDetailInform;
-import site.krip.domain.auth.repository.UserRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.feed.dto.response.LikedUserItem;
 import site.krip.domain.feed.dto.response.LikedUsersResponse;
 import site.krip.domain.feed.entity.FeedPost;
@@ -20,8 +19,6 @@ import site.krip.global.support.AfterCommit;
 
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 /**
  * 피드 좋아요 서비스.
@@ -36,16 +33,16 @@ public class FeedPostLikeService {
 
     private final FeedAccessService access;
     private final FeedPostLikeRepository likeRepo;
-    private final UserRepository userRepo;
+    private final UserQueryPort userQuery;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
 
     public FeedPostLikeService(FeedAccessService access, FeedPostLikeRepository likeRepo,
-                               UserRepository userRepo, FeedInboxPort inboxPort,
+                               UserQueryPort userQuery, FeedInboxPort inboxPort,
                                TransactionTemplate txTemplate) {
         this.access = access;
         this.likeRepo = likeRepo;
-        this.userRepo = userRepo;
+        this.userQuery = userQuery;
         this.inboxPort = inboxPort;
         this.txTemplate = txTemplate;
     }
@@ -71,10 +68,9 @@ public class FeedPostLikeService {
         if (!post.getUserId().equals(userId)) {
             String recipientId = post.getUserId();
             String preview = post.getThumbnailSmallUrl();
-            UserDetailInform detail = userRepo.findByIdWithProfile(userId)
-                    .map(User::getDetail).orElse(null);
-            String actorName = detail != null ? detail.getUserName() : "";
-            String actorImage = detail != null ? detail.getProfileImageUrl() : null;
+            UserProfileView actor = userQuery.findProfile(userId).orElse(null);
+            String actorName = actor != null ? actor.userName() : "";
+            String actorImage = actor != null ? actor.profileImageUrl() : null;
             AfterCommit.run(() -> inboxPort.notifyFeedLike(
                     recipientId, userId, actorName, actorImage, postId, preview));
         }
@@ -97,15 +93,13 @@ public class FeedPostLikeService {
         FeedPost post = access.loadViewablePost(viewerId, postId).post();
         List<FeedPostLike> likes = likeRepo.findByPostIdOrderByCreatedAtDesc(post.getPostId());
         List<String> userIds = likes.stream().map(FeedPostLike::getUserId).toList();
-        Map<String, User> userMap = userRepo.findByIdsWithProfile(userIds).stream()
-                .collect(Collectors.toMap(User::getUserId, Function.identity(), (a, b) -> a));
+        Map<String, UserProfileView> profiles = userQuery.findProfiles(userIds);
 
         List<LikedUserItem> items = likes.stream().map(like -> {
-            User u = userMap.get(like.getUserId());
-            UserDetailInform d = u != null ? u.getDetail() : null;
+            UserProfileView p = profiles.get(like.getUserId());
             return new LikedUserItem(like.getUserId(),
-                    d != null ? d.getUserName() : "",
-                    d != null ? d.getProfileImageUrl() : null);
+                    p != null ? p.userName() : "",
+                    p != null ? p.profileImageUrl() : null);
         }).toList();
         return new LikedUsersResponse(postId, items);
     }

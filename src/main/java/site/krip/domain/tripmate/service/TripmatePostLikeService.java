@@ -4,8 +4,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
-import site.krip.domain.auth.entity.UserDetailInform;
-import site.krip.domain.auth.repository.UserDetailInformRepository;
+import site.krip.domain.auth.port.UserProfileView;
+import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.tripmate.entity.TripmatePost;
 import site.krip.domain.tripmate.entity.TripmatePostLike;
 import site.krip.domain.tripmate.port.TripmateNotificationPort;
@@ -26,18 +26,18 @@ public class TripmatePostLikeService {
 
     private final TripmatePostAccessGuard accessGuard;
     private final TripmatePostLikeRepository likeRepository;
-    private final UserDetailInformRepository detailRepository;
+    private final UserQueryPort userQuery;
     private final TripmateNotificationPort notificationPort;
     private final TransactionTemplate txTemplate;
 
     public TripmatePostLikeService(TripmatePostAccessGuard accessGuard,
                                    TripmatePostLikeRepository likeRepository,
-                                   UserDetailInformRepository detailRepository,
+                                   UserQueryPort userQuery,
                                    TripmateNotificationPort notificationPort,
                                    TransactionTemplate txTemplate) {
         this.accessGuard = accessGuard;
         this.likeRepository = likeRepository;
-        this.detailRepository = detailRepository;
+        this.userQuery = userQuery;
         this.notificationPort = notificationPort;
         this.txTemplate = txTemplate;
     }
@@ -71,9 +71,9 @@ public class TripmatePostLikeService {
         if (!post.getUserId().equals(userId)) {
             String recipientId = post.getUserId();
             String preview = post.getTitle();
-            UserDetailInform detail = detailRepository.findById(userId).orElse(null);
-            String actorName = detail != null ? detail.getUserName() : "";
-            String actorImage = detail != null ? detail.getProfileImageUrl() : null;
+            UserProfileView actor = userQuery.findProfile(userId).orElse(null);
+            String actorName = actor != null ? actor.userName() : "";
+            String actorImage = actor != null ? actor.profileImageUrl() : null;
             AfterCommit.run(() -> notificationPort.notifyTripmateLike(
                     recipientId, userId, actorName, actorImage, postId, preview));
         }

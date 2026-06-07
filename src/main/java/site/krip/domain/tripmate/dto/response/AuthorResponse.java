@@ -2,6 +2,7 @@ package site.krip.domain.tripmate.dto.response;
 
 import site.krip.domain.auth.entity.Gender;
 import site.krip.domain.auth.entity.UserDetailInform;
+import site.krip.domain.auth.port.UserProfileView;
 
 /**
  * 게시글 작성자 프로필.
@@ -17,11 +18,19 @@ public record AuthorResponse(
         return new AuthorResponse("anonymous", 0, Gender.MALE, "");
     }
 
+    /** JPA 연관관계(post.getUser().getDetail())로 얻은 detail 용. */
     public static AuthorResponse from(UserDetailInform detail) {
         if (detail == null) {
             return anonymous();
         }
         return new AuthorResponse(detail.getUserName(), detail.getAge(), detail.getGender(),
                 detail.getNationality());
+    }
+
+    public static AuthorResponse from(UserProfileView view) {
+        if (view == null) {
+            return anonymous();
+        }
+        return new AuthorResponse(view.userName(), view.age(), view.gender(), view.nationality());
     }
 }
