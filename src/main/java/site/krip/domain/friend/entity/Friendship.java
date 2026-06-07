@@ -12,6 +12,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -63,6 +64,11 @@ public class Friendship {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /** 낙관적 락 — 동시 수락/차단 등 같은 관계 행에 대한 lost-update 를 차단(충돌 시 409). */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     public Friendship(String requesterId, String addresseeId) {
         this.friendshipId = IdGenerator.friendshipId();

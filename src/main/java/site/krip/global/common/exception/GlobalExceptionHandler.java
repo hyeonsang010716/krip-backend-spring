@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -148,6 +149,14 @@ public class GlobalExceptionHandler {
         log.error("데이터 무결성 위반", e);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of("서버 내부 오류가 발생했습니다."));
+    }
+
+    /** 낙관적 락(@Version) 충돌 → 409. 같은 행을 동시에 수정해 lost-update 가 차단된 경우. */
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<ErrorResponse> handleOptimisticLock(OptimisticLockingFailureException e) {
+        log.warn("낙관적 락 충돌 → 409: {}", e.toString());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of("다른 변경과 충돌했습니다. 다시 시도해주세요."));
     }
 
     /** PostgreSQL UNIQUE 위반(SQLState 23505) 또는 {@link DuplicateKeyException} 여부 — 원인 체인을 따라 확인. */

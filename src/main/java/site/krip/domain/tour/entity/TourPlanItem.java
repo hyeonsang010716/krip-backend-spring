@@ -8,6 +8,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -61,6 +62,11 @@ public class TourPlanItem {
 
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /** 낙관적 락 — 같은 카드의 동시 교체/이동 lost-update 를 차단(충돌 시 409). position 경합 재시도와는 독립. */
+    @Version
+    @Column(name = "version", nullable = false)
+    private long version;
 
     public TourPlanItem(String planId, int dayNumber, double position, String placeId,
                         String displayName, String address, String visitTime) {

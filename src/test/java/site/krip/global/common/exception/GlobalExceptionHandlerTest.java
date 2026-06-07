@@ -4,7 +4,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.sql.SQLException;
 
@@ -47,5 +49,13 @@ class GlobalExceptionHandlerTest {
     void noSqlCauseReturns500() {
         assertThat(handler.handleDataIntegrity(new DataIntegrityViolationException("x")).getStatusCode())
                 .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Test
+    @DisplayName("낙관적 락 충돌 → 409")
+    void optimisticLockReturns409() {
+        OptimisticLockingFailureException e =
+                new ObjectOptimisticLockingFailureException(Object.class, "id");
+        assertThat(handler.handleOptimisticLock(e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 }
