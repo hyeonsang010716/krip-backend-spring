@@ -13,6 +13,9 @@ import site.krip.support.FakeObjectStorage;
 import site.krip.support.FakeStorageConfig;
 import site.krip.support.IntegrationTestSupport;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,8 +40,11 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private MockMultipartFile jpeg(String name) {
-        return new MockMultipartFile("files", name, "image/jpeg", new byte[]{1, 2, 3});
+    private MockMultipartFile jpeg(String name) throws Exception {
+        BufferedImage img = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        ImageIO.write(img, "jpg", buf);
+        return new MockMultipartFile("files", name, "image/jpeg", buf.toByteArray());
     }
 
     @Test
@@ -78,6 +84,28 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("img타입");
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "x.pdf", "application/pdf", new byte[]{1}))
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("content-type 은 이미지지만 실제 이미지 바이트가 아니면 → 400 (재인코딩 파이프라인 거절)")
+    void nonImageBytesRejected() throws Exception {
+        String userId = fixtures.createActiveUser("img위장");
+        mockMvc.perform(multipart(IMAGES)
+                        .file(new MockMultipartFile("files", "fake.jpg", "image/jpeg", new byte[]{1, 2, 3}))
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("gif 는 허용 목록에서 제외 → 400")
+    void gifRejected() throws Exception {
+        String userId = fixtures.createActiveUser("imggif");
+        mockMvc.perform(multipart(IMAGES)
+                        .file(new MockMultipartFile("files", "a.gif", "image/gif", new byte[]{1}))
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(userId)))
                 .andExpect(status().isBadRequest());

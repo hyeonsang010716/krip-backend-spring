@@ -4,6 +4,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.common.image.ImageProcessor;
+import site.krip.global.common.image.ProcessedImageSet;
 
 import javax.imageio.ImageIO;
 import java.awt.Color;
@@ -17,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link FeedImageProcessor} 순수 Java 이미지 처리 단위 테스트 — S3/Spring 불필요.
+ * {@link ImageProcessor} 순수 Java 이미지 처리 단위 테스트 — S3/Spring 불필요.
  *
  * <p>java.awt/ImageIO 로 메모리 내 작은 이미지를 만들어 3종 변형(원본/small 240/medium 720)과
  * 1:1 center crop, 포맷 화이트리스트, 50MP cap, APNG/animated-WEBP 거절을 검증한다.
@@ -28,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class FeedImageProcessorTest {
 
-    private final FeedImageProcessor processor = new FeedImageProcessor();
+    private final ImageProcessor processor = new ImageProcessor();
 
     @BeforeAll
     static void allowLargeImages() {
@@ -79,7 +81,7 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("정상 PNG -> 원본 + small(240) + medium(720) 3종 변형을 생성한다")
     void validPngProducesThreeVariants() throws Exception {
-        ProcessedFeedImage result = processor.process(png(1000, 800));
+        ProcessedImageSet result = processor.process(png(1000, 800));
 
         assertThat(result.original()).isNotNull();
         assertThat(result.small()).isNotNull();
@@ -98,7 +100,7 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("정상 JPEG -> 3종 변형, small/medium 정사각형")
     void validJpegProducesThreeVariants() throws Exception {
-        ProcessedFeedImage result = processor.process(jpeg(1200, 900));
+        ProcessedImageSet result = processor.process(jpeg(1200, 900));
 
         assertThat(dims(result.small().data())).containsExactly(240, 240);
         assertThat(dims(result.medium().data())).containsExactly(720, 720);
@@ -109,7 +111,7 @@ class FeedImageProcessorTest {
     @DisplayName("작은 JPEG(2048 이하, 미회전)의 원본은 입력 bytes 를 그대로 보존한다")
     void smallJpegOriginalPreservesBytes() throws Exception {
         byte[] src = jpeg(800, 600);
-        ProcessedFeedImage result = processor.process(src);
+        ProcessedImageSet result = processor.process(src);
         // 한 변 <= 2048 이고 EXIF 회전 없음 -> 원본 raw bytes 보존.
         assertThat(result.original().data()).isSameAs(src);
         assertThat(result.original().contentType()).isEqualTo("image/jpeg");
@@ -120,7 +122,7 @@ class FeedImageProcessorTest {
     @DisplayName("작은 PNG(미회전)의 원본은 image/png 으로 raw bytes 보존")
     void smallPngOriginalPreservesBytes() throws Exception {
         byte[] src = png(500, 500);
-        ProcessedFeedImage result = processor.process(src);
+        ProcessedImageSet result = processor.process(src);
         assertThat(result.original().data()).isSameAs(src);
         assertThat(result.original().contentType()).isEqualTo("image/png");
         assertThat(result.original().fileExt()).isEqualTo("png");
@@ -130,7 +132,7 @@ class FeedImageProcessorTest {
     @DisplayName("2048 초과 원본은 한 변 <= 2048 로 축소된다")
     void oversizedOriginalIsShrunkTo2048() throws Exception {
         // 3000x1500 -> longest side 2048.
-        ProcessedFeedImage result = processor.process(jpeg(3000, 1500));
+        ProcessedImageSet result = processor.process(jpeg(3000, 1500));
         int[] d = dims(result.original().data());
         assertThat(Math.max(d[0], d[1])).isLessThanOrEqualTo(2048);
         // 종횡비 유지 -> 2048 x 1024 근처.
@@ -142,7 +144,7 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("가로로 긴 이미지도 small/medium 은 정사각(center crop)으로 만들어진다")
     void wideImageCenterCroppedToSquare() throws Exception {
-        ProcessedFeedImage result = processor.process(png(1600, 400));
+        ProcessedImageSet result = processor.process(png(1600, 400));
         assertThat(dims(result.small().data())).containsExactly(240, 240);
         assertThat(dims(result.medium().data())).containsExactly(720, 720);
     }
@@ -150,7 +152,7 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("세로로 긴 이미지도 정사각 변형이 만들어진다")
     void tallImageCenterCroppedToSquare() throws Exception {
-        ProcessedFeedImage result = processor.process(png(400, 1600));
+        ProcessedImageSet result = processor.process(png(400, 1600));
         assertThat(dims(result.small().data())).containsExactly(240, 240);
         assertThat(dims(result.medium().data())).containsExactly(720, 720);
     }
@@ -159,7 +161,7 @@ class FeedImageProcessorTest {
     @DisplayName("medium 보다 작은 원본도 변형은 240/720 으로 업스케일된다")
     void smallSourceUpscaledForVariants() throws Exception {
         // 300x300 -> medium 720 까지 업스케일.
-        ProcessedFeedImage result = processor.process(png(300, 300));
+        ProcessedImageSet result = processor.process(png(300, 300));
         assertThat(dims(result.small().data())).containsExactly(240, 240);
         assertThat(dims(result.medium().data())).containsExactly(720, 720);
     }
@@ -167,7 +169,7 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("알파 PNG 도 정상 처리되어 정사각 JPEG 변형을 만든다")
     void alphaPngProcessed() throws Exception {
-        ProcessedFeedImage result = processor.process(pngWithAlpha(800, 800));
+        ProcessedImageSet result = processor.process(pngWithAlpha(800, 800));
         assertThat(dims(result.small().data())).containsExactly(240, 240);
         // 알파 -> JPEG 변형은 흰 배경으로 flatten (예외 없이 처리되면 충분).
         assertThat(result.small().contentType()).isEqualTo("image/jpeg");

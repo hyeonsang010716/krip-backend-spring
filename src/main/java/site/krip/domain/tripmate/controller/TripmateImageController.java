@@ -22,14 +22,14 @@ import java.util.List;
 
 /**
  * 여행 메이트 이미지 업로드/정리. 경로: {@code /api/tripmate/images}.
- * 다건 업로드, 최대 10개 / 파일당 10MB / jpeg·png·webp·gif.
+ * 다건 업로드, 최대 10개 / 파일당 10MB / jpeg·png·webp. 업로드 시 재인코딩으로 정제(EXIF 제거·폴리글랏 무력화).
  */
 @RestController
 @RequestMapping("/api/tripmate/images")
 public class TripmateImageController {
 
     private static final List<String> ALLOWED_CONTENT_TYPES =
-            List.of("image/jpeg", "image/png", "image/webp", "image/gif");
+            List.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024; // 10MB
     private static final int MAX_FILE_COUNT = 10;
 
@@ -60,9 +60,7 @@ public class TripmateImageController {
 
         List<ImageUploadResponse> uploaded = new ArrayList<>(files.size());
         for (MultipartFile f : files) {
-            String name = f.getOriginalFilename() != null ? f.getOriginalFilename() : "image";
-            String type = f.getContentType() != null ? f.getContentType() : "image/jpeg";
-            TripmateImage saved = imageService.uploadImage(userId, f.getInputStream(), f.getSize(), name, type);
+            TripmateImage saved = imageService.uploadImage(userId, f.getBytes());
             uploaded.add(new ImageUploadResponse(saved.getImageId(), saved.getImageUrl()));
         }
         return new ImageUploadListResponse(uploaded);

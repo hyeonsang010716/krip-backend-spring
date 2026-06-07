@@ -14,8 +14,8 @@ import site.krip.domain.feed.exception.FeedNotFoundException;
 import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostRepository;
 import site.krip.domain.feed.repository.FeedPostRow;
-import site.krip.domain.feed.service.image.FeedImageProcessor;
-import site.krip.domain.feed.service.image.ProcessedFeedImage;
+import site.krip.global.common.image.ImageProcessor;
+import site.krip.global.common.image.ProcessedImageSet;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
@@ -37,13 +37,13 @@ public class FeedPostService {
 
     private final FeedPostRepository feedPostRepo;
     private final FeedAccessService access;
-    private final FeedImageProcessor imageProcessor;
+    private final ImageProcessor imageProcessor;
     private final ObjectStorage storage;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
 
     public FeedPostService(FeedPostRepository feedPostRepo, FeedAccessService access,
-                           FeedImageProcessor imageProcessor, ObjectStorage storage,
+                           ImageProcessor imageProcessor, ObjectStorage storage,
                            FeedInboxPort inboxPort, TransactionTemplate txTemplate) {
         this.feedPostRepo = feedPostRepo;
         this.access = access;
@@ -58,7 +58,7 @@ public class FeedPostService {
     public FeedPostResponse uploadPost(String userId, byte[] fileBytes,
                                        FeedVisibility visibility, String caption) {
         // 이미지 처리 — 트랜잭션/S3 전, 잘못된 이미지 fast-fail(400)
-        ProcessedFeedImage processed = imageProcessor.process(fileBytes);
+        ProcessedImageSet processed = imageProcessor.process(fileBytes);
 
         String postId = IdGenerator.feedPostId();
         String prefix = StoragePrefix.feedPostPrefix(userId, postId);

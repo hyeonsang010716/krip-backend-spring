@@ -1,4 +1,4 @@
-package site.krip.domain.feed.service.image;
+package site.krip.global.common.image;
 
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
@@ -24,16 +24,17 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 피드 이미지 전처리.
+ * 이미지 전처리 — 도메인 공용.
  *
- * <p>1:1 center crop → small(240)/medium(720) JPEG q80, original 은 한 변 ≤ 2048 + EXIF 회전 없으면
- * raw bytes 보존(아니면 포맷별 재인코딩). 방어선: 포맷 화이트리스트(JPEG/PNG/WEBP), 애니메이션 거절,
- * 디코드 픽셀 cap(50MP). 모든 실패는 400(ApiException). Thumbnailator/TwelveMonkeys/metadata-extractor 사용.
+ * <p>{@link #process}: 1:1 center crop → small(240)/medium(720) JPEG q80, original 은 한 변 ≤ 2048 +
+ * EXIF 회전 없으면 raw bytes 보존(피드 게시물용). {@link #sanitize}: 변형 없이 단일 이미지를 항상 재인코딩해
+ * EXIF/메타데이터 제거 + 폴리글랏 무력화(단건 업로드용). 공통 방어선: 포맷 화이트리스트(JPEG/PNG/WEBP),
+ * 애니메이션 거절, 디코드 픽셀 cap(50MP). 모든 실패는 400(ApiException).
  */
 @Component
-public class FeedImageProcessor {
+public class ImageProcessor {
 
-    private static final Logger log = LoggerFactory.getLogger(FeedImageProcessor.class);
+    private static final Logger log = LoggerFactory.getLogger(ImageProcessor.class);
 
     private static final int THUMBNAIL_SMALL = 240;
     private static final int THUMBNAIL_MEDIUM = 720;
@@ -48,14 +49,20 @@ public class FeedImageProcessor {
             "WEBP", new String[]{"image/webp", "webp"});
 
     /** 원본 bytes → (원본 + small + medium) 3종. 디코딩 1회 공유. */
-    public ProcessedFeedImage process(byte[] src) {
+    public ProcessedImageSet process(byte[] src) {
         Decoded decoded = decode(src);
         BufferedImage img = decoded.image;
         String format = decoded.format;
-        return new ProcessedFeedImage(
+        return new ProcessedImageSet(
                 shrinkOriginal(img, src, format, decoded.wasRotated),
                 cropSquareAndResize(img, THUMBNAIL_SMALL),
                 cropSquareAndResize(img, THUMBNAIL_MEDIUM));
+    }
+
+    /** 단일 정제 이미지 — 항상 재인코딩하여 EXIF/메타데이터 제거 + 폴리글랏 무력화. content-type 은 감지된 포맷에서 도출. */
+    public ProcessedVariant sanitize(byte[] src) {
+        Decoded decoded = decode(src);
+        return reencodeShrunk(decoded.image, decoded.format);
     }
 
     private Decoded decode(byte[] src) {
@@ -140,6 +147,12 @@ public class FeedImageProcessor {
             String[] meta = FORMAT_META.get(format);
             return new ProcessedVariant(src, meta[0], meta[1]);
         }
+        return reencodeShrunk(img, format);
+    }
+
+    /** 한 변 ≤ 2048 로 축소 후 포맷별 재인코딩 — 항상 새 bytes 를 만들어 EXIF/메타데이터를 제거한다. */
+    private ProcessedVariant reencodeShrunk(BufferedImage img, String format) {
+        boolean needsShrink = Math.max(img.getWidth(), img.getHeight()) > ORIGINAL_MAX;
         try {
             BufferedImage work = img;
             if (needsShrink) {
@@ -263,10 +276,10 @@ public class FeedImageProcessor {
             if ("IDAT".equals(type) || "IEND".equals(type)) {
                 return false;
             }
-            pos += 12 + (int) len; // length(4) + type(4) + data(len) + crc(4)
-            if (len < 0) {
+            if (len < 0 || len > b.length) {
                 return false;
             }
+            pos += 12 + (int) len; // length(4) + type(4) + data(len) + crc(4)
         }
         return false;
     }

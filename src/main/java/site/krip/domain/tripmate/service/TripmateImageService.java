@@ -11,11 +11,13 @@ import site.krip.domain.tripmate.exception.PostNotFoundException;
 import site.krip.domain.tripmate.repository.TripmateImageRepository;
 import site.krip.domain.tripmate.repository.TripmatePostDraftRepository;
 import site.krip.domain.tripmate.repository.TripmatePostImageRepository;
+import site.krip.global.common.image.ImageProcessor;
+import site.krip.global.common.image.ProcessedVariant;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
 import site.krip.global.support.IdGenerator;
 
-import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -38,21 +40,27 @@ public class TripmateImageService {
     private final TripmatePostImageRepository postImageRepository;
     private final TripmatePostDraftRepository draftRepository;
     private final ObjectStorage storage;
+    private final ImageProcessor imageProcessor;
 
     public TripmateImageService(TripmateImageRepository imageRepository,
                                 TripmatePostImageRepository postImageRepository,
                                 TripmatePostDraftRepository draftRepository,
-                                ObjectStorage storage) {
+                                ObjectStorage storage,
+                                ImageProcessor imageProcessor) {
         this.imageRepository = imageRepository;
         this.postImageRepository = postImageRepository;
         this.draftRepository = draftRepository;
         this.storage = storage;
+        this.imageProcessor = imageProcessor;
     }
 
-    public TripmateImage uploadImage(String userId, InputStream content, long contentLength,
-                                     String fileName, String contentType) {
+    /** 업로드 — 항상 재인코딩(EXIF 제거·폴리글랏 무력화) 후 감지된 포맷의 content-type 으로 저장. */
+    public TripmateImage uploadImage(String userId, byte[] fileBytes) {
+        ProcessedVariant sanitized = imageProcessor.sanitize(fileBytes);
         String imageId = IdGenerator.tripmateImageId();
-        String imageUrl = storage.uploadPerm(content, contentLength, fileName, contentType,
+        String imageUrl = storage.uploadPerm(
+                new ByteArrayInputStream(sanitized.data()), sanitized.data().length,
+                "image." + sanitized.fileExt(), sanitized.contentType(),
                 StoragePrefix.postPrefix(userId));
         log.info("이미지 업로드 완료 (user_id={}, image_id={})", userId, imageId);
         return imageRepository.save(new TripmateImage(userId, imageId, imageUrl, Instant.now()));

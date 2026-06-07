@@ -14,6 +14,9 @@ import site.krip.support.FakeObjectStorage;
 import site.krip.support.FakeStorageConfig;
 import site.krip.support.IntegrationTestSupport;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Set;
 
@@ -44,8 +47,11 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
     @Autowired
     private TripmateImageRepository imageRepository;
 
-    private MockMultipartFile jpeg(String name) {
-        return new MockMultipartFile("files", name, "image/jpeg", new byte[]{1, 2, 3});
+    private MockMultipartFile jpeg(String name) throws Exception {
+        BufferedImage img = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        ImageIO.write(img, "jpg", buf);
+        return new MockMultipartFile("files", name, "image/jpeg", buf.toByteArray());
     }
 
     /** 이미지 1건 업로드 후 image_url 반환. */
