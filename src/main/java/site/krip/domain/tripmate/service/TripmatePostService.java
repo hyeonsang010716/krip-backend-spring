@@ -89,24 +89,25 @@ public class TripmatePostService {
 
     // ──────────────────── 생성 ────────────────────
 
-    @Transactional
     public PostCreateResponse createPost(String userId, CreatePostRequest req) {
         List<String> savedUrls = req.imageUrls() == null ? List.of() : req.imageUrls();
+        // 소유권 검증(Mongo) 은 RDB 트랜잭션 밖 — 네트워크 왕복 동안 커넥션을 점유하지 않는다.
         imageOwnershipValidator.verify(userId, savedUrls);
 
-        TripmatePost post = new TripmatePost(
-                userId, req.title(), req.content(), req.preferredAgeMin(), req.preferredAgeMax(),
-                req.preferredGender(), req.region(), req.travelStartDate(), req.travelEndDate(),
-                req.companionType());
-        // ID 를 직접 부여하므로 save() 는 merge 로 동작 → 반환된 managed 인스턴스를 사용해야
-        // @PrePersist 로 채워진 시각이 생성 응답에 반영된다.
-        post = postRepository.saveAndFlush(post);
+        TripmatePost post = txTemplate.execute(s -> {
+            // ID 를 직접 부여하므로 save() 는 merge 로 동작 → 반환된 managed 인스턴스를 사용해야
+            // @PrePersist 로 채워진 시각이 생성 응답에 반영된다.
+            TripmatePost p = postRepository.saveAndFlush(new TripmatePost(
+                    userId, req.title(), req.content(), req.preferredAgeMin(), req.preferredAgeMax(),
+                    req.preferredGender(), req.region(), req.travelStartDate(), req.travelEndDate(),
+                    req.companionType()));
+            if (!savedUrls.isEmpty()) {
+                postImageRepository.saveAll(toImageEntities(p.getPostId(), savedUrls));
+            }
+            return p;
+        });
 
-        if (!savedUrls.isEmpty()) {
-            postImageRepository.saveAll(toImageEntities(post.getPostId(), savedUrls));
-        }
-
-        // 발행 성공 → 임시저장 삭제 (실패해도 생성은 유지)
+        // 발행 성공 → 임시저장 삭제(Mongo) 도 트랜잭션 밖, best-effort (실패해도 생성은 유지)
         try {
             draftService.deleteDraft(userId);
         } catch (Exception e) {
@@ -157,46 +158,50 @@ public class TripmatePostService {
 
     // ──────────────────── 수정 ────────────────────
 
-    @Transactional
     public PostDetailResponse updatePost(String postId, String userId, UpdatePostRequest req) {
-        TripmatePost post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
-        if (!post.getUserId().equals(userId)) {
-            throw new PostAccessDeniedException("게시글 수정 권한이 없습니다.");
-        }
-
-        post.update(req.title(), req.content(), req.preferredAgeMin(), req.preferredAgeMax(),
-                req.preferredGender(), req.region(), req.travelStartDate(), req.travelEndDate(),
-                req.companionType());
-
         List<String> newUrls = req.imageUrls() == null ? List.of() : req.imageUrls();
+        // 소유권 검증(Mongo) 은 RDB 트랜잭션 밖 — 네트워크 왕복 동안 커넥션을 점유하지 않는다.
+        // verify 와 작성자 권한 검사 모두 PostAccessDeniedException(403) 이라 순서를 바꿔도 결과는 403 동일.
         imageOwnershipValidator.verify(userId, newUrls);
 
-        Set<String> oldUrls = new HashSet<>();
-        postImageRepository.findByPostIdOrderByImageOrderAsc(postId)
-                .forEach(img -> oldUrls.add(img.getImageUrl()));
+        TripmatePost post = txTemplate.execute(s -> {
+            TripmatePost p = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+            if (!p.getUserId().equals(userId)) {
+                throw new PostAccessDeniedException("게시글 수정 권한이 없습니다.");
+            }
 
-        postImageRepository.deleteByPostId(postId);
-        if (!newUrls.isEmpty()) {
-            postImageRepository.saveAll(toImageEntities(postId, newUrls));
-        }
+            p.update(req.title(), req.content(), req.preferredAgeMin(), req.preferredAgeMax(),
+                    req.preferredGender(), req.region(), req.travelStartDate(), req.travelEndDate(),
+                    req.companionType());
 
-        // 제거된 이미지 → 커밋 이후 Object Storage + MongoDB 정리 (롤백 시 참조 중인 객체 삭제 방지).
-        Set<String> removed = new HashSet<>(oldUrls);
-        removed.removeAll(new HashSet<>(newUrls));
-        if (!removed.isEmpty()) {
-            List<String> removedList = new ArrayList<>(removed);
-            AfterCommit.run(() -> {
-                try {
-                    storage.deleteMany(removedList);
-                    mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
-                } catch (Exception e) {
-                    log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
-                }
-            });
-        }
+            Set<String> oldUrls = new HashSet<>();
+            postImageRepository.findByPostIdOrderByImageOrderAsc(postId)
+                    .forEach(img -> oldUrls.add(img.getImageUrl()));
 
-        // flush → @PreUpdate 가 updated_at 을 즉시 갱신해 응답에 반영.
-        postRepository.flush();
+            postImageRepository.deleteByPostId(postId);
+            if (!newUrls.isEmpty()) {
+                postImageRepository.saveAll(toImageEntities(postId, newUrls));
+            }
+
+            // 제거된 이미지 → 커밋 이후 Object Storage + MongoDB 정리 (롤백 시 참조 중인 객체 삭제 방지).
+            Set<String> removed = new HashSet<>(oldUrls);
+            removed.removeAll(new HashSet<>(newUrls));
+            if (!removed.isEmpty()) {
+                List<String> removedList = new ArrayList<>(removed);
+                AfterCommit.run(() -> {
+                    try {
+                        storage.deleteMany(removedList);
+                        mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
+                    } catch (Exception e) {
+                        log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
+                    }
+                });
+            }
+
+            // flush → @PreUpdate 가 updated_at 을 즉시 갱신해 응답에 반영.
+            postRepository.flush();
+            return p;
+        });
 
         UserProfileView author = userQuery.findProfile(userId).orElse(null);
         long likeCount = likeRepository.countByPostId(postId);
