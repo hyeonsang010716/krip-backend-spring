@@ -36,8 +36,13 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApi(ApiException e) {
+        // 5xx ApiException(예: ChatUpstreamException)은 실서버 진단 위해 로깅 — 4xx 는 정상 흐름이라 미로깅.
+        if (e.getStatus() >= 500) {
+            log.error("ApiException {} 처리", e.getStatus(), e);
+        }
         // 419(탈퇴 유예)는 status 필드도 함께 내려준다.
-        String statusField = e.getStatus() == 419 ? "withdrawal_pending" : null;
+        String statusField = e.getStatus() == ApiException.WITHDRAWAL_PENDING_STATUS
+                ? ApiException.WITHDRAWAL_PENDING_FIELD : null;
         return ResponseEntity.status(e.getStatus())
                 .body(ErrorResponse.of(e.getMessage(), statusField));
     }
@@ -63,29 +68,42 @@ public class GlobalExceptionHandler {
 
     /**
      * 쿼리/경로 파라미터 타입 변환 실패 → 400.
-     * 예: {@code type=kakao} (미지원 OAuth 제공자) — 컨버터가 던진 원인 메시지를 detail 로.
+     * 우리가 던진 검증용 메시지(예: 미지원 OAuth 제공자)만 노출하고, 숫자/타입 변환 내부 메시지는 감춘다.
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
-        Throwable root = e.getMostSpecificCause();
-        String detail = (root != null && root.getMessage() != null)
-                ? root.getMessage()
-                : "잘못된 요청 파라미터입니다: " + e.getName();
+        String safe = safeCauseMessage(e.getMostSpecificCause());
+        if (safe == null) {
+            log.warn("파라미터 변환 실패 (param={})", e.getName(), e);
+        }
+        String detail = safe != null ? safe : "잘못된 요청 파라미터입니다: " + e.getName();
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(detail));
     }
 
     /**
      * 요청 본문 역직렬화 실패 → 400.
-     * {@code @JsonCreator} 가 던진 {@link IllegalArgumentException} 메시지는 detail 로 노출하고,
-     * 그 외(JSON 문법 오류 등)는 내부 메시지를 감추고 일반 문구로 응답한다.
+     * {@code @JsonCreator} 등이 던진 검증용 메시지만 노출하고, JSON 문법 오류·파서 내부 메시지는 감춘다.
      */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleNotReadable(HttpMessageNotReadableException e) {
-        Throwable root = e.getMostSpecificCause();
-        String detail = (root instanceof IllegalArgumentException && root.getMessage() != null)
-                ? root.getMessage()
-                : "요청 본문을 해석할 수 없습니다.";
+        String safe = safeCauseMessage(e.getMostSpecificCause());
+        if (safe == null) {
+            log.warn("요청 본문 해석 실패", e);
+        }
+        String detail = safe != null ? safe : "요청 본문을 해석할 수 없습니다.";
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ErrorResponse.of(detail));
+    }
+
+    /**
+     * 노출 가능한 원인 메시지만 반환 — 우리가 검증용으로 던진 {@link IllegalArgumentException} 만 허용.
+     * {@link NumberFormatException}(입력값 노출)·기타 파서/변환 내부 예외는 감추려고 null 을 반환한다.
+     */
+    private static String safeCauseMessage(Throwable root) {
+        if (root instanceof IllegalArgumentException && !(root instanceof NumberFormatException)
+                && root.getMessage() != null) {
+            return root.getMessage();
+        }
+        return null;
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)

@@ -96,7 +96,8 @@ public class UserBlockService {
     public void unblockUser(String userId, String targetUserId) {
         UserBlock block = userBlockRepository.findByBlockerIdAndBlockedId(userId, targetUserId)
                 .orElseThrow(() -> ApiException.badRequest("차단 상태가 아닙니다."));
-        // fail-open: 캐시 먼저 무효화 후 삭제
+        // 캐시 무효화를 트랜잭션 안에서 호출 — Redis 실패 시 RuntimeException 이 delete 까지 롤백(fail-closed).
+        // 차단/해제 시 캐시 갱신과 DB 변경을 원자적으로 묶어 부분 적용(stale 캐시)을 막는다(doBlock 과 동일).
         blockCachePort.invalidateBlockCache(userId, targetUserId);
         userBlockRepository.delete(block);
     }

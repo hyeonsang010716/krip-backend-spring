@@ -51,8 +51,12 @@ public class TourSearchHistoryRepository {
         Query oldest = Query.query(Criteria.where("user_id").is(userId))
                 .with(Sort.by(Sort.Direction.ASC, "created_at"))
                 .limit((int) (count - MAX_SEARCH_HISTORY));
-        for (TourSearchHistory doc : mongo.find(oldest, TourSearchHistory.class)) {
-            mongo.remove(doc);
+        oldest.fields().include("_id");
+        List<String> ids = mongo.find(oldest, TourSearchHistory.class).stream()
+                .map(TourSearchHistory::getId).toList();
+        if (!ids.isEmpty()) {
+            // N 회 개별 remove 대신 _id IN 단일 삭제.
+            mongo.remove(Query.query(Criteria.where("_id").in(ids)), TourSearchHistory.class);
         }
     }
 

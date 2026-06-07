@@ -16,6 +16,7 @@ import site.krip.domain.auth.entity.User;
 import site.krip.domain.auth.entity.UserStatus;
 import site.krip.domain.auth.repository.UserRepository;
 import site.krip.global.cache.RegisteredCacheManager;
+import site.krip.global.common.exception.ApiException;
 import site.krip.global.common.exception.ErrorResponse;
 
 import java.io.IOException;
@@ -35,7 +36,6 @@ import java.util.Optional;
  */
 public class RegisterCheckFilter extends OncePerRequestFilter {
 
-    private static final int WITHDRAWAL_PENDING_STATUS_CODE = 419;
     private static final Logger log = LoggerFactory.getLogger(RegisterCheckFilter.class);
 
     private final UserRepository userRepository;
@@ -90,10 +90,10 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
         User user = found.get();
 
         if (user.getStatus() == UserStatus.INACTIVE) {
-            FilterSupport.writeError(response, mapper, WITHDRAWAL_PENDING_STATUS_CODE,
+            FilterSupport.writeError(response, mapper, ApiException.WITHDRAWAL_PENDING_STATUS,
                     ErrorResponse.of(
                             "회원 탈퇴가 진행 중입니다. 30일 유예 기간 종료 후 영구 삭제됩니다.",
-                            "withdrawal_pending"));
+                            ApiException.WITHDRAWAL_PENDING_FIELD));
             return;
         }
 

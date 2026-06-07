@@ -7,6 +7,11 @@ package site.krip.global.common.exception;
  */
 public class ApiException extends RuntimeException {
 
+    /** 탈퇴 유예(soft-withdraw) 비표준 상태 코드 — INACTIVE 유저 접근 차단. */
+    public static final int WITHDRAWAL_PENDING_STATUS = 419;
+    /** 419 응답의 {@code status} 필드 값 — 클라이언트가 탈퇴 유예를 식별. */
+    public static final String WITHDRAWAL_PENDING_FIELD = "withdrawal_pending";
+
     private final int status;
 
     public ApiException(int status, String message) {

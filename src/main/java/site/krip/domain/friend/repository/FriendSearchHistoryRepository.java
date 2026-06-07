@@ -51,8 +51,12 @@ public class FriendSearchHistoryRepository {
         Query oldest = Query.query(Criteria.where("user_id").is(userId))
                 .with(Sort.by(Sort.Direction.ASC, "created_at"))
                 .limit((int) (count - MAX_SEARCH_HISTORY));
-        for (FriendSearchHistory doc : mongo.find(oldest, FriendSearchHistory.class)) {
-            mongo.remove(doc);
+        oldest.fields().include("_id");
+        List<String> ids = mongo.find(oldest, FriendSearchHistory.class).stream()
+                .map(FriendSearchHistory::getId).toList();
+        if (!ids.isEmpty()) {
+            // N 회 개별 remove 대신 _id IN 단일 삭제.
+            mongo.remove(Query.query(Criteria.where("_id").in(ids)), FriendSearchHistory.class);
         }
     }
 

@@ -50,9 +50,12 @@ public class TripmateSearchHistoryRepository {
         Query oldest = Query.query(Criteria.where("user_id").is(userId))
                 .with(Sort.by(Sort.Direction.ASC, "created_at"))
                 .limit((int) (count - MAX_SEARCH_HISTORY));
-        List<TripmateSearchHistory> toDelete = mongo.find(oldest, TripmateSearchHistory.class);
-        for (TripmateSearchHistory doc : toDelete) {
-            mongo.remove(doc);
+        oldest.fields().include("_id");
+        List<String> ids = mongo.find(oldest, TripmateSearchHistory.class).stream()
+                .map(TripmateSearchHistory::getId).toList();
+        if (!ids.isEmpty()) {
+            // N 회 개별 remove 대신 _id IN 단일 삭제.
+            mongo.remove(Query.query(Criteria.where("_id").in(ids)), TripmateSearchHistory.class);
         }
     }
 
