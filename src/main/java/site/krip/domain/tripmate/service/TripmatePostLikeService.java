@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -64,7 +65,12 @@ public class TripmatePostLikeService {
             throw ApiException.badRequest("이미 좋아요를 누른 게시글입니다.");
         }
 
-        likeRepository.save(new TripmatePostLike(userId, postId));
+        try {
+            likeRepository.saveAndFlush(new TripmatePostLike(userId, postId));
+        } catch (DataIntegrityViolationException e) {
+            // 동시 클릭 race — "이미 좋아요" 와 동치로 일원화 (409 아닌 400)
+            throw ApiException.badRequest("이미 좋아요를 누른 게시글입니다.");
+        }
         long likeCount = likeRepository.countByPostId(postId);
 
         // 본인→본인 — 호출부에서 fan-out skip (더미값)

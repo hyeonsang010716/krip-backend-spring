@@ -1,5 +1,6 @@
 package site.krip.domain.chat.worker;
 
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -20,6 +21,7 @@ import java.util.Map;
  * <p>주기적으로 {@code dirty:chat_room} SET 을 SPOP 배치 소진하며 {@code chat_room.last_message_*} 를
  * Mongo 진실값으로 수렴. 송신과 병렬이라 regress 방지 위해 {@code updateLastMessageIfGreater} 사용.
  * 실패한 방은 dirty 로 재적재. 한 tick 내 백로그를 drain 한다.
+ * 멀티 노드에선 {@code @SchedulerLock} 으로 한 노드만 실행해 중복 drain 을 막는다.
  */
 @Component
 public class ReconcileWorker {
@@ -40,6 +42,7 @@ public class ReconcileWorker {
 
     @Scheduled(fixedDelayString = "${CHAT_RECONCILE_INTERVAL_MS:300000}",
             initialDelayString = "${CHAT_RECONCILE_INITIAL_DELAY_MS:30000}")
+    @SchedulerLock(name = "chatReconcile", lockAtMostFor = "9m")
     public void reconcileTick() {
         try {
             int processed;

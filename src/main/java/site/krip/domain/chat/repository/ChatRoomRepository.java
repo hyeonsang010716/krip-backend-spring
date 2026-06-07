@@ -17,7 +17,8 @@ import java.util.Optional;
  * 채팅방 RDB 접근.
  *
  * <p>{@code last_message_*} 갱신은 bulk UPDATE(엔티티 인스턴스를 expire 시키지 않음).
- * reconcile 은 regress 방지를 위해 {@code updateLastMessageIfGreater}(WHERE seq IS NULL OR &lt; new) 사용.
+ * 송신·reconcile 모두 동시 갱신 regress 방지를 위해
+ * {@code updateLastMessageIfGreater}(WHERE seq IS NULL OR &lt; new) 사용.
  */
 public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
 
@@ -42,15 +43,10 @@ public interface ChatRoomRepository extends JpaRepository<ChatRoom, String> {
             + "order by r.effectiveLastAt desc")
     List<RoomListRow> findRoomsOfUser(@Param("uid") String userId, Pageable pageable);
 
-    /** 호출부(메시지 핫패스)가 비-트랜잭션 best-effort 라 자체 tx 로 last_message 역정규화. */
-    @Modifying(clearAutomatically = true)
-    @Transactional
-    @Query("update ChatRoom r set r.lastMessageId = :messageId, r.lastMessageServerSeq = :seq, "
-            + "r.lastMessageAt = :at where r.chatRoomId = :roomId")
-    void updateLastMessage(@Param("roomId") String roomId, @Param("messageId") String messageId,
-                           @Param("seq") long serverSeq, @Param("at") Instant at);
-
-    /** 호출부(reconcile 배치)가 비-트랜잭션이라 자체 tx 로 방별 독립 수렴. */
+    /**
+     * last_message 역정규화 — 송신 핫패스/reconcile 배치 공용. 호출부가 비-트랜잭션이라 자체 tx 로 수렴.
+     * 동시 갱신 시 낮은 seq 가 덮어쓰지 않게 {@code seq IS NULL OR < new} 가드.
+     */
     @Modifying(clearAutomatically = true)
     @Transactional
     @Query("update ChatRoom r set r.lastMessageId = :messageId, r.lastMessageServerSeq = :seq, "

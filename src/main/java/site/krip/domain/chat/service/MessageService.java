@@ -333,7 +333,8 @@ public class MessageService {
 
     private void updateLastMessageBestEffort(String roomId, String messageId, long serverSeq, Instant at) {
         try {
-            roomRepo.updateLastMessage(roomId, messageId, serverSeq, at);
+            // 동시 송신 race 시 낮은 seq 가 덮어쓰지 않도록 IfGreater 가드 (regress 방지).
+            roomRepo.updateLastMessageIfGreater(roomId, messageId, serverSeq, at);
         } catch (Exception e) {
             log.warn("last_message 갱신 실패 → dirty 큐: room_id={}, err={}", roomId, e.toString());
             redis.opsForSet().add(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, roomId);
