@@ -1,9 +1,11 @@
 package site.krip.domain.tripmate.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,7 +33,6 @@ import site.krip.domain.tripmate.service.TripmatePostService;
 import site.krip.domain.tripmate.service.TripmateSearchHistoryService;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.common.dto.MessageResponse;
-import site.krip.global.common.exception.ApiException;
 
 import java.util.Optional;
 
@@ -40,6 +41,7 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/tripmate/posts")
+@Validated
 public class TripmatePostController {
 
     private static final Logger log = LoggerFactory.getLogger(TripmatePostController.class);
@@ -76,12 +78,10 @@ public class TripmatePostController {
 
     @GetMapping("/search")
     public PostListResponse searchPosts(@CurrentUserId String userId,
-                                        @RequestParam("keyword") String keyword,
+                                        @RequestParam("keyword")
+                                        @NotBlank(message = "검색어를 입력해주세요.") String keyword,
                                         @RequestParam(value = "cursor", required = false) String cursor) {
-        // 빈 검색어 거부. 공백만도 막아 LIKE '%%' 전체조회·빈 검색기록 저장을 방지.
-        if (keyword.isBlank()) {
-            throw ApiException.badRequest("검색어를 입력해주세요.");
-        }
+        // @NotBlank 로 공백·빈 검색어 거부 (LIKE '%%' 전체조회·빈 검색기록 저장 방지).
         try {
             searchHistoryService.saveSearch(userId, keyword);
         } catch (Exception e) {

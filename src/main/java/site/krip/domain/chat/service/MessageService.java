@@ -18,8 +18,7 @@ import site.krip.domain.chat.port.ChatPushPort;
 import site.krip.domain.chat.repository.ChatMessageRepository;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.chat.repository.ChatRoomRepository;
-import site.krip.domain.friend.entity.UserBlock;
-import site.krip.domain.friend.repository.UserBlockRepository;
+import site.krip.domain.friend.port.FriendQueryPort;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.IdGenerator;
@@ -54,7 +53,7 @@ public class MessageService {
     private final ChatRoomMemberRepository memberRepo;
     private final ChatRoomRepository roomRepo;
     private final ChatMessageRepository messageRepo;
-    private final UserBlockRepository blockRepo;
+    private final FriendQueryPort friendQuery;
     private final FanoutService fanout;
     private final ChatSeqAllocator seq;
     private final ChatPushPort push;
@@ -63,7 +62,7 @@ public class MessageService {
     private final Executor pushExecutor;
 
     public MessageService(ChatRoomMemberRepository memberRepo, ChatRoomRepository roomRepo,
-                          ChatMessageRepository messageRepo, UserBlockRepository blockRepo,
+                          ChatMessageRepository messageRepo, FriendQueryPort friendQuery,
                           FanoutService fanout, ChatSeqAllocator seq, ChatPushPort push,
                           StringRedisTemplate redis,
                           @Qualifier("dedupeRedisTemplate") StringRedisTemplate dedupeRedis,
@@ -71,7 +70,7 @@ public class MessageService {
         this.memberRepo = memberRepo;
         this.roomRepo = roomRepo;
         this.messageRepo = messageRepo;
-        this.blockRepo = blockRepo;
+        this.friendQuery = friendQuery;
         this.fanout = fanout;
         this.seq = seq;
         this.push = push;
@@ -273,10 +272,10 @@ public class MessageService {
         }
         String key = ChatRedisKeys.roomBlocks(room.getChatRoomId());
         if (!Boolean.TRUE.equals(redis.hasKey(key))) {
-            List<UserBlock> blocks = blockRepo.findBlocksBetween(senderUserId, peerId);
+            List<FriendQueryPort.BlockPair> blocks = friendQuery.findBlocksBetween(senderUserId, peerId);
             List<String> members = new ArrayList<>();
-            for (UserBlock b : blocks) {
-                members.add(b.getBlockerId() + ":" + b.getBlockedId());
+            for (FriendQueryPort.BlockPair b : blocks) {
+                members.add(b.blockerId() + ":" + b.blockedId());
             }
             if (members.isEmpty()) {
                 members.add("__none__");

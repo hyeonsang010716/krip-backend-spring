@@ -7,6 +7,7 @@ import site.krip.global.config.AuthProperties;
 import site.krip.global.support.SecretKeys;
 
 import javax.crypto.SecretKey;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -30,15 +31,17 @@ public class JwtProvider {
 
     private final SecretKey key;
     private final long expirationSeconds;
+    private final Clock clock;
 
-    public JwtProvider(AuthProperties props) {
+    public JwtProvider(AuthProperties props, Clock clock) {
         this.key = SecretKeys.hmacSha256(props.jwt().secret(), "로그인 JWT");
         this.expirationSeconds = props.jwt().expirationSeconds();
+        this.clock = clock;
     }
 
     /** user_id 로 로그인 JWT 발급 (jti 포함). */
     public String issue(String userId) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         return Jwts.builder()
                 .id(UUID.randomUUID().toString())
                 .claim(CLAIM_USER_ID, userId)

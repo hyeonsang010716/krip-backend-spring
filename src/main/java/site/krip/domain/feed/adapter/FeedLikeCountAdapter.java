@@ -1,4 +1,4 @@
-package site.krip.domain.feed.port;
+package site.krip.domain.feed.adapter;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,4 +1,4 @@
-package site.krip.domain.friend.port;
+package site.krip.domain.friend.adapter;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

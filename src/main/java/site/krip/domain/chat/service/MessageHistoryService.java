@@ -25,7 +25,7 @@ import site.krip.domain.chat.repository.ChatMessageRepository;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.chat.repository.ChatRoomRepository;
 import site.krip.domain.chat.repository.RoomListRow;
-import site.krip.domain.friend.repository.FriendshipRepository;
+import site.krip.domain.friend.port.FriendQueryPort;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 
@@ -49,17 +49,17 @@ public class MessageHistoryService {
     private final ChatRoomMemberRepository memberRepo;
     private final ChatMessageRepository messageRepo;
     private final UserRepository userRepo;
-    private final FriendshipRepository friendshipRepo;
+    private final FriendQueryPort friendQuery;
     private final StringRedisTemplate redis;
 
     public MessageHistoryService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
                                  ChatMessageRepository messageRepo, UserRepository userRepo,
-                                 FriendshipRepository friendshipRepo, StringRedisTemplate redis) {
+                                 FriendQueryPort friendQuery, StringRedisTemplate redis) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
         this.messageRepo = messageRepo;
         this.userRepo = userRepo;
-        this.friendshipRepo = friendshipRepo;
+        this.friendQuery = friendQuery;
         this.redis = redis;
     }
 
@@ -149,7 +149,7 @@ public class MessageHistoryService {
         if (room.getType() != ChatRoomType.GROUP) {
             throw ApiException.badRequest("그룹 방에만 친구를 초대할 수 있습니다.");
         }
-        Set<String> friendIds = new TreeSet<>(friendshipRepo.findAcceptedFriendIds(meId));
+        Set<String> friendIds = new TreeSet<>(friendQuery.acceptedFriendIds(meId));
         if (friendIds.isEmpty()) {
             return new RoomMemberListResponse(List.of());
         }

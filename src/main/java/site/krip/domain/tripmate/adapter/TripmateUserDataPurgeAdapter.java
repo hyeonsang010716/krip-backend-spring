@@ -1,4 +1,4 @@
-package site.krip.domain.tripmate.port;
+package site.krip.domain.tripmate.adapter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -43,7 +43,7 @@ class ChatHandshakeInterceptorTest {
     private ChatHandshakeInterceptor newInterceptor() {
         AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
         AuthProperties authProps = new AuthProperties("dev-access-token", jwt, 300L);
-        JwtProvider jwtProvider = new JwtProvider(authProps);
+        JwtProvider jwtProvider = new JwtProvider(authProps, java.time.Clock.systemUTC());
         CorsProperties corsProps = new CorsProperties(List.of(ALLOWED_ORIGIN), List.of(APP_ORIGIN));
         return new ChatHandshakeInterceptor(jwtProvider, revocation, authProps, corsProps,
                 registeredCache, userRepository);
@@ -65,7 +65,7 @@ class ChatHandshakeInterceptorTest {
 
     private JwtProvider tokenIssuer() {
         AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
-        return new JwtProvider(new AuthProperties("dev-access-token", jwt, 300L));
+        return new JwtProvider(new AuthProperties("dev-access-token", jwt, 300L), java.time.Clock.systemUTC());
     }
 
     @Test

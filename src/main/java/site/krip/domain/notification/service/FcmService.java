@@ -14,6 +14,7 @@ import site.krip.domain.notification.entity.FcmToken;
 import site.krip.domain.notification.fcm.FcmClient;
 import site.krip.domain.notification.repository.FcmTokenRepository;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,13 +36,15 @@ public class FcmService {
     private final ChatRoomMemberRepository memberRepo;
     private final UserRepository userRepo;
     private final FcmClient fcmClient;
+    private final Clock clock;
 
     public FcmService(FcmTokenRepository tokenRepo, ChatRoomMemberRepository memberRepo,
-                      UserRepository userRepo, FcmClient fcmClient) {
+                      UserRepository userRepo, FcmClient fcmClient, Clock clock) {
         this.tokenRepo = tokenRepo;
         this.memberRepo = memberRepo;
         this.userRepo = userRepo;
         this.fcmClient = fcmClient;
+        this.clock = clock;
     }
 
     /** 디바이스 토큰 등록 — UNIQUE(token) 충돌 시 owner 교체 + updated_at 갱신(재로그인/계정 전환), race 안전. */
@@ -89,7 +92,7 @@ public class FcmService {
             return 0;
         }
         // 무효 토큰 정리 가드 기준 — 이 시점 이후 재등록(updated_at 갱신)된 토큰은 정리에서 제외한다.
-        Instant asOf = Instant.now();
+        Instant asOf = clock.instant();
         List<FcmToken> rows = tokenRepo.findByUserIdIn(allowed);
         if (rows.isEmpty()) {
             return 0;

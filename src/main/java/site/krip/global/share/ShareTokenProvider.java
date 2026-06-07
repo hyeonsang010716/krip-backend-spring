@@ -9,6 +9,7 @@ import site.krip.global.config.ShareProperties;
 import site.krip.global.support.SecretKeys;
 
 import javax.crypto.SecretKey;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -25,10 +26,12 @@ public class ShareTokenProvider {
 
     private final SecretKey key;
     private final long expirationSeconds;
+    private final Clock clock;
 
-    public ShareTokenProvider(ShareProperties props) {
+    public ShareTokenProvider(ShareProperties props, Clock clock) {
         this.key = SecretKeys.hmacSha256(props.secret(), "공유 토큰");
         this.expirationSeconds = props.expirationSeconds();
+        this.clock = clock;
     }
 
     /**
@@ -37,7 +40,7 @@ public class ShareTokenProvider {
      * @return 토큰 문자열과 만료 시각(UTC).
      */
     public Issued encode(String planId) {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         Instant expiresAt = now.plus(expirationSeconds, ChronoUnit.SECONDS);
         String token = Jwts.builder()
                 .claim(CLAIM_PLAN_ID, planId)

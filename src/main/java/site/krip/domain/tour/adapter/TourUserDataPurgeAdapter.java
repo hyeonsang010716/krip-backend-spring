@@ -1,4 +1,4 @@
-package site.krip.domain.tour.port;
+package site.krip.domain.tour.adapter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package site.krip.domain.auth.port;
+package site.krip.domain.auth.adapter;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

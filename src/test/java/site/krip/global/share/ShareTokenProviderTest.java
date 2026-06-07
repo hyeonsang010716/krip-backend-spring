@@ -25,7 +25,7 @@ class ShareTokenProviderTest {
 
     private static ShareTokenProvider provider(int expirationDays) {
         // ShareProperties(secret, expirationDays)
-        return new ShareTokenProvider(new ShareProperties(SECRET, expirationDays));
+        return new ShareTokenProvider(new ShareProperties(SECRET, expirationDays), java.time.Clock.systemUTC());
     }
 
     private static SecretKey deriveKey(String secret) throws Exception {

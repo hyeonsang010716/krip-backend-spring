@@ -1,4 +1,4 @@
-package site.krip.domain.friend.port;
+package site.krip.domain.friend.adapter;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

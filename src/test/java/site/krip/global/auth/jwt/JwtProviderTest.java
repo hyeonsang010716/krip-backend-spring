@@ -29,7 +29,7 @@ class JwtProviderTest {
         // AuthProperties(accessToken, Jwt(secret, expirationDays, cookieName), registeredCacheTtlSeconds)
         AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, expirationDays, "access_token");
         AuthProperties props = new AuthProperties("dev-access-token", jwt, 300L);
-        return new JwtProvider(props);
+        return new JwtProvider(props, java.time.Clock.systemUTC());
     }
 
     private static SecretKey deriveKey(String secret) throws Exception {

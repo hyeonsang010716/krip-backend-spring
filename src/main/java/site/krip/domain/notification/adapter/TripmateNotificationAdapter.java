@@ -1,4 +1,4 @@
-package site.krip.domain.notification.port;
+package site.krip.domain.notification.adapter;
 
 import org.springframework.stereotype.Component;
 import site.krip.domain.notification.document.TargetType;

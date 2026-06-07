@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.dto.request;
 
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -25,4 +26,13 @@ public record UpdatePostRequest(
         @NotNull CompanionType companionType,
         List<String> imageUrls
 ) {
+    @AssertTrue(message = "선호 나이 최소값은 최대값보다 클 수 없습니다.")
+    public boolean isPreferredAgeRangeValid() {
+        return preferredAgeMin == null || preferredAgeMax == null || preferredAgeMin <= preferredAgeMax;
+    }
+
+    @AssertTrue(message = "여행 종료일은 시작일보다 빠를 수 없습니다.")
+    public boolean isTravelDateRangeValid() {
+        return travelStartDate == null || travelEndDate == null || !travelEndDate.isBefore(travelStartDate);
+    }
 }

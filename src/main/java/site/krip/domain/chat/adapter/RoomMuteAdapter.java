@@ -1,4 +1,4 @@
-package site.krip.domain.chat.port;
+package site.krip.domain.chat.adapter;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;

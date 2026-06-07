@@ -1,9 +1,11 @@
 package site.krip.domain.tour.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,13 +24,13 @@ import site.krip.domain.tour.service.PlaceService;
 import site.krip.domain.tour.service.TourSearchHistoryService;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.common.dto.MessageResponse;
-import site.krip.global.common.exception.ApiException;
 
 /**
  * 관광 장소 조회 + 즐겨찾기. 경로: {@code /api/tour/places}.
  */
 @RestController
 @RequestMapping("/api/tour/places")
+@Validated
 public class PlaceController {
 
     private static final Logger log = LoggerFactory.getLogger(PlaceController.class);
@@ -56,12 +58,10 @@ public class PlaceController {
                                        @RequestParam(required = false) Double lng,
                                        @RequestParam(required = false) String keyword,
                                        @RequestParam(required = false) String cursor,
-                                       @RequestParam(name = "max_distance", required = false) Double maxDistance) {
+                                       @RequestParam(name = "max_distance", required = false)
+                                       @Positive(message = "max_distance 는 0 보다 커야 합니다.") Double maxDistance) {
         double actualLat = lat != null ? lat : DEFAULT_LAT;
         double actualLng = lng != null ? lng : DEFAULT_LNG;
-        if (maxDistance != null && maxDistance <= 0) {
-            throw ApiException.badRequest("max_distance 는 0 보다 커야 합니다.");
-        }
 
         if (keyword != null && !keyword.isBlank()) {
             // 검색어 저장 (첫 페이지 요청 시에만, best-effort)

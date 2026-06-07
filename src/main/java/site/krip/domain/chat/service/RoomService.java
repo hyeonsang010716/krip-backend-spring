@@ -17,9 +17,7 @@ import site.krip.domain.chat.entity.ChatRoomType;
 import site.krip.domain.chat.exception.ChatRoomNotFoundException;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.chat.repository.ChatRoomRepository;
-import site.krip.domain.friend.entity.UserBlock;
-import site.krip.domain.friend.repository.FriendshipRepository;
-import site.krip.domain.friend.repository.UserBlockRepository;
+import site.krip.domain.friend.port.FriendQueryPort;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 
@@ -45,8 +43,7 @@ public class RoomService {
 
     private final ChatRoomRepository roomRepo;
     private final ChatRoomMemberRepository memberRepo;
-    private final UserBlockRepository blockRepo;
-    private final FriendshipRepository friendshipRepo;
+    private final FriendQueryPort friendQuery;
     private final UserRepository userRepo;
     private final FanoutService fanout;
     private final MessageService messageService;
@@ -55,14 +52,13 @@ public class RoomService {
     private final TransactionTemplate txTemplate;
 
     public RoomService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
-                       UserBlockRepository blockRepo, FriendshipRepository friendshipRepo,
+                       FriendQueryPort friendQuery,
                        UserRepository userRepo, FanoutService fanout, MessageService messageService,
                        site.krip.domain.chat.repository.ChatMessageRepository messageRepo,
                        StringRedisTemplate redis, TransactionTemplate txTemplate) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
-        this.blockRepo = blockRepo;
-        this.friendshipRepo = friendshipRepo;
+        this.friendQuery = friendQuery;
         this.userRepo = userRepo;
         this.fanout = fanout;
         this.messageService = messageService;
@@ -80,8 +76,8 @@ public class RoomService {
         User peer = userRepo.findByIdWithProfile(peerUserId)
                 .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
 
-        List<UserBlock> blocks = blockRepo.findBlocksBetween(meId, peerUserId);
-        if (blocks.stream().anyMatch(b -> b.getBlockerId().equals(meId))) {
+        List<FriendQueryPort.BlockPair> blocks = friendQuery.findBlocksBetween(meId, peerUserId);
+        if (blocks.stream().anyMatch(b -> b.blockerId().equals(meId))) {
             throw ApiException.badRequest("차단한 유저와는 방을 만들 수 없습니다. 먼저 차단을 해제해주세요.");
         }
         if (!blocks.isEmpty()) {
@@ -138,7 +134,7 @@ public class RoomService {
         if (targets.isEmpty()) {
             throw ApiException.badRequest("초대할 대상이 없습니다 (본인 외 멤버 없음).");
         }
-        Set<String> friendIds = new HashSet<>(friendshipRepo.findAcceptedFriendIdsWith(meId, targets));
+        Set<String> friendIds = new HashSet<>(friendQuery.acceptedFriendIdsAmong(meId, targets));
         Set<String> nonFriends = new TreeSet<>(targets);
         nonFriends.removeAll(friendIds);
         if (!nonFriends.isEmpty()) {
@@ -192,7 +188,7 @@ public class RoomService {
         if (targets.isEmpty()) {
             throw ApiException.badRequest("초대할 대상이 없습니다.");
         }
-        Set<String> friendIds = new HashSet<>(friendshipRepo.findAcceptedFriendIdsWith(meId, targets));
+        Set<String> friendIds = new HashSet<>(friendQuery.acceptedFriendIdsAmong(meId, targets));
         Set<String> nonFriends = new TreeSet<>(targets);
         nonFriends.removeAll(friendIds);
         if (!nonFriends.isEmpty()) {
