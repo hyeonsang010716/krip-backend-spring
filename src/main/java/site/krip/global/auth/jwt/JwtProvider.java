@@ -2,14 +2,11 @@ package site.krip.global.auth.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 import site.krip.global.config.AuthProperties;
+import site.krip.global.support.SecretKeys;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -18,7 +15,7 @@ import java.util.Date;
  * 유저 로그인 JWT 발급/검증 (HS256).
  *
  * <p>페이로드: {@code user_id}, {@code iat}, {@code exp}.
- * secret 이 HS256 최소 길이(256bit)에 못 미칠 수 있어 SHA-256 으로 파생해 키 길이를 보장한다.
+ * secret 은 {@link SecretKeys} 가 SHA-256 으로 파생하며, 약한/누락 secret 은 부팅 시 거부한다.
  */
 @Component
 public class JwtProvider {
@@ -29,18 +26,8 @@ public class JwtProvider {
     private final long expirationSeconds;
 
     public JwtProvider(AuthProperties props) {
-        this.key = deriveKey(props.jwt().secret());
+        this.key = SecretKeys.hmacSha256(props.jwt().secret(), "로그인 JWT");
         this.expirationSeconds = props.jwt().expirationSeconds();
-    }
-
-    private static SecretKey deriveKey(String secret) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(secret.getBytes(StandardCharsets.UTF_8));
-            return Keys.hmacShaKeyFor(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 미지원 환경", e);
-        }
     }
 
     /** user_id 로 로그인 JWT 발급. */

@@ -4,14 +4,11 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
 import site.krip.global.config.ShareProperties;
+import site.krip.global.support.SecretKeys;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
@@ -19,7 +16,7 @@ import java.util.Date;
 /**
  * 플랜 공유 토큰(JWT) 발급/검증 (HS256).
  *
- * <p>secret 을 SHA-256 으로 파생해 키 길이를 보장한다(로그인 JWT 와 동일 방식).
+ * <p>secret 은 {@link SecretKeys} 가 SHA-256 으로 파생하며, 약한/누락 secret 은 부팅 시 거부한다(로그인 JWT 와 동일).
  */
 @Component
 public class ShareTokenProvider {
@@ -30,18 +27,8 @@ public class ShareTokenProvider {
     private final long expirationSeconds;
 
     public ShareTokenProvider(ShareProperties props) {
-        this.key = deriveKey(props.secret());
+        this.key = SecretKeys.hmacSha256(props.secret(), "공유 토큰");
         this.expirationSeconds = props.expirationSeconds();
-    }
-
-    private static SecretKey deriveKey(String secret) {
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(secret.getBytes(StandardCharsets.UTF_8));
-            return Keys.hmacShaKeyFor(digest);
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 미지원 환경", e);
-        }
     }
 
     /**

@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class JwtProviderTest {
 
-    private static final String SECRET = "test-login-jwt-secret-value";
+    private static final String SECRET = "test-login-jwt-secret-value-1234567890";
 
     private static JwtProvider provider(int expirationDays) {
         // AuthProperties(accessToken, Jwt(secret, expirationDays, cookieName), registeredCacheTtlSeconds)

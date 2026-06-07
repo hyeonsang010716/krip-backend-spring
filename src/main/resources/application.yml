@@ -60,12 +60,14 @@ krip:
   auth:
     access-token: ${ACCESS_TOKEN:dev-access-token}
     jwt:
-      secret: ${USER_LOGIN_JWT_SECRET_KEY:your-secret-key-here}
+      # 필수(기본값 없음) — 미설정 시 부팅 실패. 로컬/운영 모두 환경변수로 주입(≥32자).
+      secret: ${USER_LOGIN_JWT_SECRET_KEY}
       expiration-days: ${USER_LOGIN_JWT_EXPIRATION_DAYS:1}
       cookie-name: ${USER_LOGIN_COOKIE_NAME:utk}
     registered-cache-ttl-seconds: 86400
   share:
-    secret: ${SHARE_JWT_SECRET_KEY:your-share-secret-here}
+    # 필수(기본값 없음) — 미설정 시 부팅 실패. 로컬/운영 모두 환경변수로 주입(≥32자).
+    secret: ${SHARE_JWT_SECRET_KEY}
     expiration-days: ${SHARE_JWT_EXPIRATION_DAYS:30}
   chat:
     # 채팅 fan-out 모드: in_process(단일 노드) | node_channel(다중 노드 Redis Pub/Sub)

@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
  */
 class ChatHandshakeInterceptorTest {
 
-    private static final String SECRET = "test-login-jwt-secret-value";
+    private static final String SECRET = "test-login-jwt-secret-value-1234567890";
     private static final String ALLOWED_ORIGIN = "https://app.test";
     private static final String APP_ORIGIN = "capacitor://localhost";
 
