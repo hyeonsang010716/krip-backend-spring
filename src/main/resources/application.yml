@@ -57,6 +57,8 @@ krip:
   executor:
     push-pool-size: ${PUSH_EXECUTOR_POOL_SIZE:4}
     push-queue-capacity: ${PUSH_EXECUTOR_QUEUE_CAPACITY:500}
+    recover-pool-size: ${RECOVER_EXECUTOR_POOL_SIZE:4}
+    recover-queue-capacity: ${RECOVER_EXECUTOR_QUEUE_CAPACITY:500}
   auth:
     access-token: ${ACCESS_TOKEN:dev-access-token}
     jwt:

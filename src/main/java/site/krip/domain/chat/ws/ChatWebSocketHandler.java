@@ -1,6 +1,7 @@
 package site.krip.domain.chat.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -29,12 +30,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.Executor;
 
 /**
  * 채팅 WebSocket 핸들러 — {@code /api/ws/chat}.
  *
- * <p>연결 시 세션 생성 → 방 구독 → connected/unread_synced 송신 → 서버 측 heartbeat(30s)로 Redis TTL 연장.
+ * <p>연결 시 세션 생성 → 방 구독 → connected/unread_synced 송신. 노드 단위 sweep(30s)이 로컬 세션 전체의 Redis TTL 을 일괄 연장.
  * op: send / refresh / read. 매 op 진입 시 세션 유효성(Redis)을 확인하고, 실패는 server_error/read_failed/auth_expired 로 응답.
  */
 @Component
@@ -56,13 +57,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
 
     // 채팅 WS 전용 스케줄러(스프링 관리) — 블로킹 @Scheduled 잡과 격리, 종료 시 자동 정리.
     private final ThreadPoolTaskScheduler heartbeatScheduler;
-    private final Map<String, ScheduledFuture<?>> heartbeatTasks = new ConcurrentHashMap<>();
+    private final Executor recoverExecutor;
+    // 이 노드의 로컬 생존 세션. sweep 이 일괄 TTL 연장 대상으로 순회한다.
+    private final Map<String, String> liveSessions = new ConcurrentHashMap<>();
 
     public ChatWebSocketHandler(SessionService sessionService, RoomService roomService,
                                 MessageService messageService, MessageHistoryService historyService,
                                 UnreadRecoveryService unreadRecovery, FanoutService fanout,
                                 JwtProvider jwtProvider, ObjectMapper mapper,
-                                @Qualifier("chatWsScheduler") ThreadPoolTaskScheduler heartbeatScheduler) {
+                                @Qualifier("chatWsScheduler") ThreadPoolTaskScheduler heartbeatScheduler,
+                                @Qualifier("recoverExecutor") Executor recoverExecutor) {
         this.sessionService = sessionService;
         this.roomService = roomService;
         this.messageService = messageService;
@@ -72,6 +76,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         this.jwtProvider = jwtProvider;
         this.mapper = mapper;
         this.heartbeatScheduler = heartbeatScheduler;
+        this.recoverExecutor = recoverExecutor;
+    }
+
+    @PostConstruct
+    void startHeartbeatSweep() {
+        Duration interval = Duration.ofSeconds(HEARTBEAT_INTERVAL_SEC);
+        heartbeatScheduler.scheduleWithFixedDelay(() -> {
+            try {
+                sessionService.heartbeatBatch(liveSessions);
+            } catch (Exception e) {
+                log.warn("heartbeat sweep 실패 (계속): err={}", e.toString());
+            }
+        }, Instant.now().plus(interval), interval);
     }
 
     @Override
@@ -120,15 +137,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             log.warn("unread 동기화 실패 (무시): user_id={}, err={}", userId, e.toString());
         }
 
-        Duration interval = Duration.ofSeconds(HEARTBEAT_INTERVAL_SEC);
-        ScheduledFuture<?> hb = heartbeatScheduler.scheduleAtFixedRate(() -> {
-            try {
-                sessionService.heartbeat(sessionId, userId);
-            } catch (Exception e) {
-                log.warn("heartbeat 실패 (계속): session_id={}, err={}", sessionId, e.toString());
-            }
-        }, Instant.now().plus(interval), interval);
-        heartbeatTasks.put(sessionId, hb);
+        liveSessions.put(sessionId, userId);
     }
 
     @Override
@@ -244,10 +253,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             log.warn("fanout unregister 실패 (무시): session_id={}, err={}", sessionId, e.toString());
         }
         if (sessionId != null) {
-            ScheduledFuture<?> hb = heartbeatTasks.remove(sessionId);
-            if (hb != null) {
-                hb.cancel(true);
-            }
+            liveSessions.remove(sessionId);
             try {
                 sessionService.terminateSession(sessionId, userId);
             } catch (Exception e) {
@@ -257,7 +263,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     private void spawnRecoverUnread(WebSocketSession session, String userId) {
-        heartbeatScheduler.execute(() -> {
+        recoverExecutor.execute(() -> {
             try {
                 Map<String, Integer> counts = unreadRecovery.recoverUnreadForUser(userId);
                 if (!counts.isEmpty() && session.isOpen()) {

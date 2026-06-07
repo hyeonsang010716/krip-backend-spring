@@ -81,6 +81,29 @@ public class SessionService {
                 connection.zSetCommands().zAdd(key, score, member, ZAddArgs.ifExists()));
     }
 
+    /**
+     * sweep 주기마다 노드의 로컬 세션 전체 TTL 을 파이프라인 1회로 연장.
+     * EXPIRE(없는 키 no-op)·ZADD XX(없는 멤버 no-op) 모두 종료된 세션을 부활시키지 않는다.
+     */
+    public void heartbeatBatch(Map<String, String> sessionToUser) {
+        if (sessionToUser.isEmpty()) {
+            return;
+        }
+        double score = expiresMs();
+        redis.executePipelined((RedisCallback<Object>) connection -> {
+            sessionToUser.forEach((sessionId, userId) -> {
+                connection.keyCommands().expire(
+                        ChatRedisKeys.sess(sessionId).getBytes(StandardCharsets.UTF_8), ChatRedisKeys.SESSION_TTL);
+                connection.keyCommands().expire(
+                        ChatRedisKeys.wsRoute(sessionId).getBytes(StandardCharsets.UTF_8), ChatRedisKeys.SESSION_TTL);
+                connection.zSetCommands().zAdd(
+                        ChatRedisKeys.sessions(userId).getBytes(StandardCharsets.UTF_8), score,
+                        sessionId.getBytes(StandardCharsets.UTF_8), ZAddArgs.ifExists());
+            });
+            return null;
+        });
+    }
+
     /** JWT refresh 시 token_jti 만 갱신. session_id 유지. */
     public void updateTokenJti(String sessionId, String newTokenJti) {
         redis.opsForHash().put(ChatRedisKeys.sess(sessionId), "token_jti", newTokenJti);
