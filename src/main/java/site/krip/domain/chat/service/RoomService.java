@@ -47,6 +47,7 @@ public class RoomService {
     private final UserRepository userRepo;
     private final FanoutService fanout;
     private final MessageService messageService;
+    private final UnreadService unreadService;
     private final site.krip.domain.chat.repository.ChatMessageRepository messageRepo;
     private final StringRedisTemplate redis;
     private final TransactionTemplate txTemplate;
@@ -54,6 +55,7 @@ public class RoomService {
     public RoomService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
                        FriendQueryPort friendQuery,
                        UserRepository userRepo, FanoutService fanout, MessageService messageService,
+                       UnreadService unreadService,
                        site.krip.domain.chat.repository.ChatMessageRepository messageRepo,
                        StringRedisTemplate redis, TransactionTemplate txTemplate) {
         this.roomRepo = roomRepo;
@@ -62,6 +64,7 @@ public class RoomService {
         this.userRepo = userRepo;
         this.fanout = fanout;
         this.messageService = messageService;
+        this.unreadService = unreadService;
         this.messageRepo = messageRepo;
         this.redis = redis;
         this.txTemplate = txTemplate;
@@ -158,7 +161,7 @@ public class RoomService {
         redis.opsForSet().add(ChatRedisKeys.roomMembers(roomId), allMemberIds.toArray(new String[0]));
         redis.expire(ChatRedisKeys.roomMembers(roomId), Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
         for (String uid : allMemberIds) {
-            redis.opsForHash().put(ChatRedisKeys.unread(uid), roomId, "0");
+            unreadService.resetToZero(uid, roomId);
         }
 
         for (String uid : allMemberIds) {
@@ -200,7 +203,7 @@ public class RoomService {
         List<String> invited = new ArrayList<>();
         List<String> skipped = new ArrayList<>();
         List<String> newMembers = new ArrayList<>();
-        Map<String, Long> rejoined = new java.util.LinkedHashMap<>(); // uid -> last_read
+        List<String> rejoined = new ArrayList<>();
 
         txTemplate.executeWithoutResult(s -> {
             for (String uid : new TreeSet<>(targets)) {
@@ -213,8 +216,7 @@ public class RoomService {
                 if (existing != null && existing.isLeft()) {
                     existing.rejoin();
                     memberRepo.save(existing);
-                    rejoined.put(uid, existing.getLastReadMessageServerSeq() != null
-                            ? existing.getLastReadMessageServerSeq() : 0L);
+                    rejoined.add(uid);
                     invited.add(uid);
                 } else {
                     memberRepo.save(new ChatRoomMember(roomId, uid, currentSeq > 0 ? currentSeq : null));
@@ -230,12 +232,12 @@ public class RoomService {
 
         redis.opsForSet().add(ChatRedisKeys.roomMembers(roomId), invited.toArray(new String[0]));
         redis.expire(ChatRedisKeys.roomMembers(roomId), Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
-        for (var e : rejoined.entrySet()) {
-            long unread = Math.max(0, currentSeq - e.getValue());
-            redis.opsForHash().put(ChatRedisKeys.unread(e.getKey()), roomId, String.valueOf(unread));
+        // 재입장은 보존된 last_read 로 다음 읽기에 재계산(gap-safe), 신규는 0.
+        for (String uid : rejoined) {
+            unreadService.clear(uid, roomId);
         }
         for (String uid : newMembers) {
-            redis.opsForHash().put(ChatRedisKeys.unread(uid), roomId, "0");
+            unreadService.resetToZero(uid, roomId);
         }
 
         for (String uid : invited) {
@@ -273,7 +275,7 @@ public class RoomService {
 
         // 커밋 성공 후에만 Redis 정리 — tx 롤백 시 캐시가 RDB 보다 앞서지 않게.
         redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), meId);
-        redis.opsForHash().delete(ChatRedisKeys.unread(meId), roomId);
+        unreadService.clear(meId, roomId);
 
         fanout.fanOutToUser(meId, Map.of("type", "room_left", "room_id", roomId));
         // 시스템 메시지 이전에 구독 해제 — leaver 가 자기 "방 나감" 메시지를 받지 않도록.
@@ -314,7 +316,7 @@ public class RoomService {
 
         // 커밋 성공 후에만 Redis 정리 — tx 롤백 시 캐시가 RDB 보다 앞서지 않게.
         redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), targetUserId);
-        redis.opsForHash().delete(ChatRedisKeys.unread(targetUserId), roomId);
+        unreadService.clear(targetUserId, roomId);
 
         fanout.fanOutToUser(targetUserId, Map.of("type", "room_left", "room_id", roomId));
         fanout.unsubscribeUserFromRoom(targetUserId, roomId);
@@ -343,7 +345,7 @@ public class RoomService {
             throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
-        redis.opsForHash().put(ChatRedisKeys.unread(meId), roomId, "0");
+        unreadService.resetToZero(meId, roomId);
 
         fanout.fanOutToSession(meSessionId, Map.of(
                 "type", "read_ack", "room_id", roomId, "up_to_server_seq", finalSeq));

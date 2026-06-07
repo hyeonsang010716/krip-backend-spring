@@ -2,7 +2,6 @@ package site.krip.domain.chat.service;
 
 import org.bson.Document;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.auth.entity.User;
@@ -26,11 +25,9 @@ import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.chat.repository.ChatRoomRepository;
 import site.krip.domain.chat.repository.RoomListRow;
 import site.krip.domain.friend.port.FriendQueryPort;
-import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -50,17 +47,17 @@ public class MessageHistoryService {
     private final ChatMessageRepository messageRepo;
     private final UserRepository userRepo;
     private final FriendQueryPort friendQuery;
-    private final StringRedisTemplate redis;
+    private final UnreadService unreadService;
 
     public MessageHistoryService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
                                  ChatMessageRepository messageRepo, UserRepository userRepo,
-                                 FriendQueryPort friendQuery, StringRedisTemplate redis) {
+                                 FriendQueryPort friendQuery, UnreadService unreadService) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
         this.messageRepo = messageRepo;
         this.userRepo = userRepo;
         this.friendQuery = friendQuery;
-        this.redis = redis;
+        this.unreadService = unreadService;
     }
 
     @Transactional(readOnly = true)
@@ -114,8 +111,7 @@ public class MessageHistoryService {
         }
         User peerUser = peerUserId != null ? userRepo.findByIdWithProfile(peerUserId).orElse(null) : null;
 
-        String raw = (String) redis.opsForHash().get(ChatRedisKeys.unread(meId), roomId);
-        int unread = raw != null ? Integer.parseInt(raw) : 0;
+        int unread = unreadService.countForRoom(meId, roomId);
 
         Document lastDoc = room.getLastMessageId() != null
                 ? messageRepo.findById(room.getLastMessageId()) : null;
@@ -179,14 +175,9 @@ public class MessageHistoryService {
         return toMessageList(messageRepo.findAfter(roomId, afterSeq, limit), limit);
     }
 
-    /** Redis unread:{uid} HASH → {room_id: count} (WS 연결 직후 동기화 송신용). */
+    /** 유저 전체 활성 방의 unread (커서 파생, 캐시 miss 인 방만 재계산). */
     public Map<String, Integer> unreadCounts(String meId) {
-        Map<Object, Object> raw = redis.opsForHash().entries(ChatRedisKeys.unread(meId));
-        Map<String, Integer> result = new HashMap<>();
-        for (var e : raw.entrySet()) {
-            result.put(e.getKey().toString(), Integer.parseInt(e.getValue().toString()));
-        }
-        return result;
+        return unreadService.countsForUser(meId);
     }
 
     private void assertRoomMember(String roomId, String userId) {

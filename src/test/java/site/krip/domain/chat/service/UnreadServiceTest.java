@@ -22,12 +22,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link UnreadRecoveryService} 순수 단위 테스트.
+ * {@link UnreadService} 순수 단위 테스트.
  *
- * <p>방별 Mongo count 는 독립 격리돼야 한다 — 한 방의 조회 실패가 전체 복구를
- * 중단시키면 안 되고, 나머지 방은 정상 복구돼야 한다.
+ * <p>캐시 miss(빈 해시) 상황에서 방별 Mongo count 가 독립 격리돼야 한다 — 한 방의 조회 실패가
+ * 전체 계산을 중단시키면 안 되고, 나머지 방은 정상 계산돼 캐시에 기록돼야 한다.
  */
-class UnreadRecoveryServiceTest {
+class UnreadServiceTest {
 
     private final ChatRoomMemberRepository memberRepo = mock(ChatRoomMemberRepository.class);
     private final ChatMessageRepository messageRepo = mock(ChatMessageRepository.class);
@@ -36,19 +36,18 @@ class UnreadRecoveryServiceTest {
     @SuppressWarnings("unchecked")
     private final HashOperations<String, Object, Object> hashOps = mock(HashOperations.class);
 
-    private final UnreadRecoveryService service =
-            new UnreadRecoveryService(memberRepo, messageRepo, redis);
+    private final UnreadService service = new UnreadService(memberRepo, messageRepo, redis);
 
     private void seedRooms() {
         when(memberRepo.findLastReadSeqsAll("U")).thenReturn(List.of(
                 new LastReadSeq("R1", 0L),
                 new LastReadSeq("R2", 0L),
                 new LastReadSeq("R3", 0L)));
-        when(redis.opsForHash()).thenReturn(hashOps);
+        when(redis.opsForHash()).thenReturn(hashOps); // entries() 미스텁 → null → 전 방 miss 로 계산
     }
 
     @Test
-    @DisplayName("한 방의 Mongo count 실패 시 나머지 방은 정상 복구된다 (실패 방만 skip)")
+    @DisplayName("한 방의 Mongo count 실패 시 나머지 방은 정상 계산된다 (실패 방만 skip)")
     void perRoomFailureIsIsolated() {
         seedRooms();
         when(messageRepo.countAfterSeq(eq("R1"), anyLong(), anyInt())).thenReturn(5L);
@@ -56,7 +55,7 @@ class UnreadRecoveryServiceTest {
                 .thenThrow(new RuntimeException("mongo down"));
         when(messageRepo.countAfterSeq(eq("R3"), anyLong(), anyInt())).thenReturn(7L);
 
-        Map<String, Integer> result = service.recoverUnreadForUser("U");
+        Map<String, Integer> result = service.countsForUser("U");
 
         assertThat(result)
                 .containsEntry("R1", 5)
@@ -74,7 +73,7 @@ class UnreadRecoveryServiceTest {
         when(messageRepo.countAfterSeq(anyString(), anyLong(), anyInt()))
                 .thenThrow(new RuntimeException("mongo down"));
 
-        Map<String, Integer> result = service.recoverUnreadForUser("U");
+        Map<String, Integer> result = service.countsForUser("U");
 
         assertThat(result).isEmpty();
         verify(hashOps, never()).put(anyString(), anyString(), anyString());
@@ -86,7 +85,7 @@ class UnreadRecoveryServiceTest {
         seedRooms();
         when(messageRepo.countAfterSeq(anyString(), anyLong(), anyInt())).thenReturn(1000L);
 
-        Map<String, Integer> result = service.recoverUnreadForUser("U");
+        Map<String, Integer> result = service.countsForUser("U");
 
         assertThat(result).containsEntry("R1", 999).containsEntry("R2", 999).containsEntry("R3", 999);
     }

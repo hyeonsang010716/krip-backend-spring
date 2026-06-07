@@ -4,8 +4,6 @@ import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.data.redis.connection.StringRedisConnection;
-import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import site.krip.domain.chat.dto.response.EditMessageResponse;
@@ -40,7 +38,7 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * <p>핫패스: 멤버십(Redis 캐시) → rate limit(Lua) → 차단(DIRECT) → dedupe(NX) → seq 채번 →
  * Mongo insert(DuplicateKey 시 force_jump 재시도) → last_message 역정규화(실패 시 dirty 큐) →
- * unread 증가 → fan-out → FCM 푸시(fire-and-forget). RDB 쓰기는 last_message bulk UPDATE 1건뿐.
+ * unread 캐시 무효화 → fan-out → FCM 푸시(fire-and-forget). RDB 쓰기는 last_message bulk UPDATE 1건뿐.
  */
 @Service
 public class MessageService {
@@ -57,6 +55,7 @@ public class MessageService {
     private final FanoutService fanout;
     private final ChatSeqAllocator seq;
     private final ChatPushPort push;
+    private final UnreadService unreadService;
     private final StringRedisTemplate redis;
     private final StringRedisTemplate dedupeRedis;
     private final Executor pushExecutor;
@@ -64,7 +63,7 @@ public class MessageService {
     public MessageService(ChatRoomMemberRepository memberRepo, ChatRoomRepository roomRepo,
                           ChatMessageRepository messageRepo, FriendQueryPort friendQuery,
                           FanoutService fanout, ChatSeqAllocator seq, ChatPushPort push,
-                          StringRedisTemplate redis,
+                          UnreadService unreadService, StringRedisTemplate redis,
                           @Qualifier("dedupeRedisTemplate") StringRedisTemplate dedupeRedis,
                           @Qualifier("pushExecutor") Executor pushExecutor) {
         this.memberRepo = memberRepo;
@@ -74,6 +73,7 @@ public class MessageService {
         this.fanout = fanout;
         this.seq = seq;
         this.push = push;
+        this.unreadService = unreadService;
         this.redis = redis;
         this.dedupeRedis = dedupeRedis;
         this.pushExecutor = pushExecutor;
@@ -118,7 +118,7 @@ public class MessageService {
         updateLastMessageBestEffort(roomId, messageId, serverSeq, now);
 
         if (msgType != MessageType.SYSTEM) {
-            bumpUnread(roomId, senderUserId);
+            invalidateUnread(roomId, senderUserId);
         }
 
         fanout.fanOutToRoom(roomId, messageNewPayload(senderSessionId, messageId, roomId, serverSeq,
@@ -287,32 +287,18 @@ public class MessageService {
                 || Boolean.TRUE.equals(redis.opsForSet().isMember(key, peerId + ":" + senderUserId));
     }
 
-    private void bumpUnread(String roomId, String senderUserId) {
-        try {
-            Set<String> members = redis.opsForSet().members(ChatRedisKeys.roomMembers(roomId));
-            if (members == null || members.isEmpty()) {
-                return;
-            }
-            List<String> recipients = new ArrayList<>();
-            for (String uid : members) {
-                if (!uid.equals(senderUserId)) {
-                    recipients.add(uid);
-                }
-            }
-            if (recipients.isEmpty()) {
-                return;
-            }
-            // 발신자 제외 멤버 HINCRBY 를 단일 파이프라인 1 RTT 로 — 대형 그룹방에서도 멤버 수만큼 왕복하지 않는다.
-            redis.executePipelined((RedisCallback<Object>) connection -> {
-                StringRedisConnection conn = (StringRedisConnection) connection;
-                for (String uid : recipients) {
-                    conn.hIncrBy(ChatRedisKeys.unread(uid), roomId, 1);
-                }
-                return null;
-            });
-        } catch (Exception e) {
-            log.warn("unread 증가 실패 (무시): room_id={}", roomId, e);
+    private void invalidateUnread(String roomId, String senderUserId) {
+        Set<String> members = redis.opsForSet().members(ChatRedisKeys.roomMembers(roomId));
+        if (members == null || members.isEmpty()) {
+            return;
         }
+        List<String> recipients = new ArrayList<>();
+        for (String uid : members) {
+            if (!uid.equals(senderUserId)) {
+                recipients.add(uid);
+            }
+        }
+        unreadService.invalidateForRecipients(roomId, recipients);
     }
 
     private long insertWithRetry(Document doc, String roomId, long serverSeq) {

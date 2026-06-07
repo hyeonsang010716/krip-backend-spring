@@ -15,11 +15,10 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 import site.krip.domain.chat.dto.response.MessageSentAck;
 import site.krip.domain.chat.entity.MessageType;
 import site.krip.domain.chat.service.FanoutService;
-import site.krip.domain.chat.service.MessageHistoryService;
 import site.krip.domain.chat.service.MessageService;
 import site.krip.domain.chat.service.RoomService;
 import site.krip.domain.chat.service.SessionService;
-import site.krip.domain.chat.service.UnreadRecoveryService;
+import site.krip.domain.chat.service.UnreadService;
 import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.IsoTimestamp;
@@ -49,8 +48,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     private final SessionService sessionService;
     private final RoomService roomService;
     private final MessageService messageService;
-    private final MessageHistoryService historyService;
-    private final UnreadRecoveryService unreadRecovery;
+    private final UnreadService unreadService;
     private final FanoutService fanout;
     private final JwtProvider jwtProvider;
     private final ObjectMapper mapper;
@@ -62,16 +60,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     private final Map<String, String> liveSessions = new ConcurrentHashMap<>();
 
     public ChatWebSocketHandler(SessionService sessionService, RoomService roomService,
-                                MessageService messageService, MessageHistoryService historyService,
-                                UnreadRecoveryService unreadRecovery, FanoutService fanout,
+                                MessageService messageService, UnreadService unreadService,
+                                FanoutService fanout,
                                 JwtProvider jwtProvider, ObjectMapper mapper,
                                 @Qualifier("chatWsScheduler") ThreadPoolTaskScheduler heartbeatScheduler,
                                 @Qualifier("recoverExecutor") Executor recoverExecutor) {
         this.sessionService = sessionService;
         this.roomService = roomService;
         this.messageService = messageService;
-        this.historyService = historyService;
-        this.unreadRecovery = unreadRecovery;
+        this.unreadService = unreadService;
         this.fanout = fanout;
         this.jwtProvider = jwtProvider;
         this.mapper = mapper;
@@ -126,16 +123,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
 
         fanout.sendToSessionDirect(session, Map.of("type", "connected", "session_id", sessionId));
 
-        try {
-            Map<String, Integer> counts = historyService.unreadCounts(userId);
-            if (!counts.isEmpty()) {
-                fanout.sendToSessionDirect(session, Map.of("type", "unread_synced", "counts", counts));
-            } else {
-                spawnRecoverUnread(session, userId);
-            }
-        } catch (Exception e) {
-            log.warn("unread 동기화 실패 (무시): user_id={}, err={}", userId, e.toString());
-        }
+        // 커서 파생 계산은 Mongo 를 칠 수 있어 연결 스레드를 막지 않도록 항상 백그라운드로.
+        spawnUnreadSync(session, userId);
 
         liveSessions.put(sessionId, userId);
     }
@@ -262,15 +251,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         }
     }
 
-    private void spawnRecoverUnread(WebSocketSession session, String userId) {
+    private void spawnUnreadSync(WebSocketSession session, String userId) {
         recoverExecutor.execute(() -> {
             try {
-                Map<String, Integer> counts = unreadRecovery.recoverUnreadForUser(userId);
+                Map<String, Integer> counts = unreadService.countsForUser(userId);
                 if (!counts.isEmpty() && session.isOpen()) {
                     fanout.sendToSessionDirect(session, Map.of("type", "unread_synced", "counts", counts));
                 }
             } catch (Exception e) {
-                log.warn("unread 백그라운드 복구 실패: user_id={}", userId, e);
+                log.warn("unread 동기화 실패: user_id={}", userId, e);
             }
         });
     }
