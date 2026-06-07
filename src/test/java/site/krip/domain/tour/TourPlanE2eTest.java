@@ -376,4 +376,18 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/tour/plans"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @DisplayName("생성 — travel_days > 365 → 400 (비현실적 거대 플랜 차단)")
+    void travelDaysOverMax() throws Exception {
+        String userId = fixtures.createActiveUser("거대플랜");
+
+        // @Max(365) 가 place 조회 이전에 거부하므로 더미 place_id 로 충분.
+        mockMvc.perform(post("/api/tour/plans")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createPlanBody("초장기", 400, "place-dummy", 1, "10:00")))
+                .andExpect(status().isBadRequest());
+    }
 }

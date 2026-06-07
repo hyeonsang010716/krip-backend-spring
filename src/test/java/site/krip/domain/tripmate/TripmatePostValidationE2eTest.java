@@ -76,4 +76,46 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
                         .content(body(30, 30, "2026-09-01", "2026-09-01")))
                 .andExpect(status().isCreated());
     }
+
+    @Test
+    @DisplayName("생성 — 선호 나이 max > 150 → 400 (상한 검증)")
+    void preferredAgeOverMax() throws Exception {
+        String userId = fixtures.createActiveUser("나이상한초과");
+
+        mockMvc.perform(post(CREATE)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body(20, 200, "2026-09-01", "2026-09-07")))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("생성 — image_urls 11개(>10) → 400 (무한 입력 차단)")
+    void imageUrlsOverLimit() throws Exception {
+        String userId = fixtures.createActiveUser("이미지초과");
+
+        StringBuilder urls = new StringBuilder();
+        for (int i = 0; i < 11; i++) {
+            urls.append(i == 0 ? "" : ",").append("\"https://cdn.test/").append(i).append(".webp\"");
+        }
+        String content = """
+                {
+                  "title": "동행 구해요",
+                  "content": "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
+                  "preferred_age_min": 20, "preferred_age_max": 35,
+                  "preferred_gender": "any", "region": "부산",
+                  "travel_start_date": "2026-09-01", "travel_end_date": "2026-09-07",
+                  "companion_type": "friend",
+                  "image_urls": [%s]
+                }
+                """.formatted(urls);
+
+        mockMvc.perform(post(CREATE)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(content))
+                .andExpect(status().isBadRequest());
+    }
 }

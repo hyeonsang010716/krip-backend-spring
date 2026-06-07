@@ -95,6 +95,19 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("PATCH /me — 컬럼 길이 초과 전화번호(21자) → 400 (구 동작은 DB 위반 500)")
+    void updateProfileOversizedPhoneIs400() throws Exception {
+        String userId = fixtures.createActiveUser();
+
+        mockMvc.perform(patch("/api/auth/profile/me")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone_number\": \"012345678901234567890\"}")) // 21자 > varchar(20)
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("GET /all — 본인 제외, 타 ACTIVE 유저 노출")
     void getAllOtherUsersExcludesSelf() throws Exception {
         String me = fixtures.createActiveUser("탐색본인");

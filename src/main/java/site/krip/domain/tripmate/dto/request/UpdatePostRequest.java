@@ -1,6 +1,7 @@
 package site.krip.domain.tripmate.dto.request;
 
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,19 +13,19 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 게시글 수정 요청. 생성과 동일 필드.
+ * 게시글 수정 요청. 생성과 동일 필드. imageUrls 최대 10개, URL 길이는 DB 컬럼(varchar 500)과 일치.
  */
 public record UpdatePostRequest(
         @NotBlank @Size(min = 1, max = 100) String title,
         @NotBlank @Size(min = 10, max = 500) String content,
-        @NotNull @Min(1) Integer preferredAgeMin,
-        @NotNull @Min(1) Integer preferredAgeMax,
+        @NotNull @Min(1) @Max(150) Integer preferredAgeMin,
+        @NotNull @Min(1) @Max(150) Integer preferredAgeMax,
         @NotNull PreferredGender preferredGender,
         @NotBlank @Size(max = 100) String region,
         @NotNull LocalDate travelStartDate,
         @NotNull LocalDate travelEndDate,
         @NotNull CompanionType companionType,
-        List<String> imageUrls
+        @Size(max = 10) List<@NotBlank @Size(max = 500) String> imageUrls
 ) {
     @AssertTrue(message = "선호 나이 최소값은 최대값보다 클 수 없습니다.")
     public boolean isPreferredAgeRangeValid() {
