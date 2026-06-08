@@ -122,6 +122,10 @@ public class InboxItem {
         return commentId;
     }
 
+    public String getRecipientId() {
+        return recipientId;
+    }
+
     public String getActorName() {
         return actorName;
     }

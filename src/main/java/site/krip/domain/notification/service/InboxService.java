@@ -164,9 +164,9 @@ public class InboxService {
 
     private void safeInsert(InboxItem item) {
         try {
-            repo.insert(item);
+            repo.upsert(item);
         } catch (DuplicateKeyException e) {
-            // uq_inbox_dedup — display=true 중복은 멱등 skip.
+            // 동시 fan-out 경합 — 다른 스레드가 이미 insert/bump. 멱등 skip.
         } catch (Exception e) {
             log.warn("인박스 fan-out 실패", e);
         }

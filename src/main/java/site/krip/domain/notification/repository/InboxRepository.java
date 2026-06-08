@@ -63,6 +63,28 @@ public class InboxRepository {
     }
 
     /**
+     * dedup 키((recipient, actor, type, target, comment))로 upsert — 신규는 insert, 기존(숨김 포함)은
+     * display=true·미읽음·최신순으로 되살린다(재좋아요 중복 누적 방지). 동시 fan-out 경합은 DuplicateKeyException propagate.
+     */
+    public void upsert(InboxItem item) {
+        Query q = Query.query(Criteria.where("recipient_id").is(item.getRecipientId())
+                .and("actor_id").is(item.getActorId())
+                .and("type").is(item.getType().getValue())
+                .and("target_id").is(item.getTargetId())
+                .and("comment_id").is(item.getCommentId()));
+        Update u = new Update()
+                .set("display", true)
+                .set("read_at", null)
+                .set("created_at", item.getCreatedAt())
+                .set("actor_name", item.getActorName())
+                .set("actor_profile_image_url", item.getActorProfileImageUrl())
+                .set("target_preview", item.getTargetPreview())
+                .set("comment_preview", item.getCommentPreview())
+                .setOnInsert("target_type", item.getTargetType().getValue());
+        mongo.upsert(q, u, InboxItem.class);
+    }
+
+    /**
      * display=true 최신순(created_at DESC, _id DESC), limit+1 fetch(has_more 판정).
      * 커서는 (created_at, _id) keyset — 2키 정렬과 일치시켜 동일 시각 경계의 항목 skip/중복을 막는다.
      * {@code cursorId} 가 null 이면 timestamp-only(구 커서 하위호환): created_at &lt; cursorTs.

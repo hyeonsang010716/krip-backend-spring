@@ -345,7 +345,8 @@ public class RoomService {
             throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
-        unreadService.resetToZero(meId, roomId);
+        // 하드 0 대신 무효화 — finalSeq 미만만 읽었을 수 있어, 다음 읽기에 진실(last_read+Mongo)에서 재계산.
+        unreadService.clear(meId, roomId);
 
         fanout.fanOutToSession(meSessionId, Map.of(
                 "type", "read_ack", "room_id", roomId, "up_to_server_seq", finalSeq));
