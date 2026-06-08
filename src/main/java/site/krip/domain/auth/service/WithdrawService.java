@@ -33,7 +33,7 @@ import java.util.List;
  *   <li>{@link #purge} — 스케줄러 hard delete (RDB CASCADE + 외부 리소스)</li>
  * </ul>
  *
- * cancel ↔ purge 는 {@code findByIdForUpdate} row lock 으로 상호배타. 트랜잭션 구간은
+ * request ↔ cancel ↔ purge 는 {@code findByIdForUpdate} row lock 으로 상호배타. 트랜잭션 구간은
  * self-invocation 프록시 한계를 피해 {@link TransactionTemplate} 으로 연다.
  */
 @Service
@@ -88,7 +88,8 @@ public class WithdrawService {
      */
     @Transactional
     public Instant requestWithdraw(String userId) {
-        User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);
+        // request ↔ cancel ↔ purge 를 동일 row lock 으로 직렬화 (동시 purge 와의 인터리빙 차단).
+        User user = userRepository.findByIdForUpdate(userId).orElseThrow(UserNotFoundException::new);
         if (user.getStatus() == UserStatus.INACTIVE) {
             throw new WithdrawalAlreadyRequestedException();
         }
@@ -97,6 +98,8 @@ public class WithdrawService {
 
         Instant now = Instant.now();
         Instant purgeAt = now.plus(graceDays, ChronoUnit.DAYS);
+        // purge 스케줄러의 작업 큐(doc)는 INACTIVE 전환과 같은 트랜잭션에 묶어 둔다.
+        // 빼내면 RDB=INACTIVE 인데 doc 누락 → 영구 삭제 누락 위험. orphan doc(역방향)은 worker STALE_DOC 가 정리.
         withdrawalRequestRepository.upsert(userId, now, purgeAt);
 
         // 미커밋 ACTIVE 재캐싱 race 차단을 위해 커밋 이후에만 무효화/종료.

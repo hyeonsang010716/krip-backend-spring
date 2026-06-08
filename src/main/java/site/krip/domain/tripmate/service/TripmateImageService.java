@@ -3,7 +3,6 @@ package site.krip.domain.tripmate.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.domain.tripmate.document.TripmatePostDraft;
 import site.krip.domain.tripmate.exception.PostAccessDeniedException;
@@ -93,8 +92,12 @@ public class TripmateImageService {
         log.info("이미지 삭제 완료 (user_id={}, image_id={})", userId, imageId);
     }
 
-    /** 고아 이미지 정리 — 게시글/임시저장 어디에도 참조되지 않는 업로드 이미지 삭제. */
-    @Transactional(readOnly = true)
+    /**
+     * 고아 이미지 정리 — 게시글/임시저장 어디에도 참조되지 않는 업로드 이미지 삭제.
+     *
+     * <p>전부 Mongo/S3 작업이라 RDB 트랜잭션을 열지 않는다(느린 S3 호출 동안 JDBC 커넥션을 점유하지 않음).
+     * S3 삭제 후 메타데이터 삭제가 실패해도 대상은 여전히 미참조라 다음 호출에서 재정리된다(멱등).
+     */
     public int cleanupOrphanedImages(String userId) {
         List<TripmateImage> allImages = imageRepository.findByUserId(userId);
         if (allImages.isEmpty()) {
