@@ -109,7 +109,11 @@ public class MessageService {
         try {
             serverSeq = seq.allocateSeq(roomId);
             Document doc = baseDoc(messageId, roomId, serverSeq, senderUserId, msgType, content, now);
+            doc.put("client_msg_id", clientMsgId);
             serverSeq = insertWithRetry(doc, roomId, serverSeq);
+        } catch (ChatMessageRepository.DuplicateClientMsgException e) {
+            // 이전 시도가 이미 영속화됨(dedupe 키 유실/만료 후 재시도) — 멱등: 기존 메시지 ack 반환.
+            return existingAck(roomId, senderUserId, clientMsgId);
         } catch (RuntimeException e) {
             dedupeRedis.delete(dedupeK);
             throw e;
@@ -299,6 +303,17 @@ public class MessageService {
             }
         }
         unreadService.invalidateForRecipients(roomId, recipients);
+    }
+
+    /** client_msg_id 중복(재시도) — 이미 저장된 메시지를 찾아 동일 ack 로 멱등 응답. */
+    private MessageSentAck existingAck(String roomId, String senderUserId, String clientMsgId) {
+        Document existing = messageRepo.findByClientMsgId(roomId, senderUserId, clientMsgId);
+        if (existing == null) {
+            throw ApiException.badRequest("이미 처리된 메시지입니다 (dedupe).");
+        }
+        long existingSeq = ((Number) existing.get("server_seq")).longValue();
+        Instant createdAt = existing.getDate("created_at").toInstant();
+        return new MessageSentAck(clientMsgId, existing.getString("_id"), existingSeq, createdAt);
     }
 
     private long insertWithRetry(Document doc, String roomId, long serverSeq) {

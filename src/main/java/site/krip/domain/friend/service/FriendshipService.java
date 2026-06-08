@@ -88,10 +88,10 @@ public class FriendshipService {
             if (existing.getStatus() != FriendshipStatus.REJECTED) {
                 raiseExistingError(existing, requesterId);
             }
-            // REJECTED → 재요청 허용 (방향 반전 포함 upsert)
-            existing.reopenAsPending(requesterId, addresseeId);
-            friendshipRepository.flush(); // updatedAt 갱신
-            return toResponse(existing, requesterId, addressee);
+            // REJECTED → 재요청: 가변 스칼라 스왑 대신 삭제 후 새 행(방향 반영·created_at 갱신·stale nav 제거).
+            // canonical unique 재삽입 충돌을 피하려 DELETE 를 먼저 flush.
+            friendshipRepository.delete(existing);
+            friendshipRepository.flush();
         }
 
         Friendship saved = friendshipRepository.saveAndFlush(new Friendship(requesterId, addresseeId));

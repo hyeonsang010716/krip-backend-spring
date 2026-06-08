@@ -38,26 +38,46 @@ public class ChatMessageRepository {
         this.collection = mongoTemplate.getCollection(COLLECTION);
     }
 
+    private static final String IDX_ROOM_SEQ = "uq_chat_message_room_seq";
+    private static final String IDX_ROOM_SENDER_CLIENT = "uq_chat_message_room_sender_client";
+
     @PostConstruct
     void createIndexes() {
         collection.createIndex(
                 Indexes.ascending("chat_room_id", "server_seq"),
-                new IndexOptions().name("uq_chat_message_room_seq").unique(true));
+                new IndexOptions().name(IDX_ROOM_SEQ).unique(true));
+        // 멱등 앵커 — 동일 (room, sender, client_msg_id) 재시도 중복 차단. client_msg_id 없는 시스템 메시지는 제외(partial).
+        collection.createIndex(
+                Indexes.ascending("chat_room_id", "sender_id", "client_msg_id"),
+                new IndexOptions().name(IDX_ROOM_SENDER_CLIENT).unique(true)
+                        .partialFilterExpression(Filters.exists("client_msg_id", true)));
         collection.createIndex(
                 Indexes.compoundIndex(Indexes.ascending("chat_room_id"), Indexes.descending("created_at")),
                 new IndexOptions().name("ix_chat_message_room_created_at"));
     }
 
-    /** 메시지 1건 insert. seq 중복(UNIQUE)은 {@link DuplicateSeqException} 으로 변환. */
+    /** 메시지 1건 insert. seq 중복은 {@link DuplicateSeqException}, client_msg_id 중복은 {@link DuplicateClientMsgException}. */
     public void insert(Document document) {
         try {
             collection.insertOne(document);
         } catch (MongoWriteException e) {
             if (e.getError().getCategory() == ErrorCategory.DUPLICATE_KEY) {
+                String msg = e.getError().getMessage();
+                if (msg != null && msg.contains(IDX_ROOM_SENDER_CLIENT)) {
+                    throw new DuplicateClientMsgException(e);
+                }
                 throw new DuplicateSeqException(e);
             }
             throw e;
         }
+    }
+
+    /** (room, sender, client_msg_id) 로 기존 메시지 조회 — 재시도 멱등 ack 용. */
+    public Document findByClientMsgId(String chatRoomId, String senderId, String clientMsgId) {
+        return collection.find(Filters.and(
+                Filters.eq("chat_room_id", chatRoomId),
+                Filters.eq("sender_id", senderId),
+                Filters.eq("client_msg_id", clientMsgId))).first();
     }
 
     /** 방의 최대 server_seq (없으면 0) — seq 복구 경로의 base. */
@@ -162,6 +182,13 @@ public class ChatMessageRepository {
     /** seq UNIQUE 중복 — service 가 force_jump 재시도로 분기. */
     public static class DuplicateSeqException extends RuntimeException {
         public DuplicateSeqException(Throwable cause) {
+            super(cause);
+        }
+    }
+
+    /** client_msg_id UNIQUE 중복 — 동일 메시지 재시도. service 가 기존 ack 반환(멱등). */
+    public static class DuplicateClientMsgException extends RuntimeException {
+        public DuplicateClientMsgException(Throwable cause) {
             super(cause);
         }
     }

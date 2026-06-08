@@ -85,13 +85,6 @@ public class Friendship {
         this.status = FriendshipStatus.REJECTED;
     }
 
-    /** REJECTED → 재요청: 방향 반전 포함 PENDING 으로 재개. */
-    public void reopenAsPending(String requesterId, String addresseeId) {
-        this.requesterId = requesterId;
-        this.addresseeId = addresseeId;
-        this.status = FriendshipStatus.PENDING;
-    }
-
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
