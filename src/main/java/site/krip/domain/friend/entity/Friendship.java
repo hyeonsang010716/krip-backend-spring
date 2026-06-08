@@ -85,6 +85,16 @@ public class Friendship {
         this.status = FriendshipStatus.REJECTED;
     }
 
+    /**
+     * REJECTED 관계 재요청 — 같은 행을 PENDING 으로 되살려 friendshipId 를 안정 유지(클라이언트 stale-id 404 방지).
+     * 방향은 재요청자 기준으로 갱신. canonical unique 는 LEAST/GREATEST 라 방향 스왑해도 동일 키.
+     */
+    public void reopenAsPending(String requesterId, String addresseeId) {
+        this.requesterId = requesterId;
+        this.addresseeId = addresseeId;
+        this.status = FriendshipStatus.PENDING;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

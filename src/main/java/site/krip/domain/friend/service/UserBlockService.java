@@ -17,6 +17,7 @@ import site.krip.domain.friend.port.BlockCachePort;
 import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.AfterCommit;
 
 import java.time.Instant;
 import java.util.List;
@@ -84,10 +85,9 @@ public class UserBlockService {
 
         UserBlock saved = userBlockRepository.saveAndFlush(new UserBlock(userId, targetUserId));
 
-        // chat stale 캐시 제거 — 트랜잭션 안(커밋 전)에서 호출한다.
-        // Redis 실패 시 RuntimeException 이 전파돼 블록 INSERT 까지 롤백된다(fail-closed):
-        // 캐시를 못 지운 채로 차단을 확정해 stale 캐시가 차단을 누락시키는 상황을 막는다.
-        blockCachePort.invalidateBlockCache(userId, targetUserId);
+        // 캐시 무효화 — 커밋 전(fail-closed: Redis 실패 시 INSERT 까지 롤백)과 커밋 후(동시 read 가
+        // 미커밋 INSERT 를 못 보고 "차단 아님" 으로 재적재한 stale 캐시 제거) 모두 같은 키를 DEL.
+        invalidateBlockCacheBeforeAndAfterCommit(userId, targetUserId);
 
         return new UserBlockResponse(saved.getBlockId(), FriendPeerResponse.from(target), saved.getCreatedAt());
     }
@@ -96,10 +96,16 @@ public class UserBlockService {
     public void unblockUser(String userId, String targetUserId) {
         UserBlock block = userBlockRepository.findByBlockerIdAndBlockedId(userId, targetUserId)
                 .orElseThrow(() -> ApiException.badRequest("차단 상태가 아닙니다."));
-        // 캐시 무효화를 트랜잭션 안에서 호출 — Redis 실패 시 RuntimeException 이 delete 까지 롤백(fail-closed).
-        // 차단/해제 시 캐시 갱신과 DB 변경을 원자적으로 묶어 부분 적용(stale 캐시)을 막는다(doBlock 과 동일).
-        blockCachePort.invalidateBlockCache(userId, targetUserId);
         userBlockRepository.delete(block);
+        // 커밋 전(fail-closed)과 커밋 후(동시 read 가 미커밋 삭제를 못 보고 "차단됨" 으로 재적재한 stale 캐시
+        // 제거) 이중 무효화. 잔여 race 는 캐시 TTL 로 상한(doBlock 과 동일).
+        invalidateBlockCacheBeforeAndAfterCommit(userId, targetUserId);
+    }
+
+    /** 커밋 전·후 이중 무효화 — TOCTOU 재적재 창을 닫는다. 단건 무효화의 fail-closed 보장은 유지. */
+    private void invalidateBlockCacheBeforeAndAfterCommit(String userId, String targetUserId) {
+        blockCachePort.invalidateBlockCache(userId, targetUserId);
+        AfterCommit.run(() -> blockCachePort.invalidateBlockCache(userId, targetUserId));
     }
 
     @Transactional(readOnly = true)
