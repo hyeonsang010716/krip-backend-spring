@@ -19,6 +19,7 @@ import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.global.common.exception.ApiException;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,10 @@ import java.util.Map;
 public class FriendSearchService {
 
     private static final int PAGE_SIZE = 30;
+    /** 동명 부분일치 선해석 상한 — 초과 시 일부 작성자 제외(검색 한정 동작). */
+    private static final int NAME_MATCH_LIMIT = 500;
+    /** 닉네임 매칭 0건일 때 IN 무매칭용 sentinel (실제 user_id 가 될 수 없는 값). */
+    private static final Collection<String> NO_NAME_MATCH = List.of("__no_name_match__");
     private static final Sort PAGE_SORT =
             Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("userId"));
 
@@ -55,15 +60,20 @@ public class FriendSearchService {
             throw ApiException.badRequest("검색어를 입력해주세요.");
         }
         String pattern = escapeLike(normalized);
+        // 닉네임 분기는 trigram 으로 user_id 를 먼저 해석 → 검색 OR 를 모두 users.user_id 로 모은다.
+        // 빈 결과는 sentinel 로 IN 무매칭 처리(JPQL 빈 IN 회피).
+        List<String> nameIds = searchRepository.findUserIdsByNameLike(pattern, PageRequest.of(0, NAME_MATCH_LIMIT));
+        Collection<String> nameMatchedIds = nameIds.isEmpty() ? NO_NAME_MATCH : nameIds;
         Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
 
         List<User> users;
         if (cursor == null || cursor.isBlank()) {
-            users = searchRepository.searchFirstPage(viewerId, UserStatus.ACTIVE, pattern, p);
+            users = searchRepository.searchFirstPage(viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, p);
         } else {
             Instant cursorAt = searchRepository.findCreatedAt(cursor).orElse(null);
             users = (cursorAt == null) ? List.of()
-                    : searchRepository.searchAfterCursor(viewerId, UserStatus.ACTIVE, pattern, cursorAt, cursor, p);
+                    : searchRepository.searchAfterCursor(
+                            viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, cursorAt, cursor, p);
         }
 
         if (users.isEmpty()) {
