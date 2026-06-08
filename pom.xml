@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.3</version>
+        <version>3.5.14</version>
         <relativePath/>
     </parent>
 
@@ -19,11 +19,38 @@
 
     <properties>
         <java.version>17</java.version>
-        <jjwt.version>0.12.6</jjwt.version>
-        <awssdk.version>2.31.6</awssdk.version>
-        <springdoc.version>2.8.6</springdoc.version>
+        <jjwt.version>0.13.0</jjwt.version>
+        <awssdk.version>2.42.37</awssdk.version>
+        <springdoc.version>2.8.17</springdoc.version>
         <shedlock.version>7.7.0</shedlock.version>
     </properties>
+
+    <!--
+      전이 의존성의 알려진 취약 버전을 패치본으로 강제 고정(직접 의존성 선언은 그대로, 내부 버전만 끌어올림).
+      - swagger-ui: springdoc 이 가져오는 5.32.2 → 5.32.5 (XSS 등 수정된 최신 non-vulnerable).
+      - commons-lang3: springdoc(swagger-core-jakarta)이 가져오는 3.17.0 → 3.18.0 (CVE-2025-48924 DoS 수정, compile).
+      - commons-compress: testcontainers(test)가 가져오는 1.24.0 → 1.27.1 (CVE-2024-25710·26308 DoS 수정).
+        test scope 라 배포물엔 미포함이나 스캐너 경고 제거 + 위생 차원.
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>5.32.5</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.18.0</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>1.27.1</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Web (MVC) -->
@@ -48,12 +75,12 @@
         <dependency>
             <groupId>net.coobird</groupId>
             <artifactId>thumbnailator</artifactId>
-            <version>0.4.20</version>
+            <version>0.4.21</version>
         </dependency>
         <dependency>
             <groupId>com.twelvemonkeys.imageio</groupId>
             <artifactId>imageio-webp</artifactId>
-            <version>3.12.0</version>
+            <version>3.13.1</version>
         </dependency>
         <dependency>
             <groupId>com.drewnoakes</groupId>
@@ -65,7 +92,7 @@
         <dependency>
             <groupId>com.google.firebase</groupId>
             <artifactId>firebase-admin</artifactId>
-            <version>9.4.3</version>
+            <version>9.9.0</version>
         </dependency>
 
         <!-- Persistence: PostgreSQL (JPA), MongoDB, Redis -->
