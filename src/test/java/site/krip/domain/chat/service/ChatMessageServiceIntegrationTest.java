@@ -3,8 +3,10 @@ package site.krip.domain.chat.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import site.krip.domain.chat.entity.MessageType;
 import site.krip.domain.friend.service.UserBlockService;
+import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 import site.krip.support.IntegrationTestSupport;
 
@@ -25,6 +27,9 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private UserBlockService userBlockService;
+
+    @Autowired
+    private StringRedisTemplate redis;
 
     private String directRoom(String a, String b) {
         return roomService.createDirectRoom(a, b).chatRoomId();
@@ -90,5 +95,22 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
                 messageService.sendMessage(b, "sess-b", room, "x1", MessageType.TEXT, "hi"))
                 .isInstanceOf(ApiException.class)
                 .hasMessageContaining("차단");
+    }
+
+    @Test
+    @DisplayName("room:members 캐시가 유실돼도 새 메시지는 수신자 unread 를 무효화한다 (DB 폴백)")
+    void unreadInvalidatedWhenMemberCacheLost() {
+        String a = fixtures.createActiveUser("memCacheA");
+        String b = fixtures.createActiveUser("memCacheB");
+        String room = directRoom(a, b);
+
+        // 수신자 b 의 unread 캐시에 stale 값을 심고, room:members 캐시를 유실시킨다(TTL 만료 시뮬).
+        redis.opsForHash().put(ChatRedisKeys.unread(b), room, "5");
+        redis.delete(ChatRedisKeys.roomMembers(room));
+
+        messageService.sendMessage(a, "sess-a", room, "m1", MessageType.TEXT, "hi");
+
+        // DB 폴백으로 멤버를 해석해 b 의 stale unread 캐시가 무효화(삭제)되어야 한다.
+        assertThat(redis.opsForHash().get(ChatRedisKeys.unread(b), room)).isNull();
     }
 }

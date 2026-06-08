@@ -83,7 +83,7 @@ public class MessageService {
 
     public MessageSentAck sendMessage(String senderUserId, String senderSessionId, String roomId,
                                       String clientMsgId, MessageType msgType, String content) {
-        ensureMembership(roomId, senderUserId);
+        List<String> members = resolveMembers(roomId, senderUserId);
 
         long count = seq.incrWithTtl(ChatRedisKeys.rateMsg(senderUserId), ChatRedisKeys.RATE_LIMIT_TTL);
         if (count > ChatRedisKeys.RATE_LIMIT_THRESHOLD) {
@@ -122,14 +122,14 @@ public class MessageService {
         updateLastMessageBestEffort(roomId, messageId, serverSeq, now);
 
         if (msgType != MessageType.SYSTEM) {
-            invalidateUnread(roomId, senderUserId);
+            invalidateUnread(members, roomId, senderUserId);
         }
 
         fanout.fanOutToRoom(roomId, messageNewPayload(senderSessionId, messageId, roomId, serverSeq,
                 senderUserId, msgType, content, now));
 
         if (msgType != MessageType.SYSTEM) {
-            spawnPush(roomId, senderUserId, content);
+            spawnPush(members, roomId, senderUserId, content);
         }
 
         return new MessageSentAck(clientMsgId, messageId, serverSeq, now);
@@ -251,21 +251,27 @@ public class MessageService {
 
     // ──────────────────── 헬퍼 ────────────────────
 
-    private void ensureMembership(String roomId, String userId) {
+    /**
+     * 멤버십 검증 + 활성 멤버 집합 반환. 캐시 우선, 미스/유실(또는 sender 누락) 시 DB 재구성 후 캐시를 채운다.
+     * 반환 스냅샷을 unread 무효화·푸시가 재사용 — 캐시 TTL 이 요청 도중 만료돼도 수신자가 누락되지 않는다.
+     */
+    private List<String> resolveMembers(String roomId, String senderUserId) {
         String key = ChatRedisKeys.roomMembers(roomId);
-        Boolean isMember = redis.opsForSet().isMember(key, userId);
-        if (Boolean.TRUE.equals(isMember)) {
-            return;
+        Set<String> cached = redis.opsForSet().members(key);
+        if (cached != null && cached.contains(senderUserId)) {
+            return new ArrayList<>(cached);
         }
+        // 캐시 미스/유실 또는 sender 누락(가입 직후 staleness) → DB 재구성 후 재검증.
         List<String> members = memberRepo.findActiveMemberIds(roomId);
         if (members.isEmpty()) {
             throw ApiException.badRequest("존재하지 않는 방이거나 멤버가 없습니다.");
         }
         redis.opsForSet().add(key, members.toArray(new String[0]));
         redis.expire(key, Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
-        if (!members.contains(userId)) {
+        if (!members.contains(senderUserId)) {
             throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
+        return members;
     }
 
     private boolean isDirectBlocked(ChatRoom room, String senderUserId) {
@@ -291,18 +297,19 @@ public class MessageService {
                 || Boolean.TRUE.equals(redis.opsForSet().isMember(key, peerId + ":" + senderUserId));
     }
 
-    private void invalidateUnread(String roomId, String senderUserId) {
-        Set<String> members = redis.opsForSet().members(ChatRedisKeys.roomMembers(roomId));
-        if (members == null || members.isEmpty()) {
-            return;
-        }
+    private void invalidateUnread(List<String> members, String roomId, String senderUserId) {
+        unreadService.invalidateForRecipients(roomId, recipientsExcluding(members, senderUserId));
+    }
+
+    /** 멤버 스냅샷에서 sender 를 제외한 수신자 목록. */
+    private static List<String> recipientsExcluding(List<String> members, String senderUserId) {
         List<String> recipients = new ArrayList<>();
         for (String uid : members) {
             if (!uid.equals(senderUserId)) {
                 recipients.add(uid);
             }
         }
-        unreadService.invalidateForRecipients(roomId, recipients);
+        return recipients;
     }
 
     /** client_msg_id 중복(재시도) — 이미 저장된 메시지를 찾아 동일 ack 로 멱등 응답. */
@@ -375,24 +382,16 @@ public class MessageService {
         return payload;
     }
 
-    private void spawnPush(String roomId, String senderUserId, String content) {
+    private void spawnPush(List<String> members, String roomId, String senderUserId, String content) {
+        // 수신자 스냅샷을 전송 시점에 확정 — 비동기 실행 중 캐시 만료에 영향받지 않는다(뮤트 필터는 FcmService).
+        List<String> recipients = recipientsExcluding(members, senderUserId);
+        if (recipients.isEmpty()) {
+            return;
+        }
+        String body = content.length() > PUSH_BODY_PREVIEW_LIMIT
+                ? content.substring(0, PUSH_BODY_PREVIEW_LIMIT) + "..." : content;
         pushExecutor.execute(() -> {
             try {
-                Set<String> members = redis.opsForSet().members(ChatRedisKeys.roomMembers(roomId));
-                if (members == null || members.isEmpty()) {
-                    return;
-                }
-                List<String> recipients = new ArrayList<>();
-                for (String uid : members) {
-                    if (!uid.equals(senderUserId)) {
-                        recipients.add(uid);
-                    }
-                }
-                if (recipients.isEmpty()) {
-                    return;
-                }
-                String body = content.length() > PUSH_BODY_PREVIEW_LIMIT
-                        ? content.substring(0, PUSH_BODY_PREVIEW_LIMIT) + "..." : content;
                 push.sendChatPush(recipients, roomId, senderUserId, body);
             } catch (Exception e) {
                 log.warn("FCM 푸시 helper 실패 (무시): room_id={}", roomId, e);
