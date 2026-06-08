@@ -64,6 +64,10 @@ krip:
     image-process-queue-capacity: ${IMAGE_PROCESS_QUEUE_CAPACITY:16}
     image-upload-pool-size: ${IMAGE_UPLOAD_POOL_SIZE:12}
     image-upload-queue-capacity: ${IMAGE_UPLOAD_QUEUE_CAPACITY:24}
+    # 채팅 WS op(send/read): 컨테이너 I/O 스레드와 격리. 세션 단위 직렬(순서 보장), 포화 시 server_busy 백프레셔.
+    chat-op-pool-size: ${CHAT_OP_POOL_SIZE:16}
+    chat-op-queue-capacity: ${CHAT_OP_QUEUE_CAPACITY:1000}
+    chat-op-session-max-queued: ${CHAT_OP_SESSION_MAX_QUEUED:64}
   auth:
     access-token: ${ACCESS_TOKEN:dev-access-token}
     jwt:

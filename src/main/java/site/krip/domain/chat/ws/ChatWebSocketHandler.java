@@ -21,6 +21,7 @@ import site.krip.domain.chat.service.SessionService;
 import site.krip.domain.chat.service.UnreadService;
 import site.krip.global.auth.jwt.JwtProvider;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.config.ExecutorProperties;
 import site.krip.global.support.IsoTimestamp;
 
 import java.time.Duration;
@@ -30,12 +31,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * 채팅 WebSocket 핸들러 — {@code /api/ws/chat}.
  *
  * <p>연결 시 세션 생성 → 방 구독 → connected/unread_synced 송신. 노드 단위 sweep(30s)이 로컬 세션 전체의 Redis TTL 을 일괄 연장.
  * op: send / refresh / read. 매 op 진입 시 세션 유효성(Redis)을 확인하고, 실패는 server_error/read_failed/auth_expired 로 응답.
+ *
+ * <p>op 의 블로킹 DB/Redis/Mongo 처리는 컨테이너 I/O 스레드를 막지 않도록 {@code chatOpExecutor} 로 넘긴다.
+ * 세션당 {@link SessionSerialExecutor} 로 직렬화해 같은 세션의 처리 순서(server_seq 단조성)를 보존하고,
+ * 대기 한도 초과/풀 포화 시 server_busy 로 백프레셔한다. 송신은 {@code FanoutService} 가 세션 단위로 직렬화한다.
  */
 @Component
 public class ChatWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
@@ -56,15 +62,22 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     // 채팅 WS 전용 스케줄러(스프링 관리) — 블로킹 @Scheduled 잡과 격리, 종료 시 자동 정리.
     private final ThreadPoolTaskScheduler heartbeatScheduler;
     private final Executor recoverExecutor;
+    // op(send/read) 처리를 컨테이너 I/O 스레드에서 분리하는 공유 유계 풀 + 세션당 대기 한도.
+    private final Executor chatOpExecutor;
+    private final int sessionOpMaxQueued;
     // 이 노드의 로컬 생존 세션. sweep 이 일괄 TTL 연장 대상으로 순회한다.
     private final Map<String, String> liveSessions = new ConcurrentHashMap<>();
+    // 세션당 직렬 실행기 — op 를 chatOpExecutor 위에서 순서 보존하며 실행. 연결 시 생성, 종료 시 제거.
+    private final Map<String, SessionSerialExecutor> sessionExecutors = new ConcurrentHashMap<>();
 
     public ChatWebSocketHandler(SessionService sessionService, RoomService roomService,
                                 MessageService messageService, UnreadService unreadService,
                                 FanoutService fanout,
                                 JwtProvider jwtProvider, ObjectMapper mapper,
                                 @Qualifier("chatWsScheduler") ThreadPoolTaskScheduler heartbeatScheduler,
-                                @Qualifier("recoverExecutor") Executor recoverExecutor) {
+                                @Qualifier("recoverExecutor") Executor recoverExecutor,
+                                @Qualifier("chatOpExecutor") Executor chatOpExecutor,
+                                ExecutorProperties execProps) {
         this.sessionService = sessionService;
         this.roomService = roomService;
         this.messageService = messageService;
@@ -74,6 +87,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         this.mapper = mapper;
         this.heartbeatScheduler = heartbeatScheduler;
         this.recoverExecutor = recoverExecutor;
+        this.chatOpExecutor = chatOpExecutor;
+        this.sessionOpMaxQueued = execProps.chatOpSessionMaxQueued();
     }
 
     @PostConstruct
@@ -126,23 +141,43 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         // 커서 파생 계산은 Mongo 를 칠 수 있어 연결 스레드를 막지 않도록 항상 백그라운드로.
         spawnUnreadSync(session, userId);
 
+        sessionExecutors.put(sessionId, new SessionSerialExecutor(chatOpExecutor, sessionOpMaxQueued));
         liveSessions.put(sessionId, userId);
     }
 
+    /**
+     * 컨테이너 I/O 스레드는 op 를 세션 직렬 실행기에 제출만 하고 즉시 반환한다(블로킹 DB/Redis/Mongo 는
+     * chatOpExecutor 로 이동). 세션 대기 한도 초과/풀 포화 시 server_busy 로 백프레셔하고 소켓은 유지한다.
+     */
     @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String sessionId = (String) session.getAttributes().get(FanoutService.ATTR_SESSION_ID);
         String userId = (String) session.getAttributes().get(FanoutService.ATTR_USER_ID);
+        SessionSerialExecutor exec = sessionId != null ? sessionExecutors.get(sessionId) : null;
+        if (exec == null) {
+            return; // 세션 등록 전/종료 후 도착 — 무시(곧 close 처리됨).
+        }
+        String payload = message.getPayload();
+        try {
+            exec.submit(() -> processOp(session, sessionId, userId, payload));
+        } catch (RejectedExecutionException e) {
+            log.warn("chat op 백프레셔 — server_busy: session_id={} ({})", sessionId, e.getMessage());
+            safeSend(session, Map.of("type", "server_error", "reason", "server_busy"));
+        }
+    }
 
+    /** op 1건 처리 — chatOpExecutor(세션 직렬) 위에서 실행. 세션 유효성 확인·파싱·핸들러 호출 일체. */
+    @SuppressWarnings("unchecked")
+    private void processOp(WebSocketSession session, String sessionId, String userId, String payload) {
         if (!sessionService.sessionExists(sessionId)) {
             safeSend(session, Map.of("type", "auth_expired"));
-            session.close(new CloseStatus(CLOSE_AUTH_EXPIRED));
+            closeQuietly(session, new CloseStatus(CLOSE_AUTH_EXPIRED));
             return;
         }
 
         Map<String, Object> req;
         try {
-            req = mapper.readValue(message.getPayload(), Map.class);
+            req = mapper.readValue(payload, Map.class);
         } catch (Exception e) {
             safeSend(session, Map.of("type", "server_error", "reason", "invalid op: malformed json"));
             return;
@@ -214,7 +249,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     }
 
     private void handleRefresh(WebSocketSession session, String sessionId, String userId,
-                               Map<String, Object> req) throws Exception {
+                               Map<String, Object> req) {
         String token = str(req.get("token"));
         String tokenUser;
         try {
@@ -224,7 +259,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         }
         if (tokenUser == null || !tokenUser.equals(userId)) {
             safeSend(session, Map.of("type", "auth_expired"));
-            session.close(new CloseStatus(CLOSE_AUTH_EXPIRED));
+            closeQuietly(session, new CloseStatus(CLOSE_AUTH_EXPIRED));
             return;
         }
         String newJti = token.length() > 32 ? token.substring(0, 32) : token;
@@ -243,6 +278,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         }
         if (sessionId != null) {
             liveSessions.remove(sessionId);
+            // 신규 op 수락 중단(드레인 중인 작업은 완료될 때까지 큐를 비운다 — safeSend 가 isOpen 으로 가드).
+            sessionExecutors.remove(sessionId);
             try {
                 sessionService.terminateSession(sessionId, userId);
             } catch (Exception e) {
@@ -273,6 +310,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             }
         } catch (Exception e) {
             log.debug("safeSend 실패 (WS 종료 가능): {}", e.toString());
+        }
+    }
+
+    private void closeQuietly(WebSocketSession session, CloseStatus status) {
+        try {
+            session.close(status);
+        } catch (Exception e) {
+            log.debug("WS close 실패 (이미 종료 가능): {}", e.toString());
         }
     }
 
