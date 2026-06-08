@@ -153,6 +153,9 @@ public class WithdrawService {
     public void cancelWithdraw(String userId) {
         setActive(userId);
 
+        // INACTIVE 음성 캐시 제거 — 즉시 ACTIVE 반영(누락 시에도 음성 TTL 로 자연 회복). setActive commit 이후라 안전.
+        registeredCache.invalidate(userId);
+
         // post-commit Mongo doc 청소. 실패해도 worker STALE_DOC 가드가 다음 사이클에서 정리.
         try {
             withdrawalRequestRepository.deleteByUserId(userId);

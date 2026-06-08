@@ -9,55 +9,94 @@ import site.krip.global.config.AuthProperties;
 import java.time.Duration;
 
 /**
- * {@code REGISTERED:{user_id}} 플래그 캐시.
+ * {@code REGISTERED:{user_id}} 판정 캐시.
  *
- * <p>"ACTIVE & 2차 회원가입 완료" 양성 결과만 캐싱한다. 탈퇴 요청 시 무효화되며,
- * 무효화 호출은 반드시 트랜잭션 commit **이후**에 한다(미커밋 ACTIVE 행 재캐싱 race 방지).
+ * <p>회원가입/상태 검증 결과(REGISTERED / UNREGISTERED / INACTIVE)를 캐싱해 인증 핫패스의 DB 조회를 생략한다.
+ * 양성뿐 아니라 음성 결과도 캐싱해 미가입(403)·탈퇴유예(419) 유저가 요청마다 DB 를 때리지 않게 한다.
+ * 상태 전이(가입완료/탈퇴/취소/삭제) 시 무효화되며, 음성 결과는 무효화 누락 대비 짧은 TTL 로 자연 회복한다.
  */
 @Component
 public class RegisteredCacheManager {
 
     private static final Logger log = LoggerFactory.getLogger(RegisteredCacheManager.class);
     private static final String PREFIX = "REGISTERED";
+    /** 음성 결과 TTL — 상태 전이 시 무효화하지만, 무효화 실패 대비 짧게 잡아 자연 회복시킨다. */
+    private static final Duration NEGATIVE_TTL = Duration.ofSeconds(60);
+
+    /** 캐시된 회원가입/상태 판정 결과. */
+    public enum Outcome {
+        REGISTERED,   // ACTIVE + 2차 가입 완료 → 통과
+        UNREGISTERED, // 2차 가입 미완료 → 403
+        INACTIVE      // 탈퇴 유예 → 419
+    }
 
     private final StringRedisTemplate redis;
-    private final Duration ttl;
+    private final Duration positiveTtl;
 
     public RegisteredCacheManager(StringRedisTemplate redis, AuthProperties props) {
         this.redis = redis;
-        this.ttl = Duration.ofSeconds(props.registeredCacheTtlSeconds());
+        this.positiveTtl = Duration.ofSeconds(props.registeredCacheTtlSeconds());
     }
 
     private String key(String userId) {
         return PREFIX + ":" + userId;
     }
 
-    /** 캐시 조회 — Redis 장애 시 fail-open(미스로 간주)하여 DB 검증으로 폴백한다(인증 요청 전수 500 방지). */
-    public boolean exists(String userId) {
+    /** 캐시된 판정 결과. 미스/Redis 장애 시 null(fail-open) → 호출측이 DB 로 폴백한다. */
+    public Outcome lookup(String userId) {
         try {
-            return Boolean.TRUE.equals(redis.hasKey(key(userId)));
+            String value = redis.opsForValue().get(key(userId));
+            return value == null ? null : decode(value);
         } catch (Exception e) {
-            // 인증 핫패스라 장애 시 요청마다 호출됨 — 로그 폭주를 피해 debug. Redis 장애 자체는 인프라/타 컴포넌트로 관측.
+            // 인증 핫패스라 장애 시 요청마다 호출됨 — 로그 폭주를 피해 debug. Redis 장애는 인프라로 관측.
             log.debug("REGISTERED 캐시 조회 실패, DB 폴백 (user_id={}): {}", userId, e.toString());
-            return false;
+            return null;
         }
     }
 
-    /** 양성 플래그 세팅 (기본 TTL 24h) — best-effort. 실패해도 이미 DB 검증을 통과했으므로 요청은 진행. */
-    public void setFlag(String userId) {
+    /** 판정 결과 캐싱(best-effort) — REGISTERED 는 기본 TTL, 음성 결과는 짧은 TTL. 실패해도 요청은 진행. */
+    public void cache(String userId, Outcome outcome) {
+        Duration ttl = outcome == Outcome.REGISTERED ? positiveTtl : NEGATIVE_TTL;
         try {
-            redis.opsForValue().set(key(userId), "1", ttl);
+            redis.opsForValue().set(key(userId), encode(outcome), ttl);
         } catch (Exception e) {
             log.debug("REGISTERED 캐시 기록 실패 (user_id={}): {}", userId, e.toString());
         }
     }
 
-    /** 무효화 — 실패해도 TTL 만료로 자연 정리되므로 로그만 남기고 swallow. */
+    /** 양성(REGISTERED) 여부 단축 조회 — WS 핸드셰이크용. */
+    public boolean exists(String userId) {
+        return lookup(userId) == Outcome.REGISTERED;
+    }
+
+    /** 양성(REGISTERED) 플래그 기록 — WS 핸드셰이크·2차 가입 완료용. */
+    public void setFlag(String userId) {
+        cache(userId, Outcome.REGISTERED);
+    }
+
+    /** 무효화 — 상태 전이 시 호출. 실패해도 TTL 만료로 자연 정리되므로 로그만 남기고 swallow. */
     public void invalidate(String userId) {
         try {
             redis.delete(key(userId));
         } catch (Exception e) {
             log.warn("REGISTERED 캐시 무효화 실패 (user_id={})", userId, e);
         }
+    }
+
+    private static String encode(Outcome outcome) {
+        return switch (outcome) {
+            case REGISTERED -> "R";
+            case UNREGISTERED -> "U";
+            case INACTIVE -> "I";
+        };
+    }
+
+    private static Outcome decode(String value) {
+        return switch (value) {
+            case "R" -> Outcome.REGISTERED;
+            case "U" -> Outcome.UNREGISTERED;
+            case "I" -> Outcome.INACTIVE;
+            default -> null; // 구버전/미상 값 → 미스로 간주해 DB 재검증
+        };
     }
 }

@@ -29,10 +29,11 @@ import java.util.Optional;
  *   유저 없음            → 401
  *   status == INACTIVE   → 419 (탈퇴 유예, 커스텀 코드)
  *   2차 회원가입 미완료    → 403
- *   정상                 → REGISTERED 플래그 캐싱 후 통과
+ *   정상                 → REGISTERED 캐싱 후 통과
  * </pre>
  *
- * Redis 캐시 히트 시 DB 조회를 생략한다. 양성 결과만 캐싱하며, 탈퇴 요청 시 무효화된다.
+ * 판정 결과를 (양성·음성 모두) 캐싱해 캐시 히트 시 DB 조회를 생략한다 — 미가입(403)·탈퇴유예(419)
+ * 유저도 캐싱되어 요청마다 DB 를 때리지 않는다. 캐시는 상태 전이 시 무효화된다.
  */
 public class RegisterCheckFilter extends OncePerRequestFilter {
 
@@ -65,13 +66,16 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
             return;
         }
 
-        // 1. 캐시 히트 → 통과
-        if (cache.exists(userId)) {
-            chain.doFilter(request, response);
+        // 1. 캐시 히트(양성·음성 모두) → DB 없이 판정
+        RegisteredCacheManager.Outcome cached = cache.lookup(userId);
+        if (cached != null) {
+            if (!reject(cached, response)) {
+                chain.doFilter(request, response);
+            }
             return;
         }
 
-        // 2. DB 조회 — 유저 + detail (2차 가입 여부) 를 한 번에
+        // 2. 캐시 미스 → DB 조회 (유저 + detail 한 번에). 유저 없음(401)은 캐싱하지 않는다.
         Optional<User> found;
         try {
             found = userRepository.findByIdWithDetail(userId);
@@ -87,24 +91,39 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
             return;
         }
 
-        User user = found.get();
+        // 3. 판정 결과 캐싱 후 처리
+        RegisteredCacheManager.Outcome outcome = classify(found.get());
+        cache.cache(userId, outcome);
+        if (!reject(outcome, response)) {
+            chain.doFilter(request, response);
+        }
+    }
 
+    /** status == INACTIVE → INACTIVE, detail 없음 → UNREGISTERED, 그 외 → REGISTERED(SUSPENDED 포함, 기존 동작 유지). */
+    private static RegisteredCacheManager.Outcome classify(User user) {
         if (user.getStatus() == UserStatus.INACTIVE) {
-            FilterSupport.writeError(response, mapper, ApiException.WITHDRAWAL_PENDING_STATUS,
+            return RegisteredCacheManager.Outcome.INACTIVE;
+        }
+        if (user.getDetail() == null) {
+            return RegisteredCacheManager.Outcome.UNREGISTERED;
+        }
+        return RegisteredCacheManager.Outcome.REGISTERED;
+    }
+
+    /** outcome 이 거부 대상이면 에러를 쓰고 true, REGISTERED 면 false(통과). */
+    private boolean reject(RegisteredCacheManager.Outcome outcome, HttpServletResponse response) throws IOException {
+        switch (outcome) {
+            case INACTIVE -> FilterSupport.writeError(response, mapper, ApiException.WITHDRAWAL_PENDING_STATUS,
                     ErrorResponse.of(
                             "회원 탈퇴가 진행 중입니다. 30일 유예 기간 종료 후 영구 삭제됩니다.",
                             ApiException.WITHDRAWAL_PENDING_FIELD));
-            return;
+            case UNREGISTERED -> FilterSupport.writeError(response, mapper, 403,
+                    ErrorResponse.of("2차 회원가입이 필요합니다."));
+            case REGISTERED -> {
+                return false;
+            }
         }
-
-        if (user.getDetail() == null) {
-            FilterSupport.writeError(response, mapper, 403, ErrorResponse.of("2차 회원가입이 필요합니다."));
-            return;
-        }
-
-        // 3. 양성 결과 캐싱 후 통과
-        cache.setFlag(userId);
-        chain.doFilter(request, response);
+        return true;
     }
 
     private String authenticatedUserId() {
