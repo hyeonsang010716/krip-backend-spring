@@ -171,8 +171,11 @@ public class TourPlanService {
         if (dayNumber < 1 || dayNumber > plan.getTravelDays()) {
             throw ApiException.badRequest("day_number 가 범위를 벗어났습니다: " + dayNumber);
         }
-        itemRepo.deleteByPlanIdAndDayNumber(planId, dayNumber);
+        // clearAutomatically=true 인 벌크 삭제가 PC 를 비워 plan 을 detach 시키므로,
+        // updated_at touch 는 삭제보다 먼저 flush 해 UPDATE 유실을 막는다(삭제 후엔 detached 라 더티체킹 안 됨).
         plan.touch();
+        planRepo.flush();
+        itemRepo.deleteByPlanIdAndDayNumber(planId, dayNumber);
     }
 
     @Transactional
