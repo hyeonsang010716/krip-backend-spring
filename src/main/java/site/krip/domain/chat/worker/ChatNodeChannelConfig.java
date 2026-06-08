@@ -73,13 +73,18 @@ public class ChatNodeChannelConfig {
         }
     }
 
-    /** NODE_TTL/3 마다 만료시각 갱신. */
+    /** NODE_TTL/3 마다 자기 노드 만료시각 갱신 + 만료 노드 청소(fan-out 핫패스에서 분리). */
     @Scheduled(fixedDelayString = "${krip.chat.node-heartbeat-ms:30000}")
     public void heartbeat() {
         try {
             nodeRegistry.heartbeatSelf();
         } catch (Exception e) {
             log.warn("node heartbeat 실패 (계속 진행)", e);
+        }
+        try {
+            nodeRegistry.cleanupExpired();
+        } catch (Exception e) {
+            log.warn("만료 노드 청소 실패 (다음 tick 재시도)", e);
         }
     }
 

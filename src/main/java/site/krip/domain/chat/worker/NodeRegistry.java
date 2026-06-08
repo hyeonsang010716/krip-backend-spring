@@ -17,7 +17,9 @@ import java.util.Set;
  * 채팅 노드 레지스트리.
  *
  * <p>{@code node_channel} 모드에서 활성 노드(`chat:nodes` ZSET, score=만료시각ms)를 추적.
- * publisher 가 fan-out 시 조회해 모든 노드 채널로 broadcast. 크래시 노드는 만료시각 청소로 자연 제거.
+ * publisher 가 fan-out 시 조회해 모든 노드 채널로 broadcast. 핫패스 조회({@link #listActiveNodes})는
+ * 읽기 전용이고, 만료(크래시) 노드 청소({@link #cleanupExpired})는 heartbeat 주기 작업으로 분리해
+ * 메시지마다 같은 ZSET 키에 쓰기가 몰리는 핫키 경합을 없앤다.
  */
 @Component
 public class NodeRegistry {
@@ -63,10 +65,18 @@ public class NodeRegistry {
         redis.opsForZSet().remove(ChatRedisKeys.NODES_ZSET_KEY, props.nodeId());
     }
 
-    /** 활성 노드 목록 — 만료 청소 후 조회. 빈 리스트면 publish skip. */
+    /**
+     * 활성 노드 목록 — 핫패스(fan-out)용 읽기 전용. 만료(score &lt; now)는 score 범위로 걸러 제외만 하고
+     * 삭제하지 않는다(쓰기 없음). 실제 삭제는 {@link #cleanupExpired} 가 주기적으로 수행. 빈 리스트면 publish skip.
+     */
     public List<String> listActiveNodes() {
-        redis.opsForZSet().removeRangeByScore(ChatRedisKeys.NODES_ZSET_KEY, Double.NEGATIVE_INFINITY, nowMs());
-        Set<String> members = redis.opsForZSet().range(ChatRedisKeys.NODES_ZSET_KEY, 0, -1);
+        Set<String> members = redis.opsForZSet()
+                .rangeByScore(ChatRedisKeys.NODES_ZSET_KEY, nowMs(), Double.POSITIVE_INFINITY);
         return members != null ? new ArrayList<>(members) : Collections.emptyList();
+    }
+
+    /** 만료(score &le; now) 노드 청소 — heartbeat 주기로 호출(핫패스 분리). 멱등이라 전 노드가 호출해도 안전. */
+    public void cleanupExpired() {
+        redis.opsForZSet().removeRangeByScore(ChatRedisKeys.NODES_ZSET_KEY, Double.NEGATIVE_INFINITY, nowMs());
     }
 }

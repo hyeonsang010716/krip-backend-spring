@@ -14,7 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 채팅 노드 레지스트리 통합 테스트 — 실 Redis(`chat:nodes` ZSET) 기준.
  *
- * <p>커버: 등록→활성 목록 노출 / 만료(과거 score) 노드 청소 / deregister 후 heartbeat 가 ZADD XX 로 부활 안 됨.
+ * <p>커버: 등록→활성 목록 노출 / 만료(과거 score) 노드는 목록에서 제외 / listActiveNodes 는 읽기 전용(삭제 안 함) /
+ * cleanupExpired 가 실제 삭제 / deregister 후 heartbeat 가 ZADD XX 로 부활 안 됨.
  */
 class NodeRegistryIntegrationTest extends IntegrationTestSupport {
 
@@ -41,13 +42,38 @@ class NodeRegistryIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("만료시각이 지난 노드는 listActiveNodes 에서 청소된다")
-    void staleNodeExpired() {
+    @DisplayName("만료시각이 지난 노드는 listActiveNodes 결과에서 제외된다")
+    void staleNodeExcludedFromList() {
         // 만료시각(score)을 과거로 둔 죽은 노드를 직접 주입.
         redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, "dead-node",
                 System.currentTimeMillis() - 60_000);
 
         assertThat(nodeRegistry.listActiveNodes()).doesNotContain("dead-node");
+    }
+
+    @Test
+    @DisplayName("listActiveNodes 는 읽기 전용 — 만료 노드를 결과에서 제외만 하고 ZSET 에서 삭제하지 않는다")
+    void listActiveNodesDoesNotDelete() {
+        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, "dead-node",
+                System.currentTimeMillis() - 60_000);
+
+        nodeRegistry.listActiveNodes();
+
+        // 핫패스 조회는 쓰기를 하지 않으므로 ZSET 에는 여전히 남아 있어야 한다(청소는 주기 작업 몫).
+        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, "dead-node")).isNotNull();
+    }
+
+    @Test
+    @DisplayName("cleanupExpired 는 만료 노드만 ZSET 에서 삭제하고 활성 노드는 보존한다")
+    void cleanupExpiredRemovesOnlyDead() {
+        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, "dead-node",
+                System.currentTimeMillis() - 60_000);
+        nodeRegistry.registerSelf(); // 미래 score 활성 노드
+
+        nodeRegistry.cleanupExpired();
+
+        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, "dead-node")).isNull();
+        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, chatProperties.nodeId())).isNotNull();
     }
 
     @Test
