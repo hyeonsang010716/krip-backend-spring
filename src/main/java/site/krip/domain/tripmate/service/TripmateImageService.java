@@ -58,23 +58,36 @@ public class TripmateImageService {
         this.imageUploadExecutor = imageUploadExecutor;
     }
 
-    /** 다건 업로드 — 전용 풀에서 동시 처리(요청 스레드 분리·포화 시 429). 각 이미지는 재인코딩(EXIF 제거·폴리글랏 무력화) 후 저장. */
+    /**
+     * 다건 업로드 — CPU 와 I/O 를 풀로 분리(feed 와 동일 전략).
+     *
+     * <p>Phase 1: 전체 이미지 재인코딩(EXIF 제거·폴리글랏 무력화)을 processingPool 에서 동시 처리(포화 시 429,
+     * 잘못된 이미지는 여기서 400). Phase 2: S3 업로드 + Mongo 저장을 uploadPool 에서 병렬 — 블로킹 S3 I/O 가
+     * CPU 풀을 점유하지 않게 한다. 결과는 입력 순서대로 반환.
+     */
     public List<TripmateImage> uploadImages(String userId, List<byte[]> files) {
-        List<Supplier<TripmateImage>> tasks = files.stream()
-                .map(bytes -> (Supplier<TripmateImage>) () -> storeImage(userId, bytes))
+        // Phase 1 (CPU): sanitize
+        List<Supplier<ProcessedVariant>> sanitizeTasks = files.stream()
+                .map(bytes -> (Supplier<ProcessedVariant>) () -> imageProcessor.sanitize(bytes))
                 .toList();
-        return imageUploadExecutor.processAll(tasks);
+        List<ProcessedVariant> sanitized = imageUploadExecutor.processAll(sanitizeTasks);
+
+        // Phase 2 (I/O): S3 업로드 + Mongo 저장
+        Instant uploadedAt = Instant.now();
+        List<Supplier<TripmateImage>> uploadTasks = sanitized.stream()
+                .map(variant -> (Supplier<TripmateImage>) () -> uploadAndSave(userId, variant, uploadedAt))
+                .toList();
+        return imageUploadExecutor.uploadInParallel(uploadTasks);
     }
 
-    private TripmateImage storeImage(String userId, byte[] fileBytes) {
-        ProcessedVariant sanitized = imageProcessor.sanitize(fileBytes);
+    private TripmateImage uploadAndSave(String userId, ProcessedVariant sanitized, Instant uploadedAt) {
         String imageId = IdGenerator.tripmateImageId();
         String imageUrl = storage.uploadPerm(
                 new ByteArrayInputStream(sanitized.data()), sanitized.data().length,
                 "image." + sanitized.fileExt(), sanitized.contentType(),
                 StoragePrefix.postPrefix(userId));
         log.info("이미지 업로드 완료 (user_id={}, image_id={})", userId, imageId);
-        return imageRepository.save(new TripmateImage(userId, imageId, imageUrl, Instant.now()));
+        return imageRepository.save(new TripmateImage(userId, imageId, imageUrl, uploadedAt));
     }
 
     public List<TripmateImage> getImages(String userId) {
