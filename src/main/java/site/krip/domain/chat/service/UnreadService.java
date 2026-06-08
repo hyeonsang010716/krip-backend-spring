@@ -99,7 +99,7 @@ public class UnreadService {
 
     // ──────────────────── 쓰기 (진실 변경 시 캐시 동기화) ────────────────────
 
-    /** 신규 방 생성/신규 멤버 입장 — 미읽음이 진짜 0 인 시점에만 캐시를 0 으로 확정. (읽음 처리는 clear 사용) */
+    /** 미읽음이 진짜 0 인 시점에 캐시를 0 으로 확정 — 신규 방/신규 멤버 입장, 최신까지 읽음 처리. */
     public void resetToZero(String userId, String roomId) {
         try {
             String key = ChatRedisKeys.unread(userId);

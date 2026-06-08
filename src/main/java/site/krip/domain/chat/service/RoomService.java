@@ -345,8 +345,7 @@ public class RoomService {
             throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
-        // 하드 0 대신 무효화 — finalSeq 미만만 읽었을 수 있어, 다음 읽기에 진실(last_read+Mongo)에서 재계산.
-        unreadService.clear(meId, roomId);
+        syncUnreadCacheAfterRead(meId, roomId, finalSeq);
 
         fanout.fanOutToSession(meSessionId, Map.of(
                 "type", "read_ack", "room_id", roomId, "up_to_server_seq", finalSeq));
@@ -360,6 +359,24 @@ public class RoomService {
     }
 
     // ──────────────────── 헬퍼 ────────────────────
+
+    /**
+     * 읽음 후 unread 캐시 동기화. read 는 고빈도라 매번 무효화(clear)하면 다음 조회가 Mongo count 를 강제한다.
+     * 방의 현재 seq 이하까지 읽었으면(흔한 경우) Mongo 없이 0 을 캐시한다.
+     *
+     * <p>경합 가드: 송신 경로는 항상 {@code room:seq} 증가 → … → unread hDel 순서다. 0 기록 후 seq 를 재확인해
+     * 그 사이 새 메시지로 진전됐으면 0 을 버린다(상대 hDel 이 0 보다 먼저 일어나 0 이 무효화를 덮어쓰는 경우 방지).
+     */
+    private void syncUnreadCacheAfterRead(String meId, String roomId, long finalSeq) {
+        if (finalSeq < getCurrentSeq(roomId)) {
+            unreadService.clear(meId, roomId);   // 아직 더 최신 메시지 — 다음 읽기에 진실로 재계산
+            return;
+        }
+        unreadService.resetToZero(meId, roomId); // 최신까지 읽음 → 0 확정 (Mongo 불필요)
+        if (getCurrentSeq(roomId) > finalSeq) {
+            unreadService.clear(meId, roomId);   // 0 기록 중 새 메시지 유입 — 0 폐기
+        }
+    }
 
     private long getCurrentSeq(String roomId) {
         String raw = redis.opsForValue().get(ChatRedisKeys.roomSeq(roomId));
