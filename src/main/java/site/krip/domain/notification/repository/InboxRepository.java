@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 import site.krip.domain.notification.document.InboxItem;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -121,10 +122,14 @@ public class InboxRepository {
                 .getModifiedCount() == 1;
     }
 
-    /** 미읽음 일괄 read 처리(멱등). 반영 건수 반환. */
-    public long markAllRead(String recipientId) {
-        Query q = Query.query(Criteria.where("recipient_id").is(recipientId)
-                .and("display").is(true).and("read_at").is(null));
+    /** 지정한 항목들만 read 처리(멱등) — 본인 소유 + 미읽음만 매칭. 반영 건수 반환(이미 읽음/타인 항목은 0). */
+    public long markReadByIds(String recipientId, Collection<ObjectId> ids) {
+        if (ids.isEmpty()) {
+            return 0;
+        }
+        Query q = Query.query(Criteria.where("_id").in(ids)
+                .and("recipient_id").is(recipientId)
+                .and("read_at").is(null));
         return mongo.updateMulti(q, new Update().set("read_at", Instant.now()), InboxItem.class)
                 .getModifiedCount();
     }

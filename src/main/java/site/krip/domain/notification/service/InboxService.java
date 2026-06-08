@@ -78,14 +78,16 @@ public class InboxService {
         InboxListResponse response = new InboxListResponse(
                 items.stream().map(InboxItemResponse::from).toList(), nextCursor);
 
-        if (markAsRead) {
+        // 실제로 반환한(=사용자가 본) 항목만 읽음 처리 — unread 가 본 것과 일치, 안 본 다음 페이지는 미읽음 유지.
+        if (markAsRead && !items.isEmpty()) {
             try {
-                long modified = repo.markAllRead(recipientId);
+                List<ObjectId> ids = items.stream().map(item -> new ObjectId(item.getId())).toList();
+                long modified = repo.markReadByIds(recipientId, ids);
                 if (modified > 0) {
-                    log.info("인박스 자동 읽음 처리 (recipient_id={}, count={})", recipientId, modified);
+                    log.info("인박스 페이지 읽음 처리 (recipient_id={}, count={})", recipientId, modified);
                 }
             } catch (Exception e) {
-                log.warn("인박스 자동 읽음 처리 실패 (recipient_id={})", recipientId, e);
+                log.warn("인박스 페이지 읽음 처리 실패 (recipient_id={})", recipientId, e);
             }
         }
         return response;

@@ -14,7 +14,7 @@ import site.krip.global.common.dto.MessageResponse;
 
 /**
  * 인박스. 경로: {@code /api/notification/inbox}.
- * 첫 페이지(cursor 미지정) 진입 시 미읽음 자동 read 처리(응답 isRead 는 read 전 상태 유지).
+ * 각 페이지 진입 시 반환한(=사용자가 본) 항목만 자동 read 처리(응답 isRead 는 read 전 상태 유지).
  */
 @RestController
 @RequestMapping("/api/notification/inbox")
@@ -29,7 +29,8 @@ public class InboxController {
     @GetMapping
     public InboxListResponse list(@CurrentUserId String userId,
                                   @RequestParam(required = false) String cursor) {
-        return inboxService.listItems(userId, cursor, cursor == null);
+        // 매 페이지가 자기 항목만 read 처리 — unread 가 실제로 본 것과 일치(호출당 ≤ PAGE_SIZE 쓰기).
+        return inboxService.listItems(userId, cursor, true);
     }
 
     @GetMapping("/unread-count")

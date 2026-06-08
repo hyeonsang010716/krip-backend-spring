@@ -6,10 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import site.krip.domain.notification.document.InboxItem;
 import site.krip.domain.notification.document.TargetType;
+import site.krip.domain.notification.dto.response.InboxListResponse;
 import site.krip.domain.notification.repository.InboxRepository;
 import site.krip.domain.notification.service.InboxService;
 import site.krip.support.IntegrationTestSupport;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -115,6 +117,40 @@ class InboxE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
                         + "')].is_read").value(true));
+    }
+
+    @Test
+    @DisplayName("자동 read 는 반환한 페이지 항목만 — 안 본 다음 페이지는 미읽음 유지(unread = 본 것과 일치)")
+    void autoReadMarksOnlyReturnedPage() {
+        String recipient = fixtures.createActiveUser("페이지읽음수신자");
+        String actor = fixtures.createActiveUser("페이지읽음행위자");
+        int total = InboxRepository.PAGE_SIZE + 5; // 한 페이지 초과
+        for (int i = 0; i < total; i++) {
+            seedFeedLike(recipient, actor, "post-page-" + i);
+        }
+
+        // 1페이지: 반환한 PAGE_SIZE 건만 read → unread 는 남은 5건(0 아님).
+        InboxListResponse page1 = inboxService.listItems(recipient, null, true);
+        assertThat(page1.items()).hasSize(InboxRepository.PAGE_SIZE);
+        assertThat(inboxService.countUnread(recipient)).isEqualTo(total - InboxRepository.PAGE_SIZE);
+
+        // 2페이지: 나머지를 보면 그때 read → unread 0.
+        inboxService.listItems(recipient, page1.nextCursor(), true);
+        assertThat(inboxService.countUnread(recipient)).isZero();
+    }
+
+    @Test
+    @DisplayName("재조회(이미 읽음)는 추가 쓰기 없음 — markReadByIds 멱등")
+    void reReadIsIdempotent() {
+        String recipient = fixtures.createActiveUser("멱등수신자");
+        String actor = fixtures.createActiveUser("멱등행위자");
+        seedFeedLike(recipient, actor, "post-idem-1");
+
+        inboxService.listItems(recipient, null, true);
+        assertThat(inboxService.countUnread(recipient)).isZero();
+        // 같은 페이지 재조회 — 이미 read 라 카운트 변화 없음.
+        inboxService.listItems(recipient, null, true);
+        assertThat(inboxService.countUnread(recipient)).isZero();
     }
 
     // ──────────────────── self-skip ────────────────────
