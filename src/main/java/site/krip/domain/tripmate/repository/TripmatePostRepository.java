@@ -53,6 +53,8 @@ public interface TripmatePostRepository extends JpaRepository<TripmatePost, Stri
                                                 Pageable pageable);
 
     // ──────────────────── 검색 (제목·내용·작성자 닉네임) ────────────────────
+    // OR 분기를 모두 tripmate_post 컬럼(title/content/user_id)으로 모아 BitmapOr 인덱스 스캔을 가능하게 한다.
+    // 작성자 닉네임 매칭은 서비스가 trigram 인덱스로 user_id 를 먼저 해석해 authorIds 로 넘긴다.
 
     @Query("select p from TripmatePost p "
             + "left join fetch p.user u left join fetch u.detail "
@@ -60,10 +62,10 @@ public interface TripmatePostRepository extends JpaRepository<TripmatePost, Stri
             + "and ("
             + "  lower(p.title) like lower(:pattern) escape '!' "
             + "  or lower(p.content) like lower(:pattern) escape '!' "
-            + "  or exists (select 1 from UserDetailInform d "
-            + "             where d.userId = p.userId and lower(d.userName) like lower(:pattern) escape '!')"
+            + "  or p.userId in :authorIds"
             + ")")
     List<TripmatePost> searchFirstPage(@Param("pattern") String pattern,
+                                       @Param("authorIds") java.util.Collection<String> authorIds,
                                        @Param("viewerId") String viewerId,
                                        Pageable pageable);
 
@@ -75,10 +77,10 @@ public interface TripmatePostRepository extends JpaRepository<TripmatePost, Stri
             + "and ("
             + "  lower(p.title) like lower(:pattern) escape '!' "
             + "  or lower(p.content) like lower(:pattern) escape '!' "
-            + "  or exists (select 1 from UserDetailInform d "
-            + "             where d.userId = p.userId and lower(d.userName) like lower(:pattern) escape '!')"
+            + "  or p.userId in :authorIds"
             + ")")
     List<TripmatePost> searchAfterCursor(@Param("pattern") String pattern,
+                                         @Param("authorIds") java.util.Collection<String> authorIds,
                                          @Param("cursorAt") Instant cursorAt,
                                          @Param("cursor") String cursor,
                                          @Param("viewerId") String viewerId,

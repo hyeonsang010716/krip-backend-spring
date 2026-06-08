@@ -58,6 +58,31 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("검색: 제목/내용에 없어도 작성자 닉네임 부분일치로 글이 검색된다")
+    void searchByAuthorName() throws Exception {
+        String author = fixtures.createActiveUser("김탐험가");
+        String searcher = fixtures.createActiveUser("검색자");
+        // 제목/내용에는 '탐험가' 가 없음 — 작성자 닉네임 분기로만 매칭되어야 한다.
+        String postId = createPost(author, "여행 동행 모집", "제주 한 달 살기 같이 하실 분 찾습니다.", "제주");
+
+        // 작성자 닉네임 부분일치 → 검색됨
+        mockMvc.perform(get("/api/tripmate/posts/search")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(searcher))
+                        .param("keyword", "탐험가"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
+
+        // 어디에도 없는 키워드 → 검색 안 됨
+        mockMvc.perform(get("/api/tripmate/posts/search")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(searcher))
+                        .param("keyword", "존재하지않는키워드zzz"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").doesNotExist());
+    }
+
+    @Test
     @DisplayName("생성→단건→목록→검색→수정→display 토글→삭제→삭제후 404 전체 흐름")
     void fullLifecycle() throws Exception {
         String userId = fixtures.createActiveUser("작성자");

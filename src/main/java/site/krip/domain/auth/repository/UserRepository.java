@@ -1,6 +1,7 @@
 package site.krip.domain.auth.repository;
 
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -41,6 +42,13 @@ public interface UserRepository extends JpaRepository<User, String> {
     /** 주어진 유저 중 전역 알림 미차단(NULL/false)만 (FCM 푸시 게이팅). */
     @Query("select u.userId from User u where u.userId in :userIds and u.notificationMuted is not true")
     List<String> findUnmutedUserIds(@Param("userIds") java.util.Collection<String> userIds);
+
+    /**
+     * 닉네임 부분일치(대소문자 무시) user_id 목록 — tripmate 검색의 작성자 분기 해석용.
+     * likePattern 은 escape '!' 의 LIKE 패턴(예: {@code %kw%}). lower(user_name) trigram GIN 인덱스를 탄다.
+     */
+    @Query("select d.userId from UserDetailInform d where lower(d.userName) like lower(:likePattern) escape '!'")
+    List<String> findUserIdsByNameLike(@Param("likePattern") String likePattern, Pageable limit);
 
     /** 유저의 여행 스타일 값만 투영 (UserQueryPort.findTravelStyles 용 — UserTravelStyle 엔티티 노출 회피). */
     @Query("select ts.style from User u join u.travelStyles ts where u.userId = :userId")

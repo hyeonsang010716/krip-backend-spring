@@ -1,5 +1,6 @@
 package site.krip.domain.auth.adapter;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.auth.entity.TravelStyle;
@@ -69,6 +70,12 @@ public class UserQueryAdapter implements UserQueryPort {
             return List.of();
         }
         return userRepository.findUnmutedUserIds(userIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> findUserIdsByNameLike(String likePattern, int limit) {
+        return userRepository.findUserIdsByNameLike(likePattern, PageRequest.of(0, limit));
     }
 
     /** detail 없으면(2차 가입 미완료) null 반환 → 호출부에서 제외. */

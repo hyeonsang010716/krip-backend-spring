@@ -31,6 +31,7 @@ import site.krip.global.support.AfterCommit;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +51,10 @@ public class TripmatePostService {
     private static final int PAGE_SIZE = 30;
     private static final Sort PAGE_SORT =
             Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("postId"));
+    /** 작성자 닉네임 부분일치 상한 — 동명 다수 시 검색 작성자 분기를 이 수로 제한. */
+    private static final int AUTHOR_NAME_MATCH_LIMIT = 500;
+    /** 닉네임 매칭 0건일 때 IN 무매칭용 sentinel (실제 user_id 가 될 수 없는 값). */
+    private static final Collection<String> NO_AUTHOR_MATCH = List.of("__no_author_match__");
 
     private final TripmatePostRepository postRepository;
     private final TripmatePostImageRepository postImageRepository;
@@ -144,14 +149,18 @@ public class TripmatePostService {
     @Transactional(readOnly = true)
     public PostListResponse searchPosts(String keyword, String cursor, String userId) {
         String pattern = escapeLike(keyword);
+        // 작성자 닉네임 분기는 trigram 인덱스로 user_id 를 먼저 해석 → 게시글 쿼리의 OR 를 단일 테이블로 모은다.
+        // 동명 부분일치가 한도를 넘으면 일부 작성자는 제외(검색 한정 동작). 빈 결과는 sentinel 로 IN 무매칭 처리.
+        List<String> authorIds = userQuery.findUserIdsByNameLike(pattern, AUTHOR_NAME_MATCH_LIMIT);
+        Collection<String> authorIdParam = authorIds.isEmpty() ? NO_AUTHOR_MATCH : authorIds;
         Pageable pageable = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
         List<TripmatePost> posts;
         if (cursor == null || cursor.isBlank()) {
-            posts = postRepository.searchFirstPage(pattern, userId, pageable);
+            posts = postRepository.searchFirstPage(pattern, authorIdParam, userId, pageable);
         } else {
             Instant cursorAt = postRepository.findCreatedAt(cursor).orElse(null);
             posts = (cursorAt == null) ? List.of()
-                    : postRepository.searchAfterCursor(pattern, cursorAt, cursor, userId, pageable);
+                    : postRepository.searchAfterCursor(pattern, authorIdParam, cursorAt, cursor, userId, pageable);
         }
         return buildListResponse(posts, userId);
     }

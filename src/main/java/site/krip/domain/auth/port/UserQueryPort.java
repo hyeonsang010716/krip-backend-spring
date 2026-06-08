@@ -28,4 +28,10 @@ public interface UserQueryPort {
 
     /** 주어진 유저 중 전역 알림 미차단(NULL/false)만 (FCM 푸시 게이팅). */
     List<String> retainGloballyUnmuted(Collection<String> userIds);
+
+    /**
+     * 닉네임 부분일치(대소문자 무시) user_id 목록 — 최대 limit 개. tripmate 검색의 작성자 분기 해석용.
+     * likePattern 은 호출측이 만든 escape '!' LIKE 패턴(예: {@code %kw%})이며 trigram 인덱스를 탄다.
+     */
+    List<String> findUserIdsByNameLike(String likePattern, int limit);
 }
