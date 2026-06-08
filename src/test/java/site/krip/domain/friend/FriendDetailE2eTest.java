@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
+import site.krip.domain.friend.service.UserBlockService;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,6 +23,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 미존재 유저(404), 2차 미완료 유저(400), ACCEPTED 관계, 그리고 요청을 "받은" 시점(is_requester=false).
  */
 class FriendDetailE2eTest extends IntegrationTestSupport {
+
+    @Autowired
+    private UserBlockService userBlockService;
 
     private final ObjectMapper om = new ObjectMapper();
 
@@ -95,5 +100,33 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.user_id").value(requester))
                 .andExpect(jsonPath("$.friendship_status").value("pending"))
                 .andExpect(jsonPath("$.is_requester").value(false));
+    }
+
+    @Test
+    @DisplayName("상세: 상대가 나를 차단(peer→viewer)하면 존재 은닉 → 404")
+    void detailHiddenWhenPeerBlockedViewer() throws Exception {
+        String viewer = fixtures.createActiveUser("피차단뷰어");
+        String peer = fixtures.createActiveUser("차단한상대");
+        userBlockService.blockUser(peer, viewer); // peer 가 viewer 를 차단
+
+        mockMvc.perform(get("/api/friend/detail/{userId}", peer)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("상세: 내가 상대를 차단(viewer→peer)해도 상세는 노출 + i_blocked_peer=true (차단 해제 동선)")
+    void detailVisibleWhenViewerBlockedPeer() throws Exception {
+        String viewer = fixtures.createActiveUser("차단한뷰어");
+        String peer = fixtures.createActiveUser("내가차단한상대");
+        userBlockService.blockUser(viewer, peer); // viewer 가 peer 를 차단
+
+        mockMvc.perform(get("/api/friend/detail/{userId}", peer)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id").value(peer))
+                .andExpect(jsonPath("$.i_blocked_peer").value(true));
     }
 }

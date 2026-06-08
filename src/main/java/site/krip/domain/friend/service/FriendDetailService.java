@@ -8,6 +8,7 @@ import site.krip.domain.auth.repository.UserRepository;
 import site.krip.domain.friend.dto.response.FriendDetailResponse;
 import site.krip.domain.friend.entity.Friendship;
 import site.krip.domain.friend.entity.FriendshipStatus;
+import site.krip.domain.friend.entity.UserBlock;
 import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.common.exception.ApiException;
@@ -39,8 +40,18 @@ public class FriendDetailService {
             throw ApiException.badRequest("2차 회원가입이 완료되지 않은 유저입니다.");
         }
 
+        // 차단 양방향성: 상대가 나를 차단했으면(peer→viewer) 존재 은닉(404) — search/feed/tripmate 와 일관.
+        // 내가 상대를 차단한 경우(viewer→peer)는 "차단 해제" 동선을 위해 iBlocked=true 로 그대로 노출한다.
+        boolean iBlocked = false;
+        for (UserBlock b : userBlockRepository.findBlocksBetween(viewerId, peerId)) {
+            if (b.getBlockerId().equals(viewerId)) {
+                iBlocked = true;
+            } else if (b.getBlockerId().equals(peerId)) {
+                throw ApiException.notFound("존재하지 않는 유저입니다.");
+            }
+        }
+
         Friendship friendship = friendshipRepository.findBetween(viewerId, peerId).orElse(null);
-        boolean iBlocked = userBlockRepository.existsByBlockerIdAndBlockedId(viewerId, peerId);
 
         String friendshipId = friendship != null ? friendship.getFriendshipId() : null;
         FriendshipStatus status = friendship != null ? friendship.getStatus() : null;
