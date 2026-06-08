@@ -87,11 +87,6 @@ public class FcmClient {
         if (messaging == null || tokens.isEmpty()) {
             return new SendResult(0, List.of());
         }
-        if (circuit.isOpen()) {
-            // FCM 장애로 단락 중 — 워커 스레드를 타임아웃에 묶지 않고 즉시 포기(다음 cooldown 후 probe).
-            log.debug("FCM 서킷 open — 발송 단락 (count={})", tokens.size());
-            return new SendResult(0, List.of());
-        }
         Notification notification = Notification.builder().setTitle(title).setBody(body).build();
         int successCount = 0;
         List<String> invalid = new ArrayList<>();
@@ -104,6 +99,11 @@ public class FcmClient {
     /** 단일 배치(≤ {@link #MAX_MULTICAST_BATCH}) 발송. 성공 수 반환, 무효 토큰은 {@code invalidOut} 에 누적. */
     private int sendBatch(List<String> tokens, Notification notification, Map<String, String> data,
                           List<String> invalidOut) {
+        if (!circuit.tryAcquire()) {
+            // FCM 장애로 단락 중 — 워커 스레드를 타임아웃에 묶지 않고 즉시 포기(다음 cooldown 후 probe).
+            log.debug("FCM 서킷 open — 배치 단락 (count={})", tokens.size());
+            return 0;
+        }
         MulticastMessage message = MulticastMessage.builder()
                 .addAllTokens(tokens)
                 .setNotification(notification)
@@ -112,13 +112,13 @@ public class FcmClient {
         BatchResponse batch;
         try {
             batch = messaging.sendEachForMulticast(message);
-            circuit.recordSuccess();
         } catch (FirebaseMessagingException | RuntimeException e) {
             // 글로벌 실패(인증·쿼터·네트워크)는 이 배치만 포기하고 서킷에 기록 — 연속 실패 시 단락된다.
             circuit.recordFailure();
             log.warn("FCM multicast 배치 실패 (count={})", tokens.size(), e);
             return 0;
         }
+        recordBatchOutcome(circuit, batch);
 
         List<SendResponse> responses = batch.getResponses();
         boolean batchHadSuccess = batch.getSuccessCount() > 0;
@@ -145,6 +145,18 @@ public class FcmClient {
             log.warn("FCM INVALID_ARGUMENT 전건 실패 — 페이로드 결함 의심, 토큰 삭제 보류 (count={})", invalidArgHeld);
         }
         return batch.getSuccessCount();
+    }
+
+    /**
+     * 배치 호출 결과를 서킷에 반영 — 호출이 성공해도 건별로 전건 실패할 수 있으므로(FCM 열화),
+     * 성공이 1건 이상일 때만 close 하고 응답이 있는데 전건 실패면 failure 로 기록한다.
+     */
+    static void recordBatchOutcome(FcmCircuitBreaker circuit, BatchResponse batch) {
+        if (batch.getSuccessCount() > 0) {
+            circuit.recordSuccess();
+        } else if (!batch.getResponses().isEmpty()) {
+            circuit.recordFailure();
+        }
     }
 
     /** {@code list} 를 최대 {@code size} 개씩 끊어 부분 리스트(원본 뷰) 목록으로 반환. */

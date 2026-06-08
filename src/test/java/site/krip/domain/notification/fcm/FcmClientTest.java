@@ -1,6 +1,8 @@
 package site.krip.domain.notification.fcm;
 
+import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.MessagingErrorCode;
+import com.google.firebase.messaging.SendResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -91,6 +93,55 @@ class FcmClientTest {
             assertThat(FcmClient.isPermanentlyInvalid(MessagingErrorCode.INTERNAL, true)).isFalse();
             assertThat(FcmClient.isPermanentlyInvalid(MessagingErrorCode.THIRD_PARTY_AUTH_ERROR, true)).isFalse();
             assertThat(FcmClient.isPermanentlyInvalid(null, true)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("recordBatchOutcome — 건별 결과로 서킷 판정 (호출 성공 ≠ 전송 성공)")
+    class BatchOutcome {
+
+        /** 응답 {@code total} 건 중 {@code successCount} 건 성공한 배치 결과. */
+        private static BatchResponse fakeBatch(int successCount, int total) {
+            List<SendResponse> responses = new ArrayList<>();
+            for (int i = 0; i < total; i++) {
+                responses.add(null); // recordBatchOutcome 은 크기만 본다
+            }
+            return new BatchResponse() {
+                @Override public List<SendResponse> getResponses() { return responses; }
+                @Override public int getSuccessCount() { return successCount; }
+                @Override public int getFailureCount() { return total - successCount; }
+            };
+        }
+
+        @Test
+        @DisplayName("전송은 됐지만 전건 실패한 배치가 임계치만큼 반복되면 서킷 open")
+        void allFailedBatchesOpenCircuit() {
+            FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            assertThat(cb.tryAcquire()).isTrue(); // 아직 임계치 미만
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            assertThat(cb.tryAcquire()).isFalse(); // 3연속 전건 실패 → open
+        }
+
+        @Test
+        @DisplayName("성공 1건이라도 있으면 close + 실패 카운트 리셋")
+        void anySuccessResetsCircuit() {
+            FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            FcmClient.recordBatchOutcome(cb, fakeBatch(3, 10)); // 일부 성공 → 리셋
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            assertThat(cb.tryAcquire()).isTrue(); // 리셋 덕분에 아직 3연속 아님
+        }
+
+        @Test
+        @DisplayName("응답이 없는 배치는 실패로 기록하지 않는다(no-op)")
+        void emptyBatchDoesNotRecordFailure() {
+            FcmCircuitBreaker cb = new FcmCircuitBreaker(1, 60_000);
+            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 0));
+            assertThat(cb.tryAcquire()).isTrue();
         }
     }
 }
