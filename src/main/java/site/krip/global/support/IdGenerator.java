@@ -6,9 +6,11 @@ import java.util.UUID;
 /**
  * 도메인 엔티티 ID 생성기.
  *
- * <p>형식: {@code {PREFIX}_{unix_epoch_seconds}_{uuid_hex8}} — timestamp prefix 라
+ * <p>형식: {@code {PREFIX}_{unix_epoch_seconds}_{uuid_hex16}} — timestamp prefix 라
  * 문자열 정렬 = 시간순. snowflake/UUID 가 아닌 하이브리드 스킴이므로 JPA 자동 생성 대신
- * 엔티티 생성 시점에 직접 부여한다.
+ * 엔티티 생성 시점에 직접 부여한다. 랜덤부 64비트(16 hex)는 같은 초·prefix 버킷 내 충돌을
+ * 사실상 0 으로 — 32비트(8 hex)는 초당 수천 건이면 생일 충돌이 무시 못 할 수준이었다.
+ * 전체 길이 ~32자로 모든 id 컬럼(varchar(50)) 안에 든다.
  */
 public final class IdGenerator {
 
@@ -17,7 +19,7 @@ public final class IdGenerator {
 
     private static String generate(String prefix) {
         long timestamp = Instant.now().getEpochSecond();
-        String unique = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
+        String unique = UUID.randomUUID().toString().replace("-", "").substring(0, 16);
         return prefix + "_" + timestamp + "_" + unique;
     }
 

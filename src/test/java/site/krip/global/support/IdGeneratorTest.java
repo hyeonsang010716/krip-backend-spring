@@ -20,8 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class IdGeneratorTest {
 
-    // <PREFIX>_<epochSeconds>_<8 hex>
-    private static final Pattern FORMAT = Pattern.compile("^([A-Z]+)_(\\d+)_([0-9a-f]{8})$");
+    // <PREFIX>_<epochSeconds>_<16 hex>
+    private static final Pattern FORMAT = Pattern.compile("^([A-Z]+)_(\\d+)_([0-9a-f]{16})$");
 
     private static Stream<Arguments> factories() {
         return Stream.of(
@@ -44,7 +44,7 @@ class IdGeneratorTest {
 
     @ParameterizedTest(name = "{0} factory -> matches format & prefix")
     @MethodSource("factories")
-    @DisplayName("각 팩토리는 <PREFIX>_<epochSeconds>_<8hex> 형식과 올바른 접두사를 가진다")
+    @DisplayName("각 팩토리는 <PREFIX>_<epochSeconds>_<16hex> 형식과 올바른 접두사를 가진다")
     void factoryProducesCorrectFormatAndPrefix(String expectedPrefix, Supplier<String> factory) {
         long before = Instant.now().getEpochSecond();
         String id = factory.get();
@@ -59,7 +59,7 @@ class IdGeneratorTest {
         long ts = Long.parseLong(m.group(2));
         assertThat(ts).isBetween(before, after);
 
-        assertThat(m.group(3)).hasSize(8).matches("[0-9a-f]{8}");
+        assertThat(m.group(3)).hasSize(16).matches("[0-9a-f]{16}");
     }
 
     @ParameterizedTest(name = "{0} factory -> unique across calls")
@@ -85,12 +85,12 @@ class IdGeneratorTest {
     }
 
     @Test
-    @DisplayName("hex 부분은 항상 소문자 16진수 8자리이다")
+    @DisplayName("hex 부분은 항상 소문자 16진수 16자리이다")
     void hexSuffixIsLowercase() {
         for (int i = 0; i < 200; i++) {
             String id = IdGenerator.feedPostId();
             String hex = id.substring(id.lastIndexOf('_') + 1);
-            assertThat(hex).matches("[0-9a-f]{8}");
+            assertThat(hex).matches("[0-9a-f]{16}");
         }
     }
 }
