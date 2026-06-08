@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@link ImageProcessor} 순수 Java 이미지 처리 단위 테스트 — S3/Spring 불필요.
  *
  * <p>java.awt/ImageIO 로 메모리 내 작은 이미지를 만들어 3종 변형(원본/small 240/medium 720)과
- * 1:1 center crop, 포맷 화이트리스트, 50MP cap, APNG/animated-WEBP 거절을 검증한다.
+ * 1:1 center crop, 포맷 화이트리스트, 25MP cap, APNG/animated-WEBP 거절을 검증한다.
  *
  * <p>한계: TwelveMonkeys WEBP 플러그인은 디코드 전용이라 BufferedImage 로부터 실제 정지 WEBP
  * 바이트를 ImageIO 로 인코딩할 수 없다. 따라서 "정상 WEBP 처리" 케이스는 생략하고, animated WEBP
@@ -203,7 +203,7 @@ class FeedImageProcessorTest {
     }
 
     @Test
-    @DisplayName("선언 해상도가 50MP 를 넘는 PNG 는 디코드 전에 거절된다(decompression bomb 방어)")
+    @DisplayName("선언 해상도가 25MP 를 넘는 PNG 는 디코드 전에 거절된다(decompression bomb 방어)")
     void oversizedPixelCountRejected() throws Exception {
         // 실제 거대 이미지를 만들지 않고, 작은 PNG 의 IHDR width/height 만 8000x8000(64MP)로 패치.
         byte[] bomb = pngWithPatchedDimensions(8000, 8000);

@@ -29,7 +29,7 @@ import java.util.Set;
  * <p>{@link #process}: 1:1 center crop → small(240)/medium(720) JPEG q80, original 은 한 변 ≤ 2048 +
  * EXIF 회전 없으면 raw bytes 보존(피드 게시물용). {@link #sanitize}: 변형 없이 단일 이미지를 항상 재인코딩해
  * EXIF/메타데이터 제거 + 폴리글랏 무력화(단건 업로드용). 공통 방어선: 포맷 화이트리스트(JPEG/PNG/WEBP),
- * 애니메이션 거절, 디코드 픽셀 cap(50MP). 모든 실패는 400(ApiException).
+ * 애니메이션 거절, 디코드 픽셀 cap(25MP). 모든 실패는 400(ApiException).
  */
 @Component
 public class ImageProcessor {
@@ -40,7 +40,9 @@ public class ImageProcessor {
     private static final int THUMBNAIL_MEDIUM = 720;
     private static final int ORIGINAL_MAX = 2048;
     private static final double JPEG_QUALITY = 0.8;
-    private static final long MAX_DECODE_PIXELS = 50_000_000L;
+    // 디코드 픽셀 cap. 25MP × 4byte(ARGB) ≈ 100MB/장 래스터. 동시 업로드(processing 풀 + 다중 변형)
+    // 50MP → 25MP 로 하향(OOM 방어).
+    private static final long MAX_DECODE_PIXELS = 25_000_000L;
 
     private static final Set<String> ALLOWED_FORMATS = Set.of("JPEG", "PNG", "WEBP");
     private static final Map<String, String[]> FORMAT_META = Map.of(
