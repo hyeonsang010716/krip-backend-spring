@@ -20,7 +20,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -56,13 +55,14 @@ class FanoutServiceNodeChannelTest {
     }
 
     @Test
-    @DisplayName("node_channel — 활성 노드가 없으면 publish skip")
-    void skipsWhenNoActiveNodes() {
+    @DisplayName("node_channel — 활성 노드가 없어도 자기 노드로는 publish (로컬 전달 보장)")
+    void publishesToSelfWhenNoActiveNodes() {
         when(nodeRegistry.listActiveNodes()).thenReturn(List.of());
 
         fanout.fanOutToRoom("room-1", Map.of("type", "message.new"));
 
-        verify(redis, never()).convertAndSend(anyString(), any());
+        // ZSET 이 비어도 자기 노드는 항상 대상에 포함돼 로컬 세션 전달이 끊기지 않는다.
+        verify(redis).convertAndSend(eq(ChatRedisKeys.nodeChannel("test-node")), anyString());
     }
 
     @Test

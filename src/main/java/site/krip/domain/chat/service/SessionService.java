@@ -68,7 +68,7 @@ public class SessionService {
         return sessionId;
     }
 
-    /** ping/pong 시 세 키 TTL 연장. sessions ZSET 은 이미 있는 멤버만 갱신(죽은 세션 부활 방지). */
+    /** 단일 세션 TTL 연장(세 키). sessions ZSET 은 이미 있는 멤버만 갱신(죽은 세션 부활 방지). batch 형은 {@link #heartbeatBatch}. */
     public void heartbeat(String sessionId, String userId) {
         redis.expire(ChatRedisKeys.sess(sessionId), TTL);
         redis.expire(ChatRedisKeys.wsRoute(sessionId), TTL);

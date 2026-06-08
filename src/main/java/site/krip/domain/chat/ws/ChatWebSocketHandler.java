@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
+import org.springframework.web.socket.PingMessage;
+import org.springframework.web.socket.PongMessage;
 import org.springframework.web.socket.SubProtocolCapable;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
@@ -50,6 +52,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     private static final String SUBPROTOCOL_VERSION = "krip.chat.v1";
     private static final int HEARTBEAT_INTERVAL_SEC = 30;
     private static final int CLOSE_AUTH_EXPIRED = 4001;
+    private static final int CLOSE_LIVENESS_TIMEOUT = 4002;
+    /** pong 미수신 허용 한도 — sweep 3주기(=SESSION_TTL 90s). 초과 시 도달 불가로 보고 세션을 닫는다. */
+    private static final long PONG_TIMEOUT_MS = HEARTBEAT_INTERVAL_SEC * 3L * 1000L;
 
     private final SessionService sessionService;
     private final RoomService roomService;
@@ -65,8 +70,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     // op(send/read) 처리를 컨테이너 I/O 스레드에서 분리하는 공유 유계 풀 + 세션당 대기 한도.
     private final Executor chatOpExecutor;
     private final int sessionOpMaxQueued;
-    // 이 노드의 로컬 생존 세션. sweep 이 일괄 TTL 연장 대상으로 순회한다.
-    private final Map<String, String> liveSessions = new ConcurrentHashMap<>();
+    // 이 노드의 로컬 생존 세션(sid→ws). sweep 이 ping/TTL 연장 대상으로 순회한다.
+    final Map<String, WebSocketSession> liveSessions = new ConcurrentHashMap<>();
+    // 세션별 마지막 pong 수신 시각(ms) — sweep 이 도달성 판단에 사용한다.
+    final Map<String, Long> lastPongAt = new ConcurrentHashMap<>();
     // 세션당 직렬 실행기 — op 를 chatOpExecutor 위에서 순서 보존하며 실행. 연결 시 생성, 종료 시 제거.
     private final Map<String, SessionSerialExecutor> sessionExecutors = new ConcurrentHashMap<>();
 
@@ -94,13 +101,56 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     @PostConstruct
     void startHeartbeatSweep() {
         Duration interval = Duration.ofSeconds(HEARTBEAT_INTERVAL_SEC);
-        heartbeatScheduler.scheduleWithFixedDelay(() -> {
-            try {
-                sessionService.heartbeatBatch(liveSessions);
-            } catch (Exception e) {
-                log.warn("heartbeat sweep 실패 (계속): err={}", e.toString());
+        heartbeatScheduler.scheduleWithFixedDelay(this::sweepLiveness,
+                Instant.now().plus(interval), interval);
+    }
+
+    /**
+     * 주기 sweep — 각 로컬 세션에 ping 을 보내고, {@link #PONG_TIMEOUT_MS} 넘게 pong 이 없는(=도달 불가) 세션은
+     * 닫는다. 생존이 확인된 세션만 Redis TTL 을 연장해, half-open 좀비가 TTL 자가청소를 회피하지 못하게 한다.
+     */
+    void sweepLiveness() {
+        if (liveSessions.isEmpty()) {
+            return;
+        }
+        try {
+            long deadline = System.currentTimeMillis() - PONG_TIMEOUT_MS;
+            Map<String, String> alive = new HashMap<>();
+            for (Map.Entry<String, WebSocketSession> entry : liveSessions.entrySet()) {
+                String sessionId = entry.getKey();
+                WebSocketSession ws = entry.getValue();
+                if (lastPongAt.getOrDefault(sessionId, System.currentTimeMillis()) < deadline || !sendPing(ws)) {
+                    log.info("WS liveness 종료 — pong 미수신/ping 실패: session_id={}", sessionId);
+                    closeQuietly(ws, new CloseStatus(CLOSE_LIVENESS_TIMEOUT));
+                    continue;
+                }
+                String userId = (String) ws.getAttributes().get(FanoutService.ATTR_USER_ID);
+                if (userId != null) {
+                    alive.put(sessionId, userId);
+                }
             }
-        }, Instant.now().plus(interval), interval);
+            if (!alive.isEmpty()) {
+                sessionService.heartbeatBatch(alive);
+            }
+        } catch (Exception e) {
+            log.warn("liveness sweep 실패 (계속): err={}", e.toString());
+        }
+    }
+
+    /** 세션에 ping 프레임 전송 — 송신 실패(소켓 파손) 시 false. */
+    private boolean sendPing(WebSocketSession ws) {
+        try {
+            if (!ws.isOpen()) {
+                return false;
+            }
+            synchronized (ws) {
+                ws.sendMessage(new PingMessage());
+            }
+            return true;
+        } catch (Exception e) {
+            log.debug("WS ping 송신 실패: {}", e.toString());
+            return false;
+        }
     }
 
     @Override
@@ -142,7 +192,9 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         spawnUnreadSync(session, userId);
 
         sessionExecutors.put(sessionId, new SessionSerialExecutor(chatOpExecutor, sessionOpMaxQueued));
-        liveSessions.put(sessionId, userId);
+        // pong 기준선을 먼저 심어 첫 sweep 이 갓 연결된 세션을 미수신으로 오판하지 않게 한다.
+        lastPongAt.put(sessionId, System.currentTimeMillis());
+        liveSessions.put(sessionId, session);
     }
 
     /**
@@ -163,6 +215,15 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         } catch (RejectedExecutionException e) {
             log.warn("chat op 백프레셔 — server_busy: session_id={} ({})", sessionId, e.getMessage());
             safeSend(session, Map.of("type", "server_error", "reason", "server_busy"));
+        }
+    }
+
+    /** 클라가 sweep 의 ping 에 자동 응답한 pong — 마지막 생존 시각을 갱신한다. */
+    @Override
+    protected void handlePongMessage(WebSocketSession session, PongMessage message) {
+        String sessionId = (String) session.getAttributes().get(FanoutService.ATTR_SESSION_ID);
+        if (sessionId != null) {
+            lastPongAt.put(sessionId, System.currentTimeMillis());
         }
     }
 
@@ -278,6 +339,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         }
         if (sessionId != null) {
             liveSessions.remove(sessionId);
+            lastPongAt.remove(sessionId);
             // 신규 op 수락 중단(드레인 중인 작업은 완료될 때까지 큐를 비운다 — safeSend 가 isOpen 으로 가드).
             sessionExecutors.remove(sessionId);
             try {

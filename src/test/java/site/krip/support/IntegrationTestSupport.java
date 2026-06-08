@@ -64,6 +64,10 @@ public abstract class IntegrationTestSupport {
         // JWT/공유 토큰 secret — application.yml 에 기본값이 없으므로 테스트에서 명시(≥32자).
         registry.add("krip.auth.jwt.secret", () -> "test-login-jwt-secret-value-1234567890");
         registry.add("krip.share.secret", () -> "test-share-jwt-secret-value-1234567890");
+        // 테스트는 여러 Spring 컨텍스트(@MockitoBean/@TestPropertySource 등)를 캐시하며 각자 Hikari 풀을 잡는다.
+        // 운영 기본값(20)이면 컨텍스트 수×20 이 PG max_connections(100)를 초과(too many clients) → 풀을 축소한다.
+        registry.add("spring.datasource.hikari.maximum-pool-size", () -> "5");
+        registry.add("spring.datasource.hikari.minimum-idle", () -> "1");
     }
 
     @Autowired
