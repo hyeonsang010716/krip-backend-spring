@@ -39,23 +39,25 @@ public class ChatSeqAllocator {
         this.incrWithTtl = incrWithTtl;
     }
 
-    /** 다음 seq 채번 — fast-path 우선, 키 증발 시 Mongo 기반 복구. */
+    /** 다음 seq 채번 — fast-path 우선, 키 증발 시 Mongo 기반 복구. 쓰기마다 TTL 갱신(sliding)으로 유휴 방 회수. */
     public long allocateSeq(String roomId) {
         String seqKey = ChatRedisKeys.roomSeq(roomId);
-        Long seq = redis.execute(incrFast, List.of(seqKey));
+        String ttl = String.valueOf(ChatRedisKeys.ROOM_SEQ_TTL);
+        Long seq = redis.execute(incrFast, List.of(seqKey), ttl);
         if (seq != null && seq != -1L) {
             return seq;
         }
         long mongoMax = messageRepo.getMaxServerSeq(roomId);
         long base = mongoMax > 0 ? mongoMax + ChatRedisKeys.SEQ_RECOVER_GAP : 0;
-        Long recovered = redis.execute(recoverAndIncr, List.of(seqKey), String.valueOf(base));
+        Long recovered = redis.execute(recoverAndIncr, List.of(seqKey), String.valueOf(base), ttl);
         return recovered != null ? recovered : 0L;
     }
 
     /** DuplicateKey 재시도 — seq 강제 점프. */
     public long forceJump(String roomId, int jitter) {
         Long v = redis.execute(forceJump, List.of(ChatRedisKeys.roomSeq(roomId)),
-                String.valueOf(ChatRedisKeys.SEQ_FORCE_JUMP_GAP), String.valueOf(jitter));
+                String.valueOf(ChatRedisKeys.SEQ_FORCE_JUMP_GAP), String.valueOf(jitter),
+                String.valueOf(ChatRedisKeys.ROOM_SEQ_TTL));
         return v != null ? v : 0L;
     }
 

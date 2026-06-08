@@ -125,6 +125,35 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("room:seq 키는 송신 시 TTL 이 설정된다(sliding) — 유휴 방 자연 회수, 영구 잔존 방지")
+    void roomSeqKeyHasSlidingTtl() {
+        String a = fixtures.createActiveUser("ttlA");
+        String b = fixtures.createActiveUser("ttlB");
+        String room = directRoom(a, b);
+
+        messageService.sendMessage(a, "sess-a", room, "t1", MessageType.TEXT, "hi");
+
+        Long ttl = redis.getExpire(ChatRedisKeys.roomSeq(room));
+        assertThat(ttl).isNotNull().isGreaterThan(0L);
+    }
+
+    @Test
+    @DisplayName("room:seq 만료(삭제) 후 재전송은 Mongo max+gap 으로 복구 — seq 증가(충돌/역행 없음) + TTL 재설정")
+    void roomSeqRecoversAfterExpiry() {
+        String a = fixtures.createActiveUser("recA");
+        String b = fixtures.createActiveUser("recB");
+        String room = directRoom(a, b);
+
+        long s1 = messageService.sendMessage(a, "sess-a", room, "r1", MessageType.TEXT, "1").serverSeq();
+        redis.delete(ChatRedisKeys.roomSeq(room)); // TTL 만료 시뮬
+
+        long s2 = messageService.sendMessage(a, "sess-a", room, "r2", MessageType.TEXT, "2").serverSeq();
+
+        assertThat(s2).isGreaterThan(s1);
+        assertThat(redis.getExpire(ChatRedisKeys.roomSeq(room))).isGreaterThan(0L);
+    }
+
+    @Test
     @DisplayName("room:members 캐시가 유실돼도 새 메시지는 수신자 unread 를 무효화한다 (DB 폴백)")
     void unreadInvalidatedWhenMemberCacheLost() {
         String a = fixtures.createActiveUser("memCacheA");

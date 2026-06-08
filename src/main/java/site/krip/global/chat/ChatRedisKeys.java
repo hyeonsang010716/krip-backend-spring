@@ -18,6 +18,8 @@ public final class ChatRedisKeys {
     public static final long DEDUPE_TTL = 600;          // 클라 재전송 최대 갭보다 충분히 길게
     public static final long NODE_TTL = 90;             // chat:nodes ZSET — SESSION_TTL 과 동일 주기로 갱신
     public static final long UNREAD_TTL = 604800;       // unread 캐시 backstop(7일) — 진실에서 재계산되므로 만료 무해
+    public static final long ROOM_SEQ_TTL = 604800;     // room:seq sliding TTL(7일) — 쓰기마다 갱신, 유휴 방만 회수.
+                                                        // 만료 시 recover 가 Mongo max+gap 으로 재구성하므로 안전.
 
     // ──────────────────── 임계값 ────────────────────
     public static final int RATE_LIMIT_THRESHOLD = 10;  // 초당 메시지 상한
