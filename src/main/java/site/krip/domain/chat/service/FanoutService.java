@@ -14,6 +14,7 @@ import site.krip.global.config.ChatProperties;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -236,13 +237,16 @@ public class FanoutService {
     private void publishBroadcast(Map<String, Object> envelope) {
         List<String> nodes = nodeRegistry.listActiveNodes();
         if (nodes.isEmpty()) {
-            return;
+            log.warn("활성 노드 목록 비어있음 — 로컬 노드로만 fan-out (ZSET 유실/단절 의심)");
         }
         String json = toJson(envelope);
         if (json == null) {
             return;
         }
-        for (String node : nodes) {
+        // 로컬 세션 전달은 ZSET 상태와 무관해야 하므로 자기 노드는 항상 포함한다(중복은 Set 으로 제거).
+        Set<String> targets = new LinkedHashSet<>(nodes);
+        targets.add(props.nodeId());
+        for (String node : targets) {
             redis.convertAndSend(ChatRedisKeys.nodeChannel(node), json);
         }
     }

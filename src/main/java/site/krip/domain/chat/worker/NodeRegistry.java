@@ -1,13 +1,10 @@
 package site.krip.domain.chat.worker;
 
-import org.springframework.data.redis.connection.RedisZSetCommands.ZAddArgs;
-import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.config.ChatProperties;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,18 +43,14 @@ public class NodeRegistry {
     }
 
     /**
-     * 자기 노드 만료시각 갱신 (heartbeat).
+     * 자기 노드 만료시각 갱신 (heartbeat) — 명단에서 빠졌으면 재등록한다.
      *
-     * <p>{@code ZADD ... XX} — 멤버가 이미 존재할 때만 갱신. deregister 후 racy 하게 발화한 heartbeat 가
-     * 제거된 노드를 다시 살리는 것을 원자적으로 방지한다.
-     * {@code StringRedisTemplate} 의 UTF-8 직렬화와 동일한 바이트라 {@link #registerSelf()} 와 같은 멤버를 가리킨다.
+     * <p>plain ZADD(없으면 추가, 있으면 갱신)라 ZSET 유실(FLUSHDB/eviction) 후에도 다음 tick 에 자가 복귀한다.
+     * 종료 시 deregister 직후 racy 하게 부활할 수 있으나, 그 항목은 score 만료(NODE_TTL)로 청소되고
+     * 죽은 노드엔 라이브 세션이 없어 무해하다.
      */
     public void heartbeatSelf() {
-        byte[] key = ChatRedisKeys.NODES_ZSET_KEY.getBytes(StandardCharsets.UTF_8);
-        byte[] member = props.nodeId().getBytes(StandardCharsets.UTF_8);
-        double score = expiresMs();
-        redis.execute((RedisCallback<Boolean>) connection ->
-                connection.zSetCommands().zAdd(key, score, member, ZAddArgs.ifExists()));
+        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, props.nodeId(), expiresMs());
     }
 
     /** 자기 노드 제거 (종료 시 1회). */
