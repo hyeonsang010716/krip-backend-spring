@@ -120,15 +120,17 @@ public class WithdrawService {
         if (outcome == PurgeOutcome.STALE_DOC) {
             log.warn("탈퇴 영구 삭제 — RDB status 가 INACTIVE 아님, 외부 리소스 보존 + stale doc 만 정리 (user_id={})",
                     userId);
-            try {
-                withdrawalRequestRepository.deleteByUserId(userId);
-            } catch (Exception e) {
-                log.error("탈퇴 영구 삭제 — stale doc 정리 실패, 다음 tick 재시도 (user_id={})", userId, e);
-            }
+            deleteWorkItem(userId);
             return;
         }
 
-        purgeExternal(userId);
+        // 외부 리소스(PII)가 모두 정리돼야 작업 큐(doc)를 제거한다. 하나라도 실패하면 doc 을 남겨
+        // 다음 사이클이 재처리한다 — purge 는 멱등이라(이미 삭제된 RDB 는 NO_USER 로 통과) 재시도가 안전하다.
+        if (purgeExternal(userId)) {
+            deleteWorkItem(userId);
+        } else {
+            log.warn("탈퇴 영구 삭제 — 외부 리소스 일부 삭제 실패, 작업 큐 보존 → 다음 사이클 재시도 (user_id={})", userId);
+        }
     }
 
     /** RDB row lock → status 검사 → 조건부 hard delete. 단일 트랜잭션. */
@@ -179,35 +181,50 @@ public class WithdrawService {
 
     // ──────────────────── 외부 리소스 정리 (best-effort) ────────────────────
 
-    private void purgeExternal(String userId) {
-        // 도메인별 어댑터를 독립 best-effort 로 호출 — 한 도메인 실패가 다른 도메인 정리를 막지 않는다.
+    /**
+     * 외부 리소스(PII) 정리. 단계별로 격리해 한 실패가 나머지 정리를 막지 않는다.
+     *
+     * @return PII 단계(외부 도메인 Mongo·Object Storage)가 모두 성공했는지 여부.
+     *         false 면 호출자가 작업 큐를 보존해 다음 사이클에 재시도한다.
+     */
+    private boolean purgeExternal(String userId) {
+        boolean allCleaned = true;
+
         for (ExternalUserDataPurgePort purge : externalPurges) {
             try {
                 purge.purgeUserMongoData(userId);
             } catch (Exception e) {
-                log.error("탈퇴 영구 삭제 — 외부 도메인 Mongo 삭제 실패, orphan 정리 필요 (port={}, user_id={}): {}",
+                allCleaned = false;
+                log.error("탈퇴 영구 삭제 — 외부 도메인 Mongo 삭제 실패 (port={}, user_id={}): {}",
                         purge.getClass().getSimpleName(), userId, e.toString());
             }
         }
-        log.info("탈퇴 영구 삭제 — 외부 도메인 MongoDB 정리 완료 ({}개 어댑터, user_id={})",
-                externalPurges.size(), userId);
-
-        inboxCascade.cascadeUserWithdrawn(userId); // self-swallow
 
         try {
             storage.deleteByPrefix(userId);
-            log.info("탈퇴 영구 삭제 — Object Storage 삭제 완료 (user_id={})", userId);
         } catch (Exception e) {
+            allCleaned = false;
             log.error("탈퇴 영구 삭제 — Object Storage 삭제 실패 (user_id={})", userId, e);
         }
 
-        registeredCache.invalidate(userId);
+        // inbox 는 self-swallow, chat·등록 캐시는 TTL 로 회복되므로 재시도 게이트에서 제외한다.
+        inboxCascade.cascadeUserWithdrawn(userId);
         chatPurge.cleanupUserData(userId);
+        try {
+            registeredCache.invalidate(userId);
+        } catch (Exception e) {
+            log.warn("탈퇴 영구 삭제 — 등록 캐시 무효화 실패 (TTL 로 회복): user_id={}, err={}", userId, e.toString());
+        }
 
+        return allCleaned;
+    }
+
+    /** 작업 큐(탈퇴 요청 doc) 제거 — 실패해도 다음 사이클이 재처리하므로 로그만 남긴다. */
+    private void deleteWorkItem(String userId) {
         try {
             withdrawalRequestRepository.deleteByUserId(userId);
         } catch (Exception e) {
-            log.error("탈퇴 영구 삭제 — withdrawal_request doc 삭제 실패, 다음 tick 재시도 (user_id={}): {}",
+            log.error("탈퇴 영구 삭제 — 작업 큐(doc) 삭제 실패, 다음 사이클 재시도 (user_id={}): {}",
                     userId, e.toString());
         }
     }
