@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import site.krip.global.common.image.ImageUploadExecutor;
+import site.krip.global.support.MdcTaskDecorator;
 
 /**
  * 비동기 executor — 블로킹 I/O 를 공용 {@code ForkJoinPool.commonPool()} 에서 격리한다.
@@ -30,6 +31,7 @@ public class ExecutorConfig {
         executor.setMaxPoolSize(props.pushPoolSize());
         executor.setQueueCapacity(props.pushQueueCapacity());
         executor.setThreadNamePrefix("chat-push-");
+        executor.setTaskDecorator(MdcTaskDecorator.instance());
         executor.setRejectedExecutionHandler((task, pool) ->
                 log.warn("push 큐 포화 — 작업 드롭 (active={}, queue={})",
                         pool.getActiveCount(), pool.getQueue().size()));
@@ -45,6 +47,7 @@ public class ExecutorConfig {
         executor.setMaxPoolSize(props.recoverPoolSize());
         executor.setQueueCapacity(props.recoverQueueCapacity());
         executor.setThreadNamePrefix("chat-recover-");
+        executor.setTaskDecorator(MdcTaskDecorator.instance());
         executor.setRejectedExecutionHandler((task, pool) ->
                 log.warn("unread 복구 큐 포화 — 작업 드롭 (active={}, queue={})",
                         pool.getActiveCount(), pool.getQueue().size()));
@@ -60,6 +63,7 @@ public class ExecutorConfig {
         executor.setMaxPoolSize(props.chatOpPoolSize());
         executor.setQueueCapacity(props.chatOpQueueCapacity());
         executor.setThreadNamePrefix("chat-op-");
+        executor.setTaskDecorator(MdcTaskDecorator.instance());
         // 기본 AbortPolicy: 포화 시 RejectedExecutionException → 핸들러가 server_busy 로 백프레셔(소켓 유지).
         executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setAwaitTerminationSeconds(5);

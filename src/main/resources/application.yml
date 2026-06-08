@@ -137,3 +137,7 @@ springdoc:
 logging:
   level:
     site.krip: ${LOG_LEVEL:INFO}
+  # 레벨 뒤에 추적 ID 노출 — 콘솔/파일 기본 패턴이 ${LOG_LEVEL_PATTERN} 을 포함하므로 모든 appender 에 적용된다.
+  # 요청 스레드는 RequestIdFilter, 비동기/스케줄 작업은 MdcTaskDecorator 가 request_id 를 채운다.
+  pattern:
+    level: "%5p [%X{request_id:-}]"

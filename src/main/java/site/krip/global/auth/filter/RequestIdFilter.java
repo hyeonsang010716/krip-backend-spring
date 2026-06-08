@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
 import site.krip.global.auth.RequestAttributes;
+import site.krip.global.support.MdcTaskDecorator;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -28,11 +29,11 @@ public class RequestIdFilter extends OncePerRequestFilter {
         }
         request.setAttribute(RequestAttributes.REQUEST_ID, requestId);
         response.setHeader(HEADER, requestId);
-        MDC.put("request_id", requestId);
+        MDC.put(MdcTaskDecorator.REQUEST_ID, requestId);
         try {
             chain.doFilter(request, response);
         } finally {
-            MDC.remove("request_id");
+            MDC.remove(MdcTaskDecorator.REQUEST_ID);
         }
     }
 }

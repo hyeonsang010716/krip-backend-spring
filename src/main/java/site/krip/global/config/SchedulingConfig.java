@@ -3,6 +3,7 @@ package site.krip.global.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import site.krip.global.support.MdcTaskDecorator;
 
 /**
  * 스케줄링 스레드 풀 — 스프링이 생명주기(종료)를 관리하므로 누수 없음.
@@ -21,6 +22,7 @@ public class SchedulingConfig {
         scheduler.setThreadNamePrefix("scheduled-");
         scheduler.setWaitForTasksToCompleteOnShutdown(true);
         scheduler.setAwaitTerminationSeconds(10);
+        scheduler.setTaskDecorator(MdcTaskDecorator.instance());
         return scheduler;
     }
 
@@ -30,6 +32,7 @@ public class SchedulingConfig {
         scheduler.setPoolSize(props.chatWsPoolSize());
         scheduler.setThreadNamePrefix("chat-ws-");
         scheduler.setAwaitTerminationSeconds(5);
+        scheduler.setTaskDecorator(MdcTaskDecorator.instance());
         return scheduler;
     }
 }

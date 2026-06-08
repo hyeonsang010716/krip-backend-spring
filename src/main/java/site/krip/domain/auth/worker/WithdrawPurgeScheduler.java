@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import site.krip.domain.auth.document.WithdrawalRequest;
 import site.krip.domain.auth.repository.WithdrawalRequestRepository;
 import site.krip.domain.auth.service.WithdrawService;
+import site.krip.global.support.MdcTaskDecorator;
 
 import java.time.Instant;
 import java.util.List;
@@ -97,7 +98,7 @@ public class WithdrawPurgeScheduler {
             // 매 유저마다 타임아웃을 걸어 격리 실행 — 한 유저의 외부 리소스 지연이 사이클 전체를 멈추지 않게.
             Future<?> future;
             try {
-                future = purgeExecutor.submit(() -> withdrawService.purge(userId));
+                future = purgeExecutor.submit(MdcTaskDecorator.wrap(() -> withdrawService.purge(userId)));
             } catch (RejectedExecutionException e) {
                 // 셧다운으로 실행자가 이미 종료됨 — 남은 유저는 다음 사이클에서 재시도(purge 멱등).
                 log.warn("withdraw purge: 실행자 종료로 사이클 중단 — 처리됨 {} / 전체 {} (다음 사이클 재시도)",

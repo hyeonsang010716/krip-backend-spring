@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.DisposableBean;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.MdcTaskDecorator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -60,7 +61,7 @@ public class ImageUploadExecutor implements DisposableBean {
         List<Future<T>> futures = new ArrayList<>(tasks.size());
         for (Supplier<T> task : tasks) {
             try {
-                futures.add(processingPool.submit(task::get));
+                futures.add(processingPool.submit(MdcTaskDecorator.wrap(task)::get));
             } catch (RejectedExecutionException e) {
                 futures.forEach(f -> f.cancel(true));
                 throw overloaded();
@@ -76,7 +77,7 @@ public class ImageUploadExecutor implements DisposableBean {
     /** 독립 업로드 작업들(variant 등)을 IO 풀에서 병렬 실행 후 결과를 입력 순서대로 수집. */
     public <T> List<T> uploadInParallel(List<Supplier<T>> tasks) {
         List<CompletableFuture<T>> futures = tasks.stream()
-                .map(task -> CompletableFuture.supplyAsync(task, uploadPool))
+                .map(task -> CompletableFuture.supplyAsync(MdcTaskDecorator.wrap(task), uploadPool))
                 .toList();
         try {
             return futures.stream().map(CompletableFuture::join).toList();
@@ -90,7 +91,7 @@ public class ImageUploadExecutor implements DisposableBean {
 
     private <T> Future<T> submit(Supplier<T> task) {
         try {
-            return processingPool.submit(task::get);
+            return processingPool.submit(MdcTaskDecorator.wrap(task)::get);
         } catch (RejectedExecutionException e) {
             throw overloaded();
         }
