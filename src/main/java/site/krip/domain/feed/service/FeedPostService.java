@@ -15,6 +15,7 @@ import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostRepository;
 import site.krip.domain.feed.repository.FeedPostRow;
 import site.krip.global.common.image.ImageProcessor;
+import site.krip.global.common.image.ImageUploadExecutor;
 import site.krip.global.common.image.ProcessedImageSet;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.storage.ObjectStorage;
@@ -39,16 +40,18 @@ public class FeedPostService {
     private final FeedPostRepository feedPostRepo;
     private final FeedAccessService access;
     private final ImageProcessor imageProcessor;
+    private final ImageUploadExecutor imageUploadExecutor;
     private final ObjectStorage storage;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
 
     public FeedPostService(FeedPostRepository feedPostRepo, FeedAccessService access,
-                           ImageProcessor imageProcessor, ObjectStorage storage,
-                           FeedInboxPort inboxPort, TransactionTemplate txTemplate) {
+                           ImageProcessor imageProcessor, ImageUploadExecutor imageUploadExecutor,
+                           ObjectStorage storage, FeedInboxPort inboxPort, TransactionTemplate txTemplate) {
         this.feedPostRepo = feedPostRepo;
         this.access = access;
         this.imageProcessor = imageProcessor;
+        this.imageUploadExecutor = imageUploadExecutor;
         this.storage = storage;
         this.inboxPort = inboxPort;
         this.txTemplate = txTemplate;
@@ -58,24 +61,17 @@ public class FeedPostService {
 
     public FeedPostResponse uploadPost(String userId, byte[] fileBytes,
                                        FeedVisibility visibility, String caption) {
-        // 이미지 처리 — 트랜잭션/S3 전, 잘못된 이미지 fast-fail(400)
-        ProcessedImageSet processed = imageProcessor.process(fileBytes);
-
         String postId = IdGenerator.feedPostId();
         String prefix = StoragePrefix.feedPostPrefix(userId, postId);
         String normalizedCaption = normalizeCaption(caption);
 
+        // 이미지 decode/resize + S3 업로드를 전용 풀에서 처리(요청 스레드 분리·포화 시 429).
+        Variants variants = imageUploadExecutor.process(() -> processAndUpload(fileBytes, prefix));
+
         FeedPost saved;
         try {
-            String originalUrl = upload(processed.original().data(), processed.original().contentType(),
-                    "original." + processed.original().fileExt(), prefix);
-            String smallUrl = upload(processed.small().data(), processed.small().contentType(),
-                    "small." + processed.small().fileExt(), prefix);
-            String mediumUrl = upload(processed.medium().data(), processed.medium().contentType(),
-                    "medium." + processed.medium().fileExt(), prefix);
-            String fOriginal = originalUrl, fSmall = smallUrl, fMedium = mediumUrl;
-            saved = txTemplate.execute(s ->
-                    insertPost(postId, userId, visibility, normalizedCaption, fOriginal, fSmall, fMedium));
+            saved = txTemplate.execute(s -> insertPost(postId, userId, visibility, normalizedCaption,
+                    variants.original(), variants.small(), variants.medium()));
         } catch (RuntimeException e) {
             safeCleanup(prefix);
             throw e;
@@ -86,6 +82,27 @@ public class FeedPostService {
                 saved.getPostId(), saved.getUserId(), saved.getVisibility(), saved.getCaption(),
                 saved.getOriginalUrl(), saved.getThumbnailSmallUrl(), saved.getThumbnailMediumUrl(),
                 0L, 0L, false, saved.getCreatedAt(), saved.getUpdatedAt());
+    }
+
+    /** decode(잘못된 이미지 → 400) 후 3개 variant 를 병렬 업로드. 업로드 도중 실패 시 prefix cleanup. */
+    private Variants processAndUpload(byte[] fileBytes, String prefix) {
+        ProcessedImageSet processed = imageProcessor.process(fileBytes);
+        try {
+            List<String> urls = imageUploadExecutor.uploadInParallel(List.of(
+                    () -> upload(processed.original().data(), processed.original().contentType(),
+                            "original." + processed.original().fileExt(), prefix),
+                    () -> upload(processed.small().data(), processed.small().contentType(),
+                            "small." + processed.small().fileExt(), prefix),
+                    () -> upload(processed.medium().data(), processed.medium().contentType(),
+                            "medium." + processed.medium().fileExt(), prefix)));
+            return new Variants(urls.get(0), urls.get(1), urls.get(2));
+        } catch (RuntimeException e) {
+            safeCleanup(prefix);
+            throw e;
+        }
+    }
+
+    private record Variants(String original, String small, String medium) {
     }
 
     private FeedPost insertPost(String postId, String userId, FeedVisibility visibility, String caption,

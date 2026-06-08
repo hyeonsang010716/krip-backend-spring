@@ -59,6 +59,11 @@ krip:
     push-queue-capacity: ${PUSH_EXECUTOR_QUEUE_CAPACITY:500}
     recover-pool-size: ${RECOVER_EXECUTOR_POOL_SIZE:4}
     recover-queue-capacity: ${RECOVER_EXECUTOR_QUEUE_CAPACITY:500}
+    # 이미지 처리(decode/resize+S3): 동시 처리 한도 + 유계 큐, 포화 시 429(Tomcat 풀 고갈·메모리 폭증 차단).
+    image-process-pool-size: ${IMAGE_PROCESS_POOL_SIZE:4}
+    image-process-queue-capacity: ${IMAGE_PROCESS_QUEUE_CAPACITY:16}
+    image-upload-pool-size: ${IMAGE_UPLOAD_POOL_SIZE:12}
+    image-upload-queue-capacity: ${IMAGE_UPLOAD_QUEUE_CAPACITY:24}
   auth:
     access-token: ${ACCESS_TOKEN:dev-access-token}
     jwt:

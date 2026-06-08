@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
-import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.domain.tripmate.dto.response.CleanupResponse;
 import site.krip.domain.tripmate.dto.response.ImageUploadListResponse;
 import site.krip.domain.tripmate.dto.response.ImageUploadResponse;
@@ -54,15 +53,16 @@ public class TripmateImageController {
         if (files.size() > MAX_FILE_COUNT) {
             throw ApiException.badRequest("이미지는 최대 " + MAX_FILE_COUNT + "개까지 업로드할 수 있습니다.");
         }
+        // 멀티파트 읽기는 요청 스레드에서 — bytes 만 추출해 처리 풀로 넘긴다.
+        List<byte[]> contents = new ArrayList<>(files.size());
         for (MultipartFile f : files) {
             imageValidator.validate(f, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE);
+            contents.add(f.getBytes());
         }
 
-        List<ImageUploadResponse> uploaded = new ArrayList<>(files.size());
-        for (MultipartFile f : files) {
-            TripmateImage saved = imageService.uploadImage(userId, f.getBytes());
-            uploaded.add(new ImageUploadResponse(saved.getImageId(), saved.getImageUrl()));
-        }
+        List<ImageUploadResponse> uploaded = imageService.uploadImages(userId, contents).stream()
+                .map(saved -> new ImageUploadResponse(saved.getImageId(), saved.getImageUrl()))
+                .toList();
         return new ImageUploadListResponse(uploaded);
     }
 

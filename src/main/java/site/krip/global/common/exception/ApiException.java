@@ -35,6 +35,10 @@ public class ApiException extends RuntimeException {
         return new ApiException(409, message);
     }
 
+    public static ApiException tooManyRequests(String message) {
+        return new ApiException(429, message);
+    }
+
     public static ApiException internalError(String message) {
         return new ApiException(500, message);
     }

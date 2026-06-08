@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import site.krip.global.common.image.ImageUploadExecutor;
 
 /**
  * 비동기 executor — 블로킹 I/O 를 공용 {@code ForkJoinPool.commonPool()} 에서 격리한다.
@@ -48,5 +49,12 @@ public class ExecutorConfig {
         executor.setWaitForTasksToCompleteOnShutdown(false);
         executor.setAwaitTerminationSeconds(5);
         return executor;
+    }
+
+    @Bean
+    public ImageUploadExecutor imageUploadExecutor(ExecutorProperties props) {
+        return new ImageUploadExecutor(
+                props.imageProcessPoolSize(), props.imageProcessQueueCapacity(),
+                props.imageUploadPoolSize(), props.imageUploadQueueCapacity());
     }
 }

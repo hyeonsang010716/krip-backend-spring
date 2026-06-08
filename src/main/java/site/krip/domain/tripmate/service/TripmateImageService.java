@@ -12,6 +12,7 @@ import site.krip.domain.tripmate.repository.TripmateImageRepository;
 import site.krip.domain.tripmate.repository.TripmatePostDraftRepository;
 import site.krip.domain.tripmate.repository.TripmatePostImageRepository;
 import site.krip.global.common.image.ImageProcessor;
+import site.krip.global.common.image.ImageUploadExecutor;
 import site.krip.global.common.image.ProcessedVariant;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
@@ -24,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Supplier;
 
 /**
  * 여행 메이트 이미지.
@@ -41,21 +43,31 @@ public class TripmateImageService {
     private final TripmatePostDraftRepository draftRepository;
     private final ObjectStorage storage;
     private final ImageProcessor imageProcessor;
+    private final ImageUploadExecutor imageUploadExecutor;
 
     public TripmateImageService(TripmateImageRepository imageRepository,
                                 TripmatePostImageRepository postImageRepository,
                                 TripmatePostDraftRepository draftRepository,
                                 ObjectStorage storage,
-                                ImageProcessor imageProcessor) {
+                                ImageProcessor imageProcessor,
+                                ImageUploadExecutor imageUploadExecutor) {
         this.imageRepository = imageRepository;
         this.postImageRepository = postImageRepository;
         this.draftRepository = draftRepository;
         this.storage = storage;
         this.imageProcessor = imageProcessor;
+        this.imageUploadExecutor = imageUploadExecutor;
     }
 
-    /** 업로드 — 항상 재인코딩(EXIF 제거·폴리글랏 무력화) 후 감지된 포맷의 content-type 으로 저장. */
-    public TripmateImage uploadImage(String userId, byte[] fileBytes) {
+    /** 다건 업로드 — 전용 풀에서 동시 처리(요청 스레드 분리·포화 시 429). 각 이미지는 재인코딩(EXIF 제거·폴리글랏 무력화) 후 저장. */
+    public List<TripmateImage> uploadImages(String userId, List<byte[]> files) {
+        List<Supplier<TripmateImage>> tasks = files.stream()
+                .map(bytes -> (Supplier<TripmateImage>) () -> storeImage(userId, bytes))
+                .toList();
+        return imageUploadExecutor.processAll(tasks);
+    }
+
+    private TripmateImage storeImage(String userId, byte[] fileBytes) {
         ProcessedVariant sanitized = imageProcessor.sanitize(fileBytes);
         String imageId = IdGenerator.tripmateImageId();
         String imageUrl = storage.uploadPerm(
