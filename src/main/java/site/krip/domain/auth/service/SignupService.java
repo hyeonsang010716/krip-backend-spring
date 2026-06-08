@@ -1,7 +1,7 @@
 package site.krip.domain.auth.service;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.auth.dto.SignupResult;
 import site.krip.domain.auth.dto.SignupStatus;
 import site.krip.domain.auth.entity.OAuthProvider;
@@ -29,15 +29,20 @@ public class SignupService {
         this.detailRepository = detailRepository;
     }
 
-    @Transactional
     public SignupResult checkAndRegister(OAuthProvider authProvider, String authProviderId) {
-        User user = userRepository
-                .findByAuthProviderAndAuthProviderId(authProvider, authProviderId)
-                .orElse(null);
+        User user = findUser(authProvider, authProviderId);
 
         if (user == null) {
-            User created = userRepository.save(User.createNew(authProvider, authProviderId));
-            return new SignupResult(created.getUserId(), SignupStatus.NEW);
+            try {
+                User created = userRepository.save(User.createNew(authProvider, authProviderId));
+                return new SignupResult(created.getUserId(), SignupStatus.NEW);
+            } catch (DataIntegrityViolationException e) {
+                // 동시 콜백이 먼저 생성 — uq_provider_account 충돌 시 그 유저로 이어서 진행(멱등).
+                user = findUser(authProvider, authProviderId);
+                if (user == null) {
+                    throw e;
+                }
+            }
         }
 
         if (user.getStatus() == UserStatus.INACTIVE) {
@@ -47,5 +52,10 @@ public class SignupService {
         boolean hasDetail = detailRepository.existsById(user.getUserId());
         return new SignupResult(user.getUserId(),
                 hasDetail ? SignupStatus.COMPLETE : SignupStatus.IN_PROGRESS);
+    }
+
+    private User findUser(OAuthProvider authProvider, String authProviderId) {
+        return userRepository.findByAuthProviderAndAuthProviderId(authProvider, authProviderId)
+                .orElse(null);
     }
 }
