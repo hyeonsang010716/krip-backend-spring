@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -21,9 +22,11 @@ public class TokenRevocationService {
     private static final String PREFIX = "jwt:revoked:";
 
     private final StringRedisTemplate redis;
+    private final Clock clock;
 
-    public TokenRevocationService(StringRedisTemplate redis) {
+    public TokenRevocationService(StringRedisTemplate redis, Clock clock) {
         this.redis = redis;
+        this.clock = clock;
     }
 
     /** jti 를 만료 시각까지 폐기 목록에 등록. jti/만료 누락이거나 이미 만료면 무시. */
@@ -31,7 +34,8 @@ public class TokenRevocationService {
         if (jti == null || expiresAt == null) {
             return;
         }
-        long ttl = Duration.between(Instant.now(), expiresAt).getSeconds();
+        // exp 는 JwtProvider 가 주입 clock 으로 만든 절대시각 — ttl 도 동일 시계로 계산해야 정합(테스트 fixed-clock 포함).
+        long ttl = Duration.between(clock.instant(), expiresAt).getSeconds();
         if (ttl <= 0) {
             return;
         }
