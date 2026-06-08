@@ -3,8 +3,11 @@ package site.krip.domain.chat.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import site.krip.domain.chat.dto.response.MessageSentAck;
 import site.krip.domain.chat.entity.MessageType;
+import site.krip.domain.chat.repository.ChatMessageRepository;
 import site.krip.domain.friend.service.UserBlockService;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
@@ -31,6 +34,13 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private StringRedisTemplate redis;
 
+    @Autowired
+    @Qualifier("dedupeRedisTemplate")
+    private StringRedisTemplate dedupeRedis;
+
+    @Autowired
+    private ChatMessageRepository messageRepo;
+
     private String directRoom(String a, String b) {
         return roomService.createDirectRoom(a, b).chatRoomId();
     }
@@ -53,18 +63,35 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("dedupe: 동일 client_msg_id 재전송 시 400")
-    void dedupeRejectsDuplicateClientMsgId() {
+    @DisplayName("dedupe: 동일 client_msg_id 재전송은 멱등 — 같은 메시지 ack 반환(중복 저장 없음)")
+    void dedupeReturnsIdempotentAck() {
         String a = fixtures.createActiveUser("dedupeA");
         String b = fixtures.createActiveUser("dedupeB");
         String room = directRoom(a, b);
 
-        messageService.sendMessage(a, "sess-a", room, "dup-1", MessageType.TEXT, "first");
+        MessageSentAck first = messageService.sendMessage(a, "sess-a", room, "dup-1", MessageType.TEXT, "first");
+        MessageSentAck second = messageService.sendMessage(a, "sess-a", room, "dup-1", MessageType.TEXT, "second");
 
-        assertThatThrownBy(() ->
-                messageService.sendMessage(a, "sess-a", room, "dup-1", MessageType.TEXT, "second"))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("dedupe");
+        // 재전송은 원본 ack 를 그대로 돌려준다(멱등) — content "second" 는 무시되고 저장은 1건뿐.
+        assertThat(second.messageId()).isEqualTo(first.messageId());
+        assertThat(second.serverSeq()).isEqualTo(first.serverSeq());
+    }
+
+    @Test
+    @DisplayName("dedupe 키만 남고 메시지는 미저장(크래시 윈도우)이면 재전송이 손실 없이 저장된다")
+    void staleDedupeKeyDoesNotLoseMessage() {
+        String a = fixtures.createActiveUser("staleA");
+        String b = fixtures.createActiveUser("staleB");
+        String room = directRoom(a, b);
+
+        // 크래시 윈도우 시뮬: dedupe 키만 미리 점유되고 메시지는 Mongo 에 없는 상태.
+        dedupeRedis.opsForValue().set(ChatRedisKeys.dedupe(a, "cmid-1"), "1");
+
+        // 재전송 — Redis 키만으로 거부되지 않고 Mongo 진실 기준으로 정상 저장돼야 한다.
+        MessageSentAck ack = messageService.sendMessage(a, "sess-a", room, "cmid-1", MessageType.TEXT, "hi");
+
+        assertThat(ack.messageId()).isNotNull();
+        assertThat(messageRepo.findByClientMsgId(room, a, "cmid-1")).isNotNull();
     }
 
     @Test

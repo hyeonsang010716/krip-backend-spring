@@ -100,7 +100,12 @@ public class MessageService {
         Boolean first = dedupeRedis.opsForValue()
                 .setIfAbsent(dedupeK, "1", Duration.ofSeconds(ChatRedisKeys.DEDUPE_TTL));
         if (!Boolean.TRUE.equals(first)) {
-            throw ApiException.badRequest("이미 처리된 메시지입니다 (dedupe).");
+            // Redis 키는 fast-path 일 뿐 "처리됨"의 진실이 아니다 — 실제 영속 여부는 Mongo(unique index)가 판단.
+            // 저장돼 있으면 멱등 ack, 키만 남고 미저장(set↔insert 사이 크래시)이면 계속 진행해 손실을 막는다.
+            Document existing = messageRepo.findByClientMsgId(roomId, senderUserId, clientMsgId);
+            if (existing != null) {
+                return ackFromDoc(existing, clientMsgId);
+            }
         }
 
         Instant now = Instant.now();
@@ -318,9 +323,14 @@ public class MessageService {
         if (existing == null) {
             throw ApiException.badRequest("이미 처리된 메시지입니다 (dedupe).");
         }
-        long existingSeq = ((Number) existing.get("server_seq")).longValue();
-        Instant createdAt = existing.getDate("created_at").toInstant();
-        return new MessageSentAck(clientMsgId, existing.getString("_id"), existingSeq, createdAt);
+        return ackFromDoc(existing, clientMsgId);
+    }
+
+    /** 저장된 메시지 Document → 멱등 ack. */
+    private static MessageSentAck ackFromDoc(Document doc, String clientMsgId) {
+        long serverSeq = ((Number) doc.get("server_seq")).longValue();
+        Instant createdAt = doc.getDate("created_at").toInstant();
+        return new MessageSentAck(clientMsgId, doc.getString("_id"), serverSeq, createdAt);
     }
 
     private long insertWithRetry(Document doc, String roomId, long serverSeq) {
