@@ -86,8 +86,16 @@ public class TripmateImageService {
                 new ByteArrayInputStream(sanitized.data()), sanitized.data().length,
                 "image." + sanitized.fileExt(), sanitized.contentType(),
                 StoragePrefix.postPrefix(userId));
-        log.info("이미지 업로드 완료 (user_id={}, image_id={})", userId, imageId);
-        return imageRepository.save(new TripmateImage(userId, imageId, imageUrl, uploadedAt));
+        try {
+            TripmateImage saved = imageRepository.save(new TripmateImage(userId, imageId, imageUrl, uploadedAt));
+            log.info("이미지 업로드 완료 (user_id={}, image_id={})", userId, imageId);
+            return saved;
+        } catch (RuntimeException e) {
+            // Mongo 저장 실패 → 방금 올린 S3 객체를 보상 삭제. 안 지우면 Mongo row 없는 dangling S3 라
+            // cleanupOrphanedImages(Mongo row 순회)가 영영 못 찾는 영구 누수가 된다.
+            safeDeleteStorage(imageUrl);
+            throw e;
+        }
     }
 
     public List<TripmateImage> getImages(String userId) {
@@ -100,9 +108,20 @@ public class TripmateImageService {
         if (!image.getUserId().equals(userId)) {
             throw new PostAccessDeniedException("이미지 삭제 권한이 없습니다.");
         }
-        storage.delete(image.getImageUrl());
+        // DB-우선(진실) → best-effort 스토리지 정리(feed deletePost 와 동일). 순서를 바꾸면 Mongo 삭제 실패 시
+        // dangling URL(깨진 이미지)이 남는다. 반대로 스토리지 삭제 실패는 드문 orphan 으로 남기고 로깅한다.
         imageRepository.deleteByImageId(imageId);
+        safeDeleteStorage(image.getImageUrl());
         log.info("이미지 삭제 완료 (user_id={}, image_id={})", userId, imageId);
+    }
+
+    /** 스토리지 단건 삭제 — best-effort. 실패는 orphan 으로 남기고 로깅(ops 알림 대상). */
+    private void safeDeleteStorage(String imageUrl) {
+        try {
+            storage.delete(imageUrl);
+        } catch (Exception e) {
+            log.warn("스토리지 삭제 실패 — orphan 잔존 (url={})", imageUrl, e);
+        }
     }
 
     /**
