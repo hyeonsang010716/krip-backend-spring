@@ -18,8 +18,8 @@ import site.krip.global.storage.StoragePrefix;
 import site.krip.global.support.IdGenerator;
 
 import java.io.ByteArrayInputStream;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -36,6 +36,9 @@ import java.util.function.Supplier;
 public class TripmateImageService {
 
     private static final Logger log = LoggerFactory.getLogger(TripmateImageService.class);
+
+    /** 업로드 직후 아직 첨부 안 된 이미지를 고아로 오인 삭제하는 레이스 방지 유예기간. */
+    private static final Duration ORPHAN_GRACE = Duration.ofMinutes(30);
 
     private final TripmateImageRepository imageRepository;
     private final TripmatePostImageRepository postImageRepository;
@@ -127,8 +130,9 @@ public class TripmateImageService {
     /**
      * 고아 이미지 정리 — 게시글/임시저장 어디에도 참조되지 않는 업로드 이미지 삭제.
      *
-     * <p>전부 Mongo/S3 작업이라 RDB 트랜잭션을 열지 않는다(느린 S3 호출 동안 JDBC 커넥션을 점유하지 않음).
-     * S3 삭제 후 메타데이터 삭제가 실패해도 대상은 여전히 미참조라 다음 호출에서 재정리된다(멱등).
+     * <p>S3 먼저 → 메타데이터 나중: row 가 S3 객체를 찾는 인덱스라, 먼저 지우고 S3 삭제가 실패하면 영구 누수.
+     * 안전장치 둘 — 유예기간({@link #ORPHAN_GRACE}) 내 이미지는 건너뛰고(작성 중 레이스 방지),
+     * S3 삭제 실패분은 메타데이터를 남겨 다음 호출에서 재시도(멱등).
      */
     public int cleanupOrphanedImages(String userId) {
         List<TripmateImage> allImages = imageRepository.findByUserId(userId);
@@ -140,24 +144,33 @@ public class TripmateImageService {
         Optional<TripmatePostDraft> draft = draftRepository.findByUserId(userId);
         draft.ifPresent(d -> referenced.addAll(d.getImageUrls()));
 
+        // 유예기간 지난 미참조만 대상. timestamp == null(레거시)은 오래된 것으로 간주.
+        Instant cutoff = Instant.now().minus(ORPHAN_GRACE);
         List<TripmateImage> orphaned = allImages.stream()
+                .filter(img -> img.getTimestamp() == null || img.getTimestamp().isBefore(cutoff))
                 .filter(img -> !referenced.contains(img.getImageUrl()))
                 .toList();
         if (orphaned.isEmpty()) {
             return 0;
         }
 
-        List<String> orphanedUrls = new ArrayList<>();
-        List<String> orphanedIds = new ArrayList<>();
-        for (TripmateImage img : orphaned) {
-            orphanedUrls.add(img.getImageUrl());
-            orphanedIds.add(img.getImageId());
+        List<String> orphanedUrls = orphaned.stream().map(TripmateImage::getImageUrl).toList();
+
+        List<String> failedUrls = storage.deleteMany(orphanedUrls);
+
+        // 성공분만 메타데이터 제거. 실패분은 row 를 남겨 다음 호출에서 재시도.
+        Set<String> failed = failedUrls.isEmpty() ? Set.of() : new HashSet<>(failedUrls);
+        List<String> deletableIds = orphaned.stream()
+                .filter(img -> !failed.contains(img.getImageUrl()))
+                .map(TripmateImage::getImageId)
+                .toList();
+        imageRepository.deleteByImageIds(deletableIds);
+
+        if (!failed.isEmpty()) {
+            log.warn("고아 이미지 S3 삭제 일부 실패 — 메타데이터 보존, 다음 호출 재시도 (user_id={}, 실패={}건)",
+                    userId, failed.size());
         }
-
-        storage.deleteMany(orphanedUrls);
-        imageRepository.deleteByImageIds(orphanedIds);
-
-        log.info("고아 이미지 정리 완료 (user_id={}, 삭제={}건)", userId, orphaned.size());
-        return orphaned.size();
+        log.info("고아 이미지 정리 완료 (user_id={}, 삭제={}건)", userId, deletableIds.size());
+        return deletableIds.size();
     }
 }

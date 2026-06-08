@@ -30,8 +30,13 @@ public interface ObjectStorage {
     /** 단일 객체 삭제 (URL 기준). best-effort 호출처에서 예외 처리. */
     void delete(String url);
 
-    /** 여러 객체 일괄 삭제 (URL 목록 기준). */
-    void deleteMany(java.util.List<String> urls);
+    /**
+     * 여러 객체 일괄 삭제 (URL 목록 기준).
+     *
+     * @return 삭제 실패한 URL 목록(부분 실패 포함). 호출처는 이 URL 의 메타데이터를 남겨 다음 정리에서
+     *         재시도해야 한다 — 먼저 지우면 S3 객체를 다시 못 찾아 영구 누수. 전부 성공이면 빈 목록.
+     */
+    java.util.List<String> deleteMany(java.util.List<String> urls);
 
     /** {@code uploads/perm/{user_id}/} 전체 삭제 — 탈퇴 영구 삭제 단계. */
     void deleteByPrefix(String userId);

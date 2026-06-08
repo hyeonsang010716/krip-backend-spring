@@ -8,7 +8,9 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Error;
 
 import java.io.ByteArrayInputStream;
 import java.util.List;
@@ -19,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link S3ObjectStorage} 단위 테스트 (S3Client 목) — 키 스킴/URL 파생 및 파싱불가 URL 의 안전 처리 검증.
@@ -80,13 +83,37 @@ class S3ObjectStorageTest {
     @Test
     @DisplayName("deleteMany: 유효 키만 추려 deleteObjects 1회, 전부 무효면 호출 없음")
     void deleteManyFiltersInvalid() {
-        storage.deleteMany(List.of(
+        when(s3.deleteObjects(any(DeleteObjectsRequest.class)))
+                .thenReturn(DeleteObjectsResponse.builder().build()); // 에러 없음
+
+        List<String> failed = storage.deleteMany(List.of(
                 "https://s3.test/mybucket/uploads/perm/u1/post/a.jpg",
                 "https://cdn.other.com/nope.jpg"));
         verify(s3, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
+        // 파싱 불가 URL 은 S3 대상이 아니므로 실패로 보고하지 않는다(메타데이터 정리 진행).
+        assertThat(failed).isEmpty();
 
-        storage.deleteMany(List.of("https://cdn.other.com/nope.jpg"));
+        assertThat(storage.deleteMany(List.of("https://cdn.other.com/nope.jpg"))).isEmpty();
         // 여전히 1회 — 전부 무효인 두 번째 호출은 SDK 미접근
         verify(s3, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
+    }
+
+    @Test
+    @DisplayName("deleteMany: 배치 부분 실패 시 실패한 키를 URL 로 환원해 반환(메타데이터 보존용)")
+    void deleteManyReturnsPartialFailureUrls() {
+        String okUrl = "https://s3.test/mybucket/uploads/perm/u1/post/a.jpg";
+        String failUrl = "https://s3.test/mybucket/uploads/perm/u1/post/b.jpg";
+        // b.jpg 키만 실패로 응답 (deleteObjects 는 예외 대신 errors() 로 보고)
+        when(s3.deleteObjects(any(DeleteObjectsRequest.class)))
+                .thenReturn(DeleteObjectsResponse.builder()
+                        .errors(S3Error.builder()
+                                .key("uploads/perm/u1/post/b.jpg")
+                                .code("InternalError")
+                                .build())
+                        .build());
+
+        List<String> failed = storage.deleteMany(List.of(okUrl, failUrl));
+
+        assertThat(failed).containsExactly(failUrl);
     }
 }

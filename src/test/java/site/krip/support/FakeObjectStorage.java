@@ -20,6 +20,9 @@ public class FakeObjectStorage implements ObjectStorage {
     /** 현재 스토리지에 살아있는 객체 URL 들. */
     public final Set<String> stored = ConcurrentHashMap.newKeySet();
 
+    /** 삭제 부분 실패 시뮬레이션용 — 여기 담긴 URL 은 deleteMany 에서 지워지지 않고 실패로 보고된다. */
+    public final Set<String> failDeletion = ConcurrentHashMap.newKeySet();
+
     @Override
     public String uploadPerm(InputStream content, long contentLength, String fileName,
                              String contentType, String prefix) {
@@ -44,8 +47,16 @@ public class FakeObjectStorage implements ObjectStorage {
     }
 
     @Override
-    public void deleteMany(List<String> urls) {
-        urls.forEach(stored::remove);
+    public List<String> deleteMany(List<String> urls) {
+        List<String> failed = new java.util.ArrayList<>();
+        for (String url : urls) {
+            if (failDeletion.contains(url)) {
+                failed.add(url); // 실패 시뮬레이션 — 객체를 남겨둔다
+            } else {
+                stored.remove(url);
+            }
+        }
+        return failed;
     }
 
     @Override

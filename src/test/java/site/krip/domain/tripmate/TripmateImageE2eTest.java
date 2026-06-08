@@ -6,9 +6,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
+import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.support.FakeObjectStorage;
 import site.krip.support.FakeStorageConfig;
 import site.krip.support.IntegrationTestSupport;
@@ -16,6 +21,8 @@ import site.krip.support.IntegrationTestSupport;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +46,17 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private MongoTemplate mongo;
+
+    /** 업로드 직후의 유예기간을 벗어나도록 해당 유저 이미지의 timestamp 를 과거로 당긴다. */
+    private void ageImages(String userId) {
+        mongo.updateMulti(
+                Query.query(Criteria.where("user_id").is(userId)),
+                Update.update("timestamp", Instant.now().minus(1, ChronoUnit.HOURS)),
+                TripmateImage.class);
+    }
 
     private MockMultipartFile jpeg(String name) throws Exception {
         BufferedImage img = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
@@ -124,7 +142,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("고아 정리: 어디에도 참조되지 않은 업로드 이미지를 삭제(deleted_count), 재실행은 0")
+    @DisplayName("고아 정리: 유예기간 지난 미참조 이미지를 삭제(deleted_count), 재실행은 0")
     void cleanupRemovesOrphans() throws Exception {
         String userId = fixtures.createActiveUser("img정리");
 
@@ -137,6 +155,16 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         objectMapper.readTree(res.getResponse().getContentAsString()).get("images")
                 .forEach(img -> urls.add(img.get("image_url").asText()));
 
+        // 방금 올린(유예기간 내) 이미지는 작성 중일 수 있어 보호된다 — 즉시 정리해도 0건.
+        mockMvc.perform(post(IMAGES + "/cleanup")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deleted_count").value(0));
+        assertThat(storage.stored).containsAll(urls);
+
+        // 유예기간을 벗어나면 미참조 이미지로 정리된다.
+        ageImages(userId);
         mockMvc.perform(post(IMAGES + "/cleanup")
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(userId)))
@@ -151,5 +179,45 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
                         .header("X-Auth-Token", userToken(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deleted_count").value(0));
+    }
+
+    @Test
+    @DisplayName("고아 정리: S3 삭제 부분 실패 시 해당 메타데이터는 보존돼 다음 호출에서 재시도된다")
+    void cleanupPreservesMetadataOnPartialS3Failure() throws Exception {
+        String userId = fixtures.createActiveUser("img부분실패");
+
+        MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        List<String> urls = new ArrayList<>();
+        objectMapper.readTree(res.getResponse().getContentAsString()).get("images")
+                .forEach(img -> urls.add(img.get("image_url").asText()));
+        ageImages(userId);
+
+        // 첫 URL 의 S3 삭제를 실패시킨다 → 그 한 건은 정리되지 않고 메타데이터가 남아야 한다.
+        String failUrl = urls.get(0);
+        storage.failDeletion.add(failUrl);
+
+        mockMvc.perform(post(IMAGES + "/cleanup")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deleted_count").value(1));
+
+        // 실패분은 S3 객체와 메타데이터 모두 잔존 → 다음 호출에서 재시도 가능(영구 누수 아님).
+        assertThat(storage.stored).contains(failUrl);
+        assertThat(mongo.find(
+                Query.query(Criteria.where("user_id").is(userId)), TripmateImage.class)).hasSize(1);
+
+        // S3 가 회복되면 재실행에서 정상 정리된다.
+        storage.failDeletion.clear();
+        mockMvc.perform(post(IMAGES + "/cleanup")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deleted_count").value(1));
+        assertThat(storage.stored).doesNotContain(failUrl);
     }
 }

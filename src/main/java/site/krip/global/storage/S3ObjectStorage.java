@@ -10,13 +10,18 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Error;
 
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -86,25 +91,42 @@ public class S3ObjectStorage implements ObjectStorage {
     }
 
     @Override
-    public void deleteMany(List<String> urls) {
-        List<ObjectIdentifier> ids = urls.stream()
-                .map(url -> {
-                    String k = keyFromUrl(url);
-                    if (k == null) {
-                        log.warn("S3 deleteMany 건너뜀 — perm 키 형식이 아닌 URL: {}", url);
-                    }
-                    return k;
-                })
-                .filter(java.util.Objects::nonNull)
+    public List<String> deleteMany(List<String> urls) {
+        // key → url 역매핑. 파싱 불가 URL 은 삭제 대상이 아니므로 실패로 보고하지 않고 건너뛴다.
+        Map<String, String> keyToUrl = new HashMap<>();
+        for (String url : urls) {
+            String k = keyFromUrl(url);
+            if (k == null) {
+                log.warn("S3 deleteMany 건너뜀 — perm 키 형식이 아닌 URL: {}", url);
+            } else {
+                keyToUrl.put(k, url);
+            }
+        }
+        if (keyToUrl.isEmpty()) {
+            return List.of();
+        }
+
+        List<ObjectIdentifier> ids = keyToUrl.keySet().stream()
                 .map(k -> ObjectIdentifier.builder().key(k).build())
                 .toList();
-        if (ids.isEmpty()) {
-            return;
-        }
-        s3.deleteObjects(DeleteObjectsRequest.builder()
+        DeleteObjectsResponse resp = s3.deleteObjects(DeleteObjectsRequest.builder()
                 .bucket(bucket)
                 .delete(Delete.builder().objects(ids).build())
                 .build());
+
+        // deleteObjects 는 일부 키 실패를 예외 없이 errors() 로 돌려준다 → URL 로 환원해 실패 목록에 담는다.
+        if (resp.errors().isEmpty()) {
+            return List.of();
+        }
+        List<String> failed = new ArrayList<>(resp.errors().size());
+        for (S3Error err : resp.errors()) {
+            log.warn("S3 deleteMany 부분 실패 (key={}, code={}, msg={})", err.key(), err.code(), err.message());
+            String url = keyToUrl.get(err.key());
+            if (url != null) {
+                failed.add(url);
+            }
+        }
+        return failed;
     }
 
     @Override

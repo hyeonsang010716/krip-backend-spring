@@ -199,8 +199,12 @@ public class TripmatePostService {
                 List<String> removedList = new ArrayList<>(removed);
                 AfterCommit.run(() -> {
                     try {
-                        storage.deleteMany(removedList);
-                        mongoImageRepository.deleteByUserIdAndUrls(userId, removedList);
+                        // S3 삭제 실패분은 메타데이터를 남겨 cleanup 이 재시도(영구 누수 방지).
+                        List<String> failed = storage.deleteMany(removedList);
+                        List<String> deletable = removedList.stream()
+                                .filter(u -> !failed.contains(u))
+                                .toList();
+                        mongoImageRepository.deleteByUserIdAndUrls(userId, deletable);
                     } catch (Exception e) {
                         log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
                     }
@@ -244,8 +248,12 @@ public class TripmatePostService {
         AfterCommit.run(() -> {
             if (!imageUrls.isEmpty()) {
                 try {
-                    storage.deleteMany(imageUrls);
-                    mongoImageRepository.deleteByUserIdAndUrls(userId, imageUrls);
+                    // S3 삭제 실패분은 메타데이터를 남겨 cleanup 이 재시도(영구 누수 방지).
+                    List<String> failed = storage.deleteMany(imageUrls);
+                    List<String> deletable = imageUrls.stream()
+                            .filter(u -> !failed.contains(u))
+                            .toList();
+                    mongoImageRepository.deleteByUserIdAndUrls(userId, deletable);
                 } catch (Exception e) {
                     log.warn("삭제 시 이미지 정리 실패 (post_id={})", postId, e);
                 }
