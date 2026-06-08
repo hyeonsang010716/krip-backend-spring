@@ -2,6 +2,7 @@ package site.krip.domain.tripmate.controller;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -79,7 +80,8 @@ public class TripmatePostController {
     @GetMapping("/search")
     public PostListResponse searchPosts(@CurrentUserId String userId,
                                         @RequestParam("keyword")
-                                        @NotBlank(message = "검색어를 입력해주세요.") String keyword,
+                                        @NotBlank(message = "검색어를 입력해주세요.")
+                                        @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String keyword,
                                         @RequestParam(value = "cursor", required = false) String cursor) {
         // @NotBlank 로 공백·빈 검색어 거부 (LIKE '%%' 전체조회·빈 검색기록 저장 방지).
         try {

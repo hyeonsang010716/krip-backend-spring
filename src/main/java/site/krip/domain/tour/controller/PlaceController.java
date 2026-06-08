@@ -2,6 +2,7 @@ package site.krip.domain.tour.controller;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -56,7 +57,8 @@ public class PlaceController {
     public PlaceListResponse getPlaces(@CurrentUserId String userId,
                                        @RequestParam(required = false) Double lat,
                                        @RequestParam(required = false) Double lng,
-                                       @RequestParam(required = false) String keyword,
+                                       @RequestParam(required = false)
+                                       @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String keyword,
                                        @RequestParam(required = false) String cursor,
                                        @RequestParam(name = "max_distance", required = false)
                                        @Positive(message = "max_distance 는 0 보다 커야 합니다.") Double maxDistance) {

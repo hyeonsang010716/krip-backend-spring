@@ -108,6 +108,18 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("100자 초과 keyword → 400 (쿼리 DoS 방지 바운드)")
+    void searchOverLongKeyword() throws Exception {
+        String viewer = fixtures.createActiveUser("긴검색유저");
+
+        mockMvc.perform(get("/api/friend/search")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer))
+                        .param("keyword", "가".repeat(101)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("검색 기록: 검색 후 목록 노출 → 단건 삭제 → 전체 삭제")
     void searchHistoryFlow() throws Exception {
         String viewer = fixtures.createActiveUser("기록뷰어");

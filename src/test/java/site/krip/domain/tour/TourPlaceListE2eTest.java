@@ -114,4 +114,17 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.places[0].place_id").value("ZZCUR30"))
                 .andExpect(jsonPath("$.next_cursor").isEmpty());
     }
+
+    @Test
+    @DisplayName("100자 초과 keyword → 400 (Mongo $regex+geoNear 직행 방지 바운드)")
+    void overLongKeywordRejected() throws Exception {
+        String userId = fixtures.createActiveUser("place길이");
+        String tooLong = "가".repeat(101);
+
+        mockMvc.perform(get(PLACES).param("keyword", tooLong)
+                        .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isBadRequest());
+    }
 }
