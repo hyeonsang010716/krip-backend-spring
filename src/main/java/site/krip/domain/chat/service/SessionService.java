@@ -2,9 +2,11 @@ package site.krip.domain.chat.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.connection.RedisZSetCommands.ZAddArgs;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.stereotype.Service;
 import site.krip.domain.chat.worker.NodeRegistry;
 import site.krip.global.chat.ChatRedisKeys;
@@ -14,6 +16,7 @@ import site.krip.global.support.IdGenerator;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -32,11 +35,16 @@ public class SessionService {
     private final FanoutService fanout;
     private final StringRedisTemplate redis;
     private final ChatProperties props;
+    @SuppressWarnings("rawtypes")
+    private final RedisScript<List> enforceSessionLimitScript;
 
-    public SessionService(FanoutService fanout, StringRedisTemplate redis, ChatProperties props) {
+    public SessionService(FanoutService fanout, StringRedisTemplate redis, ChatProperties props,
+                          @Qualifier("enforceSessionLimitScript") @SuppressWarnings("rawtypes")
+                          RedisScript<List> enforceSessionLimitScript) {
         this.fanout = fanout;
         this.redis = redis;
         this.props = props;
+        this.enforceSessionLimitScript = enforceSessionLimitScript;
     }
 
     private static long nowMs() {
@@ -144,21 +152,23 @@ public class SessionService {
         return sessionIds.size();
     }
 
+    /**
+     * 만료 청소 + 초과분 oldest evict 를 단일 Lua 로 원자 실행 — 동시 접속이 stale count 로 살아있는
+     * 세션을 잘못 evict 하는 레이스를 막는다. ZSET·키 삭제는 스크립트가, revoke 알림은 evict 목록을 받아
+     * 여기서(best-effort) 보낸다. 알림 시점엔 Redis 상에선 이미 끊긴 상태라 안전.
+     */
+    @SuppressWarnings("unchecked")
     private void enforceSessionLimit(String userId) {
-        redis.opsForZSet().removeRangeByScore(ChatRedisKeys.sessions(userId), Double.NEGATIVE_INFINITY, nowMs());
-        Long count = redis.opsForZSet().zCard(ChatRedisKeys.sessions(userId));
-        while (count != null && count > ChatRedisKeys.MAX_SESSIONS_PER_USER) {
-            Set<String> oldest = redis.opsForZSet().range(ChatRedisKeys.sessions(userId), 0, 0);
-            if (oldest == null || oldest.isEmpty()) {
-                break;
-            }
-            String oldSid = oldest.iterator().next();
-            fanout.fanOutToSession(oldSid, Map.of("type", "session_revoked", "session_id", oldSid));
-            redis.opsForZSet().remove(ChatRedisKeys.sessions(userId), oldSid);
-            redis.delete(ChatRedisKeys.sess(oldSid));
-            redis.delete(ChatRedisKeys.wsRoute(oldSid));
-            log.info("세션 한도 초과로 revoke: user_id={}, revoked_session_id={}", userId, oldSid);
-            count--;
+        List<String> evicted = (List<String>) redis.execute(
+                enforceSessionLimitScript,
+                List.of(ChatRedisKeys.sessions(userId)),
+                String.valueOf(nowMs()), String.valueOf(ChatRedisKeys.MAX_SESSIONS_PER_USER));
+        if (evicted == null || evicted.isEmpty()) {
+            return;
+        }
+        for (String sid : evicted) {
+            fanout.fanOutToSession(sid, Map.of("type", "session_revoked", "session_id", sid));
+            log.info("세션 한도 초과로 revoke: user_id={}, revoked_session_id={}", userId, sid);
         }
     }
 }

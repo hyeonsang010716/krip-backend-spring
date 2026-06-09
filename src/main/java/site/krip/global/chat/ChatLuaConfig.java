@@ -7,11 +7,13 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scripting.support.ResourceScriptSource;
 
+import java.util.List;
+
 /**
  * 채팅 Lua 스크립트 빈.
  *
  * <p>{@code StringRedisTemplate.execute} 가 EVALSHA 우선 / NOSCRIPT 시 EVAL fallback 을
- * 자동 처리하므로 SHA 캐싱은 직접 손대지 않는다. 모든 스크립트는 정수(Long)를 반환한다.
+ * 자동 처리하므로 SHA 캐싱은 직접 손대지 않는다. seq 계열은 정수(Long), 세션 한도는 evict 목록(List) 반환.
  */
 @Configuration
 public class ChatLuaConfig {
@@ -41,5 +43,16 @@ public class ChatLuaConfig {
     @Bean
     public RedisScript<Long> incrWithTtlScript() {
         return load("incr_with_ttl.lua");
+    }
+
+    /** 세션 한도 강제 — evict 된 session_id 목록 반환(List). */
+    @Bean
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public RedisScript<List> enforceSessionLimitScript() {
+        DefaultRedisScript<List> script = new DefaultRedisScript<>();
+        script.setScriptSource(new ResourceScriptSource(
+                new ClassPathResource("lua/chat/enforce_session_limit.lua")));
+        script.setResultType(List.class);
+        return script;
     }
 }
