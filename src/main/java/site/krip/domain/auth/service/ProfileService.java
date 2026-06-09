@@ -134,10 +134,10 @@ public class ProfileService {
         String url = storage.uploadPerm(content, contentLength, fileName, contentType,
                 StoragePrefix.profilePrefix(userId));
 
-        // 3) 컬럼 반영 (짧은 쓰기 트랜잭션) — 동시 추가로 이미 채워졌으면 방금 올린 파일 정리 후 409
+        // 3) 컬럼 반영 (짧은 쓰기 트랜잭션) — 행 잠금으로 동시 추가를 직렬화. 이미 채워졌으면 방금 올린 파일 정리 후 409
         try {
             txTemplate.executeWithoutResult(status -> {
-                UserDetailInform detail = detailRepository.findById(userId)
+                UserDetailInform detail = detailRepository.findByIdForUpdate(userId)
                         .orElseThrow(ProfileNotRegisteredException::new);
                 if (detail.getProfileImageUrl() != null) {
                     throw new ProfileImageAlreadyExistsException();
@@ -167,11 +167,11 @@ public class ProfileService {
         String newUrl = storage.uploadPerm(content, contentLength, fileName, contentType,
                 StoragePrefix.profilePrefix(userId));
 
-        // 3) 컬럼 교체 (짧은 쓰기 트랜잭션) — 실패 시 방금 올린 파일 정리, oldUrl 캡처
+        // 3) 컬럼 교체 (짧은 쓰기 트랜잭션) — 행 잠금으로 동시 수정을 직렬화. 실패 시 방금 올린 파일 정리, oldUrl 캡처
         String oldUrl;
         try {
             oldUrl = txTemplate.execute(status -> {
-                UserDetailInform detail = detailRepository.findById(userId)
+                UserDetailInform detail = detailRepository.findByIdForUpdate(userId)
                         .orElseThrow(ProfileNotRegisteredException::new);
                 if (detail.getProfileImageUrl() == null) {
                     throw new ProfileImageNotFoundException("수정할 프로필 이미지가 없습니다. 먼저 POST 로 추가해주세요.");
@@ -193,7 +193,8 @@ public class ProfileService {
 
     public void deleteProfileImage(String userId) {
         String oldUrl = txTemplate.execute(status -> {
-            UserDetailInform detail = detailRepository.findById(userId)
+            // 행 잠금으로 동시 수정/삭제를 직렬화 — old 캡처와 null 세팅 사이의 lost-update 방지.
+            UserDetailInform detail = detailRepository.findByIdForUpdate(userId)
                     .orElseThrow(ProfileNotRegisteredException::new);
             if (detail.getProfileImageUrl() == null) {
                 throw new ProfileImageNotFoundException("삭제할 프로필 이미지가 없습니다.");
