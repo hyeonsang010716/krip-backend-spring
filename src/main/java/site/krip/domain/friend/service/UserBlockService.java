@@ -18,8 +18,8 @@ import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.AfterCommit;
+import site.krip.global.support.KeysetCursor;
 
-import java.time.Instant;
 import java.util.List;
 
 /**
@@ -119,16 +119,17 @@ public class UserBlockService {
         if (cursor == null || cursor.isBlank()) {
             items = userBlockRepository.findBlocksFirstPage(userId, p);
         } else {
-            Instant cursorAt = userBlockRepository.findCreatedAt(cursor).orElse(null);
-            items = (cursorAt == null) ? List.of()
-                    : userBlockRepository.findBlocksAfterCursor(userId, cursorAt, cursor, p);
+            // 커서에 (createdAt, blockId)를 담아 디코딩 — 경계 행을 재조회하지 않아 그 행 삭제 시에도 안 잘린다.
+            KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+            items = userBlockRepository.findBlocksAfterCursor(userId, c.sortKey(), c.id(), p);
         }
 
         List<UserBlockResponse> dtos = items.stream()
                 .map(b -> new UserBlockResponse(
                         b.getBlockId(), FriendPeerResponse.from(b.getBlocked()), b.getCreatedAt()))
                 .toList();
-        String nextCursor = items.size() == PAGE_SIZE ? items.get(items.size() - 1).getBlockId() : null;
+        UserBlock last = items.size() == PAGE_SIZE ? items.get(items.size() - 1) : null;
+        String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getBlockId());
         return new UserBlockListResponse(dtos, nextCursor);
     }
 }

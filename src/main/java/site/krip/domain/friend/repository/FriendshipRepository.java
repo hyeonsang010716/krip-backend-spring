@@ -51,8 +51,6 @@ public interface FriendshipRepository extends JpaRepository<Friendship, String> 
     List<Friendship> findFriendshipsWith(@Param("me") String meId,
                                          @Param("targets") Collection<String> targetIds);
 
-    @Query("select f.updatedAt from Friendship f where f.friendshipId = :id")
-    Optional<Instant> findUpdatedAt(@Param("id") String friendshipId);
 
     // ──────────────────── 친구 목록 (ACCEPTED) ────────────────────
 

@@ -24,8 +24,6 @@ public interface UserBlockRepository extends JpaRepository<UserBlock, String> {
             + "(b.blockerId = :a and b.blockedId = :b) or (b.blockerId = :b and b.blockedId = :a)")
     List<UserBlock> findBlocksBetween(@Param("a") String userA, @Param("b") String userB);
 
-    @Query("select b.createdAt from UserBlock b where b.blockId = :id")
-    Optional<Instant> findCreatedAt(@Param("id") String blockId);
 
     // ──────────────────── 차단 목록 (blocked 프로필 fetch) ────────────────────
 

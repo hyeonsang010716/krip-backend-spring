@@ -19,6 +19,7 @@ import site.krip.domain.friend.exception.FriendForbiddenException;
 import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.KeysetCursor;
 
 import java.time.Instant;
 import java.util.List;
@@ -182,8 +183,8 @@ public class FriendshipService {
         Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
                 ? friendshipRepository.findFriendsFirstPage(userId, FriendshipStatus.ACCEPTED, p)
-                : afterCursor(cursor, cAt -> friendshipRepository.findFriendsAfterCursor(
-                        userId, FriendshipStatus.ACCEPTED, cAt, cursor, p));
+                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findFriendsAfterCursor(
+                        userId, FriendshipStatus.ACCEPTED, cAt, cId, p));
         return buildListResponse(items, userId);
     }
 
@@ -192,8 +193,8 @@ public class FriendshipService {
         Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
                 ? friendshipRepository.findReceivedFirstPage(userId, FriendshipStatus.PENDING, p)
-                : afterCursor(cursor, cAt -> friendshipRepository.findReceivedAfterCursor(
-                        userId, FriendshipStatus.PENDING, cAt, cursor, p));
+                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findReceivedAfterCursor(
+                        userId, FriendshipStatus.PENDING, cAt, cId, p));
         return buildListResponse(items, userId);
     }
 
@@ -202,14 +203,16 @@ public class FriendshipService {
         Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
                 ? friendshipRepository.findSentFirstPage(userId, FriendshipStatus.PENDING, p)
-                : afterCursor(cursor, cAt -> friendshipRepository.findSentAfterCursor(
-                        userId, FriendshipStatus.PENDING, cAt, cursor, p));
+                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findSentAfterCursor(
+                        userId, FriendshipStatus.PENDING, cAt, cId, p));
         return buildListResponse(items, userId);
     }
 
-    private List<Friendship> afterCursor(String cursor, java.util.function.Function<Instant, List<Friendship>> query) {
-        Instant cursorAt = friendshipRepository.findUpdatedAt(cursor).orElse(null);
-        return cursorAt == null ? List.of() : query.apply(cursorAt);
+    /** 커서에 (정렬키, id)를 담아 디코딩 — 경계 행을 재조회하지 않으므로 그 행이 삭제돼도 목록이 안 잘린다. */
+    private List<Friendship> afterCursor(String cursor,
+            java.util.function.BiFunction<Instant, String, List<Friendship>> query) {
+        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+        return query.apply(c.sortKey(), c.id());
     }
 
     // ──────────────────── 내부 변환 ────────────────────
@@ -218,7 +221,8 @@ public class FriendshipService {
         List<FriendshipResponse> dtos = items.stream()
                 .map(f -> toResponse(f, viewerId, peerOf(f, viewerId)))
                 .toList();
-        String nextCursor = items.size() == PAGE_SIZE ? items.get(items.size() - 1).getFriendshipId() : null;
+        Friendship last = items.size() == PAGE_SIZE ? items.get(items.size() - 1) : null;
+        String nextCursor = last == null ? null : KeysetCursor.encode(last.getUpdatedAt(), last.getFriendshipId());
         return new FriendshipListResponse(dtos, nextCursor);
     }
 
