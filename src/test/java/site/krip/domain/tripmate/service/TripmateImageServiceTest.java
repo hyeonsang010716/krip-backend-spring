@@ -51,7 +51,8 @@ class TripmateImageServiceTest {
     @BeforeEach
     @SuppressWarnings("unchecked")
     void runPoolTasksInline() {
-        // processAll/uploadInParallel 을 인라인 실행 — 풀 스케줄링 없이 보상 로직만 검증.
+        // process/processAll/uploadInParallel 을 인라인 실행 — 풀 스케줄링 없이 보상 로직만 검증.
+        when(executor.process(any())).thenAnswer(inv -> ((Supplier<Object>) inv.getArgument(0)).get());
         when(executor.processAll(anyList())).thenAnswer(inv ->
                 ((List<Supplier<Object>>) inv.getArgument(0)).stream().map(Supplier::get).toList());
         when(executor.uploadInParallel(anyList())).thenAnswer(inv ->

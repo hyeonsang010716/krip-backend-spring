@@ -65,8 +65,8 @@ public class TripmateImageService {
      * 다건 업로드 — CPU 와 I/O 를 풀로 분리(feed 와 동일 전략).
      *
      * <p>Phase 1: 전체 이미지 재인코딩(EXIF 제거·폴리글랏 무력화)을 processingPool 에서 동시 처리(포화 시 429,
-     * 잘못된 이미지는 여기서 400). Phase 2: S3 업로드 + Mongo 저장을 uploadPool 에서 병렬 — 블로킹 S3 I/O 가
-     * CPU 풀을 점유하지 않게 한다. 결과는 입력 순서대로 반환.
+     * 잘못된 이미지는 여기서 400). Phase 2: S3 업로드+Mongo 저장을 process()→uploadPool 로 병렬(포화 시 429).
+     * 결과는 입력 순서대로 반환.
      */
     public List<TripmateImage> uploadImages(String userId, List<byte[]> files) {
         // Phase 1 (CPU): sanitize
@@ -80,7 +80,9 @@ public class TripmateImageService {
         List<Supplier<TripmateImage>> uploadTasks = sanitized.stream()
                 .map(variant -> (Supplier<TripmateImage>) () -> uploadAndSave(userId, variant, uploadedAt))
                 .toList();
-        return imageUploadExecutor.uploadInParallel(uploadTasks);
+        // process() 로 감싸 워커에서 실행 — uploadPool 포화 시 CallerRuns 가 요청(Tomcat) 스레드가 아닌
+        // 워커에서 돌아 스레드 격리가 유지된다(feed 와 동일). 두 풀이 분리돼 있어 데드락 없음.
+        return imageUploadExecutor.process(() -> imageUploadExecutor.uploadInParallel(uploadTasks));
     }
 
     private TripmateImage uploadAndSave(String userId, ProcessedVariant sanitized, Instant uploadedAt) {
