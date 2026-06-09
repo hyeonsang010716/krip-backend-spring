@@ -1,4 +1,4 @@
-package site.krip.domain.chat;
+package site.krip.domain.chat.worker;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,6 +9,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import site.krip.domain.chat.service.FanoutService;
 import site.krip.global.chat.ChatRedisKeys;
+import site.krip.global.config.ChatProperties;
 import site.krip.support.IntegrationTestSupport;
 
 import java.util.Map;
@@ -23,14 +24,14 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * redis_stream fan-out — 자기 노드 로컬 세션에 전달되는지 검증.
+ * Stream 컨슈머 자가복구 검증 — 런타임에 consumer group 이 사라져도(일시 NOGROUP) 구독이 영구 취소되지
+ * 않고, {@link ChatStreamConfig#ensureGroup()} 재생성 후 소비가 재개되는지.
  *
- * <p>fanOutToRoom 은 공유 Stream 에 XADD 하고, 자기 노드 consumer group 이 그걸 다시 읽어
- * dispatch → localDeliver 로 로컬 구독 세션에 도달한다. 활성 노드 ZSET 과 무관하게 전달돼야 하므로
- * 명단을 비운 상태에서 검증한다(전달은 Stream 소비 경로에만 의존).
+ * <p>{@code cancelOnError(false)} + heartbeat 의 group 재확인이 함께 동작함을 증명한다. 기본값
+ * ({@code cancelOnError=true})이면 group 파괴 직후 폴링 오류로 구독이 죽어 이 테스트는 실패한다.
  */
 @TestPropertySource(properties = "krip.chat.fanout-mode=redis_stream")
-class FanoutSelfDeliveryIntegrationTest extends IntegrationTestSupport {
+class ChatStreamConsumerResilienceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private FanoutService fanout;
@@ -38,15 +39,21 @@ class FanoutSelfDeliveryIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private StringRedisTemplate redis;
 
+    @Autowired
+    private ChatProperties props;
+
+    @Autowired
+    private ChatStreamConfig streamConfig;
+
     @Test
-    @DisplayName("활성 노드 명단이 비어도 로컬 구독 세션은 fan-out 을 받는다")
-    void deliversToLocalSessionWhenNodeListEmpty() throws Exception {
+    @DisplayName("group 이 런타임에 파괴돼도 구독은 살아남고 재생성 후 전달이 재개된다")
+    void recoversAfterConsumerGroupDestroyed() throws Exception {
         CountDownLatch delivered = new CountDownLatch(1);
         WebSocketSession ws = mock(WebSocketSession.class);
         when(ws.isOpen()).thenReturn(true);
         Map<String, Object> attrs = new ConcurrentHashMap<>();
-        attrs.put(FanoutService.ATTR_SESSION_ID, "sess-self");
-        attrs.put(FanoutService.ATTR_USER_ID, "user-self");
+        attrs.put(FanoutService.ATTR_SESSION_ID, "sess-resilience");
+        attrs.put(FanoutService.ATTR_USER_ID, "user-resilience");
         attrs.put(FanoutService.ATTR_ROOMS, ConcurrentHashMap.<String>newKeySet());
         when(ws.getAttributes()).thenReturn(attrs);
         doAnswer(inv -> {
@@ -54,14 +61,18 @@ class FanoutSelfDeliveryIntegrationTest extends IntegrationTestSupport {
             return null;
         }).when(ws).sendMessage(any(TextMessage.class));
 
-        String roomId = "room-self-delivery";
+        String roomId = "room-resilience";
         fanout.registerSession(ws);
         fanout.registerWsToRoom(ws, roomId);
         try {
-            // 활성 노드 명단을 비운다 — 그래도 자기 노드로는 publish 돼야 한다.
-            redis.delete(ChatRedisKeys.NODES_ZSET_KEY);
+            // 런타임에 자기 group 을 파괴 → 컨슈머 폴링이 NOGROUP 을 맞게 한다.
+            redis.opsForStream().destroyGroup(ChatRedisKeys.CHAT_STREAM_KEY, props.nodeId());
+            // poll(1s)이 최소 한 번 오류를 겪도록 대기 — cancelOnError(false)면 구독이 죽지 않아야 한다.
+            Thread.sleep(1500);
 
-            fanout.fanOutToRoom(roomId, Map.of("type", "test_event"));
+            // 자가복구: group 재생성($) → 이후 발행분부터 다시 읽힌다.
+            streamConfig.ensureGroup();
+            fanout.fanOutToRoom(roomId, Map.of("type", "read", "marker", "after-recovery"));
 
             assertThat(delivered.await(5, TimeUnit.SECONDS)).isTrue();
         } finally {

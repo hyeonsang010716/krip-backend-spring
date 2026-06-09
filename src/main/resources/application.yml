@@ -81,8 +81,9 @@ krip:
     secret: ${SHARE_JWT_SECRET_KEY}
     expiration-days: ${SHARE_JWT_EXPIRATION_DAYS:30}
   chat:
-    # 채팅 fan-out 모드: in_process(단일 노드) | node_channel(다중 노드 Redis Pub/Sub)
+    # 채팅 fan-out 모드: in_process(단일 노드) | redis_stream(다중 노드 Redis Stream)
     fanout-mode: ${FANOUT_MODE:in_process}
+    # 다중 노드 시 NODE_ID 는 재시작에도 안정적이어야 함(consumer group 커서 이어받기) — StatefulSet pod 명 등
     node-id: ${NODE_ID:${HOSTNAME:node-local}}
     dedupe-redis-database: ${CHAT_DEDUPE_REDIS_DB:1}
   fcm:

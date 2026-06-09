@@ -24,6 +24,7 @@ public final class ChatRedisKeys {
     // ──────────────────── 임계값 ────────────────────
     public static final int RATE_LIMIT_THRESHOLD = 10;  // 초당 메시지 상한
     public static final int MAX_SESSIONS_PER_USER = 10; // 유저당 동시 세션 상한
+    public static final long CHAT_STREAM_MAXLEN = 10000; // fan-out Stream 근사 트림 상한 — 노드 단절 백스톱
 
     // force_jump 와 recover 의 base gap — 같게 맞춰 간섭 최소화.
     public static final int SEQ_FORCE_JUMP_GAP = 1000;
@@ -63,13 +64,9 @@ public final class ChatRedisKeys {
         return "rate:msg:" + userId;
     }
 
-    /** 노드별 Pub/Sub 채널 — node_channel 모드에서 각 노드가 자기 채널만 구독. */
-    public static String nodeChannel(String nodeId) {
-        return "node:" + nodeId;
-    }
-
     public static final String DIRTY_CHAT_ROOM_KEY = "dirty:chat_room"; // reconcile worker 가 소비하는 SET
-    public static final String NODES_ZSET_KEY = "chat:nodes";          // ZSET: score=만료시각ms, member=node_id
+    public static final String NODES_ZSET_KEY = "chat:nodes";          // ZSET: score=만료시각ms — 죽은 consumer group 청소용 liveness
+    public static final String CHAT_STREAM_KEY = "chat:stream";        // 다중 노드 fan-out 공유 Stream (노드별 consumer group)
 
     // ──────────────────── 키 빌더 — DB 1 (dedupe 격리) ────────────────────
     public static String dedupe(String userId, String clientMsgId) {

@@ -13,10 +13,10 @@ import java.util.Set;
 /**
  * 채팅 노드 레지스트리.
  *
- * <p>{@code node_channel} 모드에서 활성 노드(`chat:nodes` ZSET, score=만료시각ms)를 추적.
- * publisher 가 fan-out 시 조회해 모든 노드 채널로 broadcast. 핫패스 조회({@link #listActiveNodes})는
- * 읽기 전용이고, 만료(크래시) 노드 청소({@link #cleanupExpired})는 heartbeat 주기 작업으로 분리해
- * 메시지마다 같은 ZSET 키에 쓰기가 몰리는 핫키 경합을 없앤다.
+ * <p>{@code redis_stream} 모드에서 활성 노드(`chat:nodes` ZSET, score=만료시각ms)를 추적.
+ * 죽은 노드의 consumer group 청소 기준으로 쓰인다({@link ChatStreamConfig} 가 명단에 없는 group 을 제거).
+ * 조회({@link #listActiveNodes})는 읽기 전용이고, 만료 노드 청소({@link #cleanupExpired})는 heartbeat
+ * 주기 작업으로 분리한다.
  */
 @Component
 public class NodeRegistry {

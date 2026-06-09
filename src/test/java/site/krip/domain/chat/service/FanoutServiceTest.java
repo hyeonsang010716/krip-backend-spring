@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
-import site.krip.domain.chat.worker.NodeRegistry;
 import site.krip.global.config.ChatProperties;
 
 import java.util.ArrayList;
@@ -37,8 +36,7 @@ class FanoutServiceTest {
     void setUp() {
         ChatProperties props = new ChatProperties("in_process", "node-1", 1);
         StringRedisTemplate redis = mock(StringRedisTemplate.class);
-        NodeRegistry nodeRegistry = mock(NodeRegistry.class);
-        fanout = new FanoutService(props, redis, nodeRegistry, new ObjectMapper());
+        fanout = new FanoutService(props, redis, new ObjectMapper());
     }
 
     /** session_id/user_id/subscribed_rooms 속성을 가진 열린(또는 닫힌) 가짜 WS 세션. 송신을 captured 에 적재. */

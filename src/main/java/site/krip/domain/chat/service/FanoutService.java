@@ -8,13 +8,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
-import site.krip.domain.chat.worker.NodeRegistry;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.config.ChatProperties;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,9 +20,10 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 채팅 이벤트 fan-out.
  *
- * <p>{@code in_process}: 단일 프로세스 메모리 직배송. {@code node_channel}: 다중 노드 Redis Pub/Sub
- * (`node:{node_id}` 채널). 호출측은 모드 무관 — {@code fanOutTo*} / {@code (un)subscribeUserToRoom} 만 사용.
- * publisher 는 자기 자신에게도 publish 해 디스패처가 {@code localDeliver*} 로 들어가는 통일 경로를 유지한다.
+ * <p>{@code in_process}: 단일 프로세스 메모리 직배송. {@code redis_stream}: 다중 노드 공유 Stream
+ * ({@code chat:stream}). 호출측은 모드 무관 — {@code fanOutTo*} / {@code (un)subscribeUserToRoom} 만 사용.
+ * publish 는 단일 XADD 이고, 각 노드가 자기 consumer group 으로 전부 읽어 {@link #dispatchEnvelope} 로
+ * 들어가는 통일 경로를 유지한다(자기 노드도 동일 경로로 수신).
  *
  * <p>WS 세션은 attribute 로 session_id / user_id / subscribed_rooms 를 보관한다(핸들러가 심음).
  */
@@ -40,18 +38,15 @@ public class FanoutService {
 
     private final ChatProperties props;
     private final StringRedisTemplate redis;
-    private final NodeRegistry nodeRegistry;
     private final ObjectMapper mapper;
 
     private final Map<String, Set<WebSocketSession>> roomSubs = new ConcurrentHashMap<>();
     private final Map<String, Set<WebSocketSession>> userSubs = new ConcurrentHashMap<>();
     private final Map<String, WebSocketSession> localWsBySession = new ConcurrentHashMap<>();
 
-    public FanoutService(ChatProperties props, StringRedisTemplate redis,
-                         NodeRegistry nodeRegistry, ObjectMapper mapper) {
+    public FanoutService(ChatProperties props, StringRedisTemplate redis, ObjectMapper mapper) {
         this.props = props;
         this.redis = redis;
-        this.nodeRegistry = nodeRegistry;
         this.mapper = mapper;
     }
 
@@ -112,48 +107,48 @@ public class FanoutService {
     // ──────────────────── 동적 방 구독 (cross-node) ────────────────────
 
     public void subscribeUserToRoom(String userId, String roomId) {
-        if (!props.isNodeChannel()) {
+        if (!props.isMultiNode()) {
             localSubscribeUserToRoom(userId, roomId);
             return;
         }
-        publishBroadcast(Map.of("op", "subscribe", "user_id", userId, "room_id", roomId));
+        publishToStream(Map.of("op", "subscribe", "user_id", userId, "room_id", roomId));
     }
 
     public void unsubscribeUserFromRoom(String userId, String roomId) {
-        if (!props.isNodeChannel()) {
+        if (!props.isMultiNode()) {
             localUnsubscribeUserFromRoom(userId, roomId);
             return;
         }
-        publishBroadcast(Map.of("op", "unsubscribe", "user_id", userId, "room_id", roomId));
+        publishToStream(Map.of("op", "unsubscribe", "user_id", userId, "room_id", roomId));
     }
 
     // ──────────────────── Fan-out (모드 분기) ────────────────────
 
     public void fanOutToRoom(String roomId, Map<String, Object> payload) {
-        if (!props.isNodeChannel()) {
+        if (!props.isMultiNode()) {
             localDeliverToRoom(roomId, payload);
             return;
         }
-        publishBroadcast(Map.of("op", "room", "room_id", roomId, "payload", payload));
+        publishToStream(Map.of("op", "room", "room_id", roomId, "payload", payload));
     }
 
     public void fanOutToUser(String userId, Map<String, Object> payload) {
-        if (!props.isNodeChannel()) {
+        if (!props.isMultiNode()) {
             localDeliverToUser(userId, payload);
             return;
         }
-        publishBroadcast(Map.of("op", "user", "user_id", userId, "payload", payload));
+        publishToStream(Map.of("op", "user", "user_id", userId, "payload", payload));
     }
 
     public void fanOutToSession(String sessionId, Map<String, Object> payload) {
-        if (!props.isNodeChannel()) {
+        if (!props.isMultiNode()) {
             localDeliverToSession(sessionId, payload);
             return;
         }
-        publishToSessionNode(sessionId, payload);
+        publishToStream(Map.of("op", "session", "session_id", sessionId, "payload", payload));
     }
 
-    // ──────────────────── 디스패처 진입점 (node_channel) ────────────────────
+    // ──────────────────── 디스패처 진입점 (redis_stream) ────────────────────
 
     @SuppressWarnings("unchecked")
     public void dispatchEnvelope(Map<String, Object> envelope) {
@@ -232,36 +227,15 @@ public class FanoutService {
         }
     }
 
-    // ──────────────────── publish 헬퍼 (node_channel) ────────────────────
+    // ──────────────────── publish 헬퍼 (redis_stream) ────────────────────
 
-    private void publishBroadcast(Map<String, Object> envelope) {
-        List<String> nodes = nodeRegistry.listActiveNodes();
-        if (nodes.isEmpty()) {
-            log.warn("활성 노드 목록 비어있음 — 로컬 노드로만 fan-out (ZSET 유실/단절 의심)");
-        }
+    /** 공유 Stream 에 envelope 한 건 XADD — 모든 노드가 자기 group 으로 읽어 dispatch 한다. */
+    private void publishToStream(Map<String, Object> envelope) {
         String json = toJson(envelope);
         if (json == null) {
             return;
         }
-        // 로컬 세션 전달은 ZSET 상태와 무관해야 하므로 자기 노드는 항상 포함한다(중복은 Set 으로 제거).
-        Set<String> targets = new LinkedHashSet<>(nodes);
-        targets.add(props.nodeId());
-        for (String node : targets) {
-            redis.convertAndSend(ChatRedisKeys.nodeChannel(node), json);
-        }
-    }
-
-    private void publishToSessionNode(String sessionId, Map<String, Object> payload) {
-        String targetNode = redis.opsForValue().get(ChatRedisKeys.wsRoute(sessionId));
-        if (targetNode == null) {
-            return;
-        }
-        Map<String, Object> envelope = Map.of(
-                "op", "session", "session_id", sessionId, "payload", payload);
-        String json = toJson(envelope);
-        if (json != null) {
-            redis.convertAndSend(ChatRedisKeys.nodeChannel(targetNode), json);
-        }
+        redis.opsForStream().add(ChatRedisKeys.CHAT_STREAM_KEY, Map.of("data", json));
     }
 
     private String toJson(Map<String, Object> value) {

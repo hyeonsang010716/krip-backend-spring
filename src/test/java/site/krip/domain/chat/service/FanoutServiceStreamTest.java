@@ -4,65 +4,51 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
-import site.krip.domain.chat.worker.NodeRegistry;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.config.ChatProperties;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@code node_channel} 모드 fan-out 단위 테스트 — Redis Pub/Sub publish 라우팅과 디스패처 로컬 전달.
+ * {@code redis_stream} 모드 fan-out 단위 테스트 — 공유 Stream XADD 와 디스패처 로컬 전달.
  *
- * <p>실 컨텍스트/타이밍 의존 없이 협력자를 mock 해 검증: 활성 노드별 publish / 활성 노드 없을 때 skip /
- * 수신 envelope(op=room) 의 로컬 구독자 전달.
+ * <p>실 컨텍스트 없이 협력자를 mock 해 검증: fanOutToRoom 이 단일 Stream 에 XADD / 수신 envelope(op=room) 의
+ * 로컬 구독자 전달.
  */
-class FanoutServiceNodeChannelTest {
+class FanoutServiceStreamTest {
 
     private StringRedisTemplate redis;
-    private NodeRegistry nodeRegistry;
+    @SuppressWarnings("unchecked")
+    private final StreamOperations<String, Object, Object> streamOps = mock(StreamOperations.class);
     private FanoutService fanout;
 
     @BeforeEach
     void setUp() {
-        ChatProperties props = new ChatProperties("node_channel", "test-node", 1);
+        ChatProperties props = new ChatProperties("redis_stream", "test-node", 1);
         redis = mock(StringRedisTemplate.class);
-        nodeRegistry = mock(NodeRegistry.class);
-        fanout = new FanoutService(props, redis, nodeRegistry, new ObjectMapper());
+        when(redis.opsForStream()).thenReturn(streamOps);
+        fanout = new FanoutService(props, redis, new ObjectMapper());
     }
 
     @Test
-    @DisplayName("node_channel — 활성 노드마다 채널로 publish")
-    void publishesToEachActiveNode() {
-        when(nodeRegistry.listActiveNodes()).thenReturn(List.of("nodeA", "nodeB"));
-
+    @DisplayName("redis_stream — fanOutToRoom 은 공유 Stream 에 XADD")
+    void publishesToSharedStream() {
         fanout.fanOutToRoom("room-1", Map.of("type", "message.new"));
 
-        verify(redis).convertAndSend(eq(ChatRedisKeys.nodeChannel("nodeA")), anyString());
-        verify(redis).convertAndSend(eq(ChatRedisKeys.nodeChannel("nodeB")), anyString());
-    }
-
-    @Test
-    @DisplayName("node_channel — 활성 노드가 없어도 자기 노드로는 publish (로컬 전달 보장)")
-    void publishesToSelfWhenNoActiveNodes() {
-        when(nodeRegistry.listActiveNodes()).thenReturn(List.of());
-
-        fanout.fanOutToRoom("room-1", Map.of("type", "message.new"));
-
-        // ZSET 이 비어도 자기 노드는 항상 대상에 포함돼 로컬 세션 전달이 끊기지 않는다.
-        verify(redis).convertAndSend(eq(ChatRedisKeys.nodeChannel("test-node")), anyString());
+        verify(streamOps).add(eq(ChatRedisKeys.CHAT_STREAM_KEY), anyMap());
     }
 
     @Test
