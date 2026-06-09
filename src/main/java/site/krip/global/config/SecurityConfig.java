@@ -38,7 +38,7 @@ public class SecurityConfig {
     /** 무인증 허용 경로. {@code /error} 는 컨테이너 에러 디스패치가 401 로 가려지지 않도록 포함. */
     private static final String[] PUBLIC_PATHS = {
             "/error",
-            "/health", "/ready",
+            "/health", "/actuator/health", "/actuator/health/**",
             "/docs", "/openapi.json", "/openapi.json/**", "/swagger-ui/**",
             "/api/auth/login/**", "/api/public/**", "/api/ws/**"
     };

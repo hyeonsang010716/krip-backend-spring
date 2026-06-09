@@ -9,8 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 헬스/레디니스 프로브 E2E ({@code /health}, {@code /ready}).
- * 인증 필터 제외 경로 — 토큰 없이 200 + 고정 JSON 을 반환해야 한다(K8s liveness/readiness 의존).
+ * 헬스/레디니스 프로브 E2E. 모두 인증 필터 제외 경로 — 토큰 없이 접근 가능해야 한다(K8s liveness/readiness).
+ *
+ * <p>{@code /health}: 단순 liveness 핑. {@code /actuator/health/liveness}: 의존성 없는 liveness.
+ * {@code /actuator/health/readiness}: readinessState + db + redis (Testcontainers 가 떠 있어 UP).
  */
 class HealthControllerE2eTest extends IntegrationTestSupport {
 
@@ -23,10 +25,27 @@ class HealthControllerE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("GET /ready — 토큰 없이 200, status=ready")
-    void ready() throws Exception {
-        mockMvc.perform(get("/ready"))
+    @DisplayName("GET /actuator/health/liveness — 토큰 없이 200, status=UP")
+    void liveness() throws Exception {
+        mockMvc.perform(get("/actuator/health/liveness"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ready"));
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("GET /actuator/health/readiness — 토큰 없이 200, status=UP (db/redis 포함)")
+    void readiness() throws Exception {
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"));
+    }
+
+    @Test
+    @DisplayName("GET /actuator/health — show-details=never 라 컴포넌트 내역 비노출")
+    void healthHidesComponents() throws Exception {
+        mockMvc.perform(get("/actuator/health"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("UP"))
+                .andExpect(jsonPath("$.components").doesNotExist());
     }
 }

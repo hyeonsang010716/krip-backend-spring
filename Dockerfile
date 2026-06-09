@@ -14,6 +14,10 @@ RUN mvn -B -q clean package -DskipTests
 FROM eclipse-temurin:17-jre-jammy
 WORKDIR /backend
 
+# compose/k8s 헬스체크가 actuator 프로브를 찌를 HTTP 클라이언트.
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=build /build/target/backend-0.3.0.jar app.jar
 
 EXPOSE 8000

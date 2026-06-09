@@ -1,9 +1,32 @@
 server:
   port: ${PORT:8000}
+  # 종료 시 진행 중 요청을 드레인 — readiness 가 먼저 OUT_OF_SERVICE 로 뒤집혀 LB 가 트래픽을 끊은 뒤 종료.
+  shutdown: graceful
+
+# ──────────────────── Actuator (헬스/레디니스 프로브) ────────────────────
+# 프로브 경로: liveness=/actuator/health/liveness, readiness=/actuator/health/readiness
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health        # health 만 노출 — env/beans 등 민감 엔드포인트 비공개
+  endpoint:
+    health:
+      probes:
+        enabled: true          # liveness/readiness 그룹 활성화(k8s 외 환경에서도)
+      show-details: never      # 공개 경로라 컴포넌트 내역(DB URL 등) 비노출
+      group:
+        # liveness 는 의존성 미포함(livenessState) — DB 깜빡임에 전체 파드 재시작 폭주 방지.
+        # readiness 는 무중단 배포 게이팅 + 파드-로컬 DB/Redis 장애 감지. Mongo(부가 기능)는 제외.
+        readiness:
+          include: readinessState, db, redis
 
 spring:
   application:
     name: krip-backend
+
+  lifecycle:
+    timeout-per-shutdown-phase: 20s   # graceful drain 최대 대기
 
   jackson:
     property-naming-strategy: SNAKE_CASE
