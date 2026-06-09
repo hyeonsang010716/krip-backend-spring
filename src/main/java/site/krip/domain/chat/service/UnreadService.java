@@ -45,7 +45,7 @@ public class UnreadService {
 
     // ──────────────────── 읽기 (캐시 miss 인 방만 진실에서 계산) ────────────────────
 
-    /** 유저 전체 활성 방의 unread. 캐시에 있으면 그대로, 없으면 countAfterSeq 로 계산 후 캐시. */
+    /** 유저 전체 활성 방의 unread. 캐시 hit 은 그대로, miss 인 방은 단일 aggregate 로 배치 계산 후 캐시. */
     public Map<String, Integer> countsForUser(String userId) {
         Map<String, Long> active = loadLastReads(userId);
         if (active.isEmpty()) {
@@ -54,21 +54,28 @@ public class UnreadService {
         Map<String, Integer> cached = readCache(userId);
 
         Map<String, Integer> result = new LinkedHashMap<>();
-        Map<String, Integer> computed = new LinkedHashMap<>();
+        Map<String, Long> misses = new LinkedHashMap<>();
         for (var e : active.entrySet()) {
             Integer hit = cached.get(e.getKey());
             if (hit != null) {
                 result.put(e.getKey(), hit);
-                continue;
+            } else {
+                misses.put(e.getKey(), e.getValue());
             }
-            // 방별 Mongo count 는 독립 격리 — 한 방 실패가 전체를 막지 않도록 skip.
+        }
+
+        Map<String, Integer> computed = new LinkedHashMap<>();
+        if (!misses.isEmpty()) {
+            // 캐시 miss 인 방을 단일 aggregate 로 배치 계산 — 방마다 countDocuments 치던 N+1 제거.
             try {
-                int v = compute(e.getKey(), e.getValue());
-                result.put(e.getKey(), v);
-                computed.put(e.getKey(), v);
+                Map<String, Long> counts = messageRepo.countAfterSeqByRooms(misses);
+                for (String roomId : misses.keySet()) {
+                    int v = (int) Math.min(counts.getOrDefault(roomId, 0L), UNREAD_COUNT_CAP);
+                    result.put(roomId, v);
+                    computed.put(roomId, v);
+                }
             } catch (Exception ex) {
-                log.warn("unread 계산 실패 (skip): user_id={}, room_id={}, err={}",
-                        userId, e.getKey(), ex.toString());
+                log.warn("unread 배치 계산 실패 (캐시분만 반환): user_id={}, err={}", userId, ex.toString());
             }
         }
         writeCache(userId, computed);

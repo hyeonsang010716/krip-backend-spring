@@ -155,6 +155,28 @@ public class ChatMessageRepository {
                 new com.mongodb.client.model.CountOptions().limit(limit));
     }
 
+    /**
+     * 방별 (server_seq &gt; afterSeq) 비시스템 메시지 수를 단일 aggregate 로 배치 계산 — unread 콜드 동기화의 N+1 제거.
+     * 각 방의 afterSeq 가 달라 $or 브랜치로 묶고 (chat_room_id, server_seq) 인덱스로 범위 스캔.
+     * 미읽음 0 인 방은 결과에 없음(호출측이 0 처리). 표시 캡은 호출측에서 적용.
+     */
+    public Map<String, Long> countAfterSeqByRooms(Map<String, Long> roomToAfterSeq) {
+        Map<String, Long> result = new LinkedHashMap<>();
+        if (roomToAfterSeq == null || roomToAfterSeq.isEmpty()) {
+            return result;
+        }
+        List<Document> branches = new ArrayList<>(roomToAfterSeq.size());
+        roomToAfterSeq.forEach((roomId, afterSeq) -> branches.add(
+                new Document("chat_room_id", roomId).append("server_seq", new Document("$gt", afterSeq))));
+        List<Bson> pipeline = List.of(
+                new Document("$match", new Document("type", new Document("$ne", "system")).append("$or", branches)),
+                new Document("$group", new Document("_id", "$chat_room_id").append("n", new Document("$sum", 1))));
+        for (Document doc : collection.aggregate(pipeline)) {
+            result.put(doc.getString("_id"), ((Number) doc.get("n")).longValue());
+        }
+        return result;
+    }
+
     /** 본문 교체 + edited_at. modified 1 건이면 true. */
     public boolean updateContent(String messageId, Object newContent, java.util.Date editedAt) {
         return collection.updateOne(Filters.eq("_id", messageId),
