@@ -17,8 +17,8 @@ import site.krip.domain.friend.entity.FriendshipStatus;
 import site.krip.domain.friend.repository.FriendUserSearchRepository;
 import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.global.common.exception.ApiException;
+import site.krip.global.support.KeysetCursor;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -70,10 +70,9 @@ public class FriendSearchService {
         if (cursor == null || cursor.isBlank()) {
             users = searchRepository.searchFirstPage(viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, p);
         } else {
-            Instant cursorAt = searchRepository.findCreatedAt(cursor).orElse(null);
-            users = (cursorAt == null) ? List.of()
-                    : searchRepository.searchAfterCursor(
-                            viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, cursorAt, cursor, p);
+            KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+            users = searchRepository.searchAfterCursor(
+                    viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, c.sortKey(), c.id(), p);
         }
 
         if (users.isEmpty()) {
@@ -99,7 +98,8 @@ public class FriendSearchService {
                 .map(u -> toItem(viewerId, u, friendshipByPeer.get(u.getUserId()),
                         stylesByUser.getOrDefault(u.getUserId(), List.of())))
                 .toList();
-        String nextCursor = users.size() == PAGE_SIZE ? users.get(users.size() - 1).getUserId() : null;
+        User last = users.size() == PAGE_SIZE ? users.get(users.size() - 1) : null;
+        String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getUserId());
         return new FriendSearchListResponse(items, nextCursor);
     }
 

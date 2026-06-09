@@ -28,8 +28,8 @@ import site.krip.domain.tripmate.repository.TripmatePostLikeRepository;
 import site.krip.domain.tripmate.repository.TripmatePostRepository;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.support.AfterCommit;
+import site.krip.global.support.KeysetCursor;
 
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -158,9 +158,8 @@ public class TripmatePostService {
         if (cursor == null || cursor.isBlank()) {
             posts = postRepository.searchFirstPage(pattern, authorIdParam, userId, pageable);
         } else {
-            Instant cursorAt = postRepository.findCreatedAt(cursor).orElse(null);
-            posts = (cursorAt == null) ? List.of()
-                    : postRepository.searchAfterCursor(pattern, authorIdParam, cursorAt, cursor, userId, pageable);
+            KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+            posts = postRepository.searchAfterCursor(pattern, authorIdParam, c.sortKey(), c.id(), userId, pageable);
         }
         return buildListResponse(posts, userId);
     }
@@ -288,11 +287,8 @@ public class TripmatePostService {
         if (cursor == null || cursor.isBlank()) {
             return postRepository.findDisplayedFirstPage(viewerId, pageable);
         }
-        Instant cursorAt = postRepository.findCreatedAt(cursor).orElse(null);
-        if (cursorAt == null) {
-            return List.of();
-        }
-        return postRepository.findDisplayedAfterCursor(cursorAt, cursor, viewerId, pageable);
+        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+        return postRepository.findDisplayedAfterCursor(c.sortKey(), c.id(), viewerId, pageable);
     }
 
     private PostListResponse buildListResponse(List<TripmatePost> posts, String userId) {
@@ -312,7 +308,8 @@ public class TripmatePostService {
                         liked.contains(p.getPostId())))
                 .toList();
 
-        String nextCursor = posts.size() == PAGE_SIZE ? posts.get(posts.size() - 1).getPostId() : null;
+        TripmatePost last = posts.size() == PAGE_SIZE ? posts.get(posts.size() - 1) : null;
+        String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getPostId());
         return new PostListResponse(dtos, nextCursor);
     }
 

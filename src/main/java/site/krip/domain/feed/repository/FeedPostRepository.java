@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import site.krip.domain.feed.entity.FeedPost;
 import site.krip.domain.feed.entity.FeedVisibility;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -41,16 +42,15 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, String> {
                                            @Param("viewerId") String viewerId,
                                            Pageable pageable);
 
-    /** owner + visibility 커서 이후 — (created_at, post_id) 튜플 비교 안정 페이지네이션. */
+    /** owner + visibility 커서 이후 — (created_at, post_id) 튜플 비교. 정렬키는 커서가 전달(경계 행 삭제 무관). */
     @Query(SELECT + "from FeedPost p "
             + "where p.userId = :ownerId and p.visibility in :visibilities "
-            + "and (p.createdAt < (select p2.createdAt from FeedPost p2 where p2.postId = :cursor) "
-            + "  or (p.createdAt = (select p3.createdAt from FeedPost p3 where p3.postId = :cursor) "
-            + "      and p.postId < :cursor)) "
+            + "and (p.createdAt < :cursorAt or (p.createdAt = :cursorAt and p.postId < :cursor)) "
             + "order by p.createdAt desc, p.postId desc")
     List<FeedPostRow> findByOwnerAfterCursor(@Param("ownerId") String ownerId,
                                              @Param("visibilities") Collection<FeedVisibility> visibilities,
                                              @Param("viewerId") String viewerId,
+                                             @Param("cursorAt") Instant cursorAt,
                                              @Param("cursor") String cursor,
                                              Pageable pageable);
 }

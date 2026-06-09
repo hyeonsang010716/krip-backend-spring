@@ -26,8 +26,6 @@ public interface TripmatePostRepository extends JpaRepository<TripmatePost, Stri
             + "where p.postId = :postId")
     Optional<TripmatePost> findByIdWithUserDetail(@Param("postId") String postId);
 
-    @Query("select p.createdAt from TripmatePost p where p.postId = :postId")
-    Optional<Instant> findCreatedAt(@Param("postId") String postId);
 
     /** 차단 관계(방향 무관) 작성자 제외용 상관 서브쿼리 — 모든 목록/검색 쿼리에서 공유. */
     String NOT_BLOCKED =

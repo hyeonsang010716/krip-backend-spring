@@ -53,7 +53,4 @@ public interface FriendUserSearchRepository extends Repository<User, String> {
                                  @Param("cursorAt") Instant cursorAt,
                                  @Param("cursor") String cursor,
                                  Pageable pageable);
-
-    @Query("select u.createdAt from User u where u.userId = :userId")
-    java.util.Optional<Instant> findCreatedAt(@Param("userId") String userId);
 }

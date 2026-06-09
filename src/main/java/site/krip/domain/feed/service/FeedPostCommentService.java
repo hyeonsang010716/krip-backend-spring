@@ -17,6 +17,7 @@ import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostCommentRepository;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.AfterCommit;
+import site.krip.global.support.KeysetCursor;
 
 import java.util.List;
 import java.util.Map;
@@ -79,9 +80,13 @@ public class FeedPostCommentService {
     public CommentListResponse listComments(String viewerId, String postId, String cursor) {
         FeedPost post = access.loadViewablePost(viewerId, postId).post();
         PageRequest page = PageRequest.of(0, FeedPostCommentRepository.PAGE_SIZE);
-        List<FeedPostComment> comments = cursor == null
-                ? commentRepo.findByPostFirstPage(post.getPostId(), page)
-                : commentRepo.findByPostAfterCursor(post.getPostId(), cursor, page);
+        List<FeedPostComment> comments;
+        if (cursor == null) {
+            comments = commentRepo.findByPostFirstPage(post.getPostId(), page);
+        } else {
+            KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+            comments = commentRepo.findByPostAfterCursor(post.getPostId(), c.sortKey(), c.id(), page);
+        }
 
         List<String> userIds = comments.stream().map(FeedPostComment::getUserId).distinct().toList();
         Map<String, UserProfileView> profiles = userQuery.findProfiles(userIds);
@@ -92,8 +97,9 @@ public class FeedPostCommentService {
                     p != null ? p.profileImageUrl() : null);
         }).toList();
 
-        String nextCursor = comments.size() == FeedPostCommentRepository.PAGE_SIZE
-                ? comments.get(comments.size() - 1).getCommentId() : null;
+        FeedPostComment last = comments.size() == FeedPostCommentRepository.PAGE_SIZE
+                ? comments.get(comments.size() - 1) : null;
+        String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getCommentId());
         return new CommentListResponse(items, nextCursor);
     }
 

@@ -17,6 +17,7 @@ import site.krip.domain.feed.repository.FeedPostRow;
 import site.krip.global.common.image.ImageProcessor;
 import site.krip.global.common.image.ImageUploadExecutor;
 import site.krip.global.common.image.ProcessedImageSet;
+import site.krip.global.support.KeysetCursor;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
@@ -194,14 +195,17 @@ public class FeedPostService {
             return List.of();
         }
         PageRequest page = PageRequest.of(0, FeedPostRepository.PAGE_SIZE);
-        return cursor == null
-                ? feedPostRepo.findByOwnerFirstPage(ownerId, visibilities, viewerId, page)
-                : feedPostRepo.findByOwnerAfterCursor(ownerId, visibilities, viewerId, cursor, page);
+        if (cursor == null) {
+            return feedPostRepo.findByOwnerFirstPage(ownerId, visibilities, viewerId, page);
+        }
+        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+        return feedPostRepo.findByOwnerAfterCursor(ownerId, visibilities, viewerId, c.sortKey(), c.id(), page);
     }
 
     private static FeedPostListResponse toListResponse(List<FeedPostRow> rows) {
-        String nextCursor = rows.size() == FeedPostRepository.PAGE_SIZE
-                ? rows.get(rows.size() - 1).post().getPostId() : null;
+        FeedPostRow last = rows.size() == FeedPostRepository.PAGE_SIZE ? rows.get(rows.size() - 1) : null;
+        String nextCursor = last == null ? null
+                : KeysetCursor.encode(last.post().getCreatedAt(), last.post().getPostId());
         return new FeedPostListResponse(rows.stream().map(FeedPostResponse::from).toList(), nextCursor);
     }
 
