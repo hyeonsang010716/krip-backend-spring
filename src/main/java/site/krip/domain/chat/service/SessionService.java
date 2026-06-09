@@ -15,7 +15,6 @@ import site.krip.global.support.IdGenerator;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -35,15 +34,21 @@ public class SessionService {
     private final FanoutService fanout;
     private final StringRedisTemplate redis;
     private final ChatProperties props;
+    private final RedisScript<Long> setSessionScript;
+    private final RedisScript<Long> updateTokenJtiScript;
     @SuppressWarnings("rawtypes")
     private final RedisScript<List> enforceSessionLimitScript;
 
     public SessionService(FanoutService fanout, StringRedisTemplate redis, ChatProperties props,
+                          @Qualifier("setSessionScript") RedisScript<Long> setSessionScript,
+                          @Qualifier("updateTokenJtiScript") RedisScript<Long> updateTokenJtiScript,
                           @Qualifier("enforceSessionLimitScript") @SuppressWarnings("rawtypes")
                           RedisScript<List> enforceSessionLimitScript) {
         this.fanout = fanout;
         this.redis = redis;
         this.props = props;
+        this.setSessionScript = setSessionScript;
+        this.updateTokenJtiScript = updateTokenJtiScript;
         this.enforceSessionLimitScript = enforceSessionLimitScript;
     }
 
@@ -62,15 +67,11 @@ public class SessionService {
         String sessionId = IdGenerator.sessionId();
         long nowMs = nowMs();
 
-        Map<String, String> sess = new HashMap<>();
-        sess.put("user_id", userId);
-        sess.put("node_id", props.nodeId());
-        sess.put("token_jti", tokenJti);
-        sess.put("connected_at", String.valueOf(nowMs));
-        redis.opsForHash().putAll(ChatRedisKeys.sess(sessionId), sess);
-        redis.expire(ChatRedisKeys.sess(sessionId), TTL);
-        redis.opsForZSet().add(ChatRedisKeys.sessions(userId), sessionId, nowMs + ChatRedisKeys.SESSION_TTL * 1000);
-        redis.opsForValue().set(ChatRedisKeys.wsRoute(sessionId), props.nodeId(), TTL);
+        // 3키(HASH/ZSET/STRING)를 단일 Lua 로 원자 세팅 — HSET+EXPIRE 분리 시의 좀비 해시 누수 차단.
+        redis.execute(setSessionScript,
+                List.of(ChatRedisKeys.sess(sessionId), ChatRedisKeys.sessions(userId), ChatRedisKeys.wsRoute(sessionId)),
+                sessionId, userId, props.nodeId(), tokenJti, String.valueOf(nowMs),
+                String.valueOf(ChatRedisKeys.SESSION_TTL), String.valueOf(nowMs + ChatRedisKeys.SESSION_TTL * 1000));
 
         enforceSessionLimit(userId);
         return sessionId;
@@ -112,9 +113,9 @@ public class SessionService {
         });
     }
 
-    /** JWT refresh 시 token_jti 만 갱신. session_id 유지. */
+    /** JWT refresh 시 token_jti 만 갱신. session_id 유지. 만료된 세션은 부활시키지 않는다(키 존재 시에만). */
     public void updateTokenJti(String sessionId, String newTokenJti) {
-        redis.opsForHash().put(ChatRedisKeys.sess(sessionId), "token_jti", newTokenJti);
+        redis.execute(updateTokenJtiScript, List.of(ChatRedisKeys.sess(sessionId)), newTokenJti);
     }
 
     /** 매 op 진입 시 호출 — false 면 revoke 된 상태. */

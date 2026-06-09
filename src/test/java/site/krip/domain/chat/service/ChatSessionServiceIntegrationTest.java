@@ -93,6 +93,36 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("updateTokenJti: 만료된 세션은 부활시키지 않는다 — HSET 좀비 해시 누수 차단")
+    void updateTokenJtiDoesNotResurrectExpiredSession() {
+        String u = randomUser();
+        String sid = sessionService.createSession(u, "jti-1");
+        // 세션 만료 시뮬레이션 — sess: 해시 삭제.
+        redis.delete(ChatRedisKeys.sess(sid));
+        assertThat(sessionService.sessionExists(sid)).isFalse();
+
+        // 만료 후 token refresh 가 들어와도 키가 부활하면 안 된다(과거 HSET 은 TTL 없는 좀비로 부활시켰음).
+        sessionService.updateTokenJti(sid, "jti-2");
+
+        assertThat(redis.hasKey(ChatRedisKeys.sess(sid))).isFalse();
+        assertThat(sessionService.sessionExists(sid)).isFalse();
+    }
+
+    @Test
+    @DisplayName("updateTokenJti: 살아있는 세션은 token_jti 갱신 + TTL 유지(좀비 아님)")
+    void updateTokenJtiUpdatesLiveSessionAndKeepsTtl() {
+        String u = randomUser();
+        String sid = sessionService.createSession(u, "jti-1");
+
+        sessionService.updateTokenJti(sid, "jti-2");
+
+        assertThat(redis.opsForHash().get(ChatRedisKeys.sess(sid), "token_jti")).isEqualTo("jti-2");
+        // 갱신이 TTL 을 날리지 않았는지 — 생성 시 건 만료가 그대로 남아 있어야 한다(좀비 방지).
+        Long ttl = redis.getExpire(ChatRedisKeys.sess(sid));
+        assertThat(ttl).isNotNull().isGreaterThan(0L);
+    }
+
+    @Test
     @DisplayName("revokeAllSessions: 유저의 모든 세션 제거 후 개수 반환")
     void revokeAllSessions() {
         String u = randomUser();

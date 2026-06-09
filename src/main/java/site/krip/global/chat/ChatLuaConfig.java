@@ -45,6 +45,18 @@ public class ChatLuaConfig {
         return load("incr_with_ttl.lua");
     }
 
+    /** 세션 3키 원자 세팅 — HSET/EXPIRE 분리로 인한 TTL 없는 좀비 해시 누수 차단. */
+    @Bean
+    public RedisScript<Long> setSessionScript() {
+        return load("set_session.lua");
+    }
+
+    /** token_jti 갱신 — 키 존재 시에만, HSET 의 좀비 해시 부활 방지. */
+    @Bean
+    public RedisScript<Long> updateTokenJtiScript() {
+        return load("update_token_jti.lua");
+    }
+
     /** 세션 한도 강제 — evict 된 session_id 목록 반환(List). */
     @Bean
     @SuppressWarnings({"unchecked", "rawtypes"})
