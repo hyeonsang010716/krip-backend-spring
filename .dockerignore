@@ -1,0 +1,8 @@
+# 빌드 컨텍스트 최소화 + 시크릿/산출물 유입 방지. COPY 는 pom.xml·src 만 사용.
+target/
+.git/
+.idea/
+.env
+.env.example
+secrets/
+*.md
