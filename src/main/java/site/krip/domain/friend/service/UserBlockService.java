@@ -72,6 +72,10 @@ public class UserBlockService {
     private UserBlockResponse doBlock(String userId, String targetUserId) {
         User target = userRepository.findByIdWithProfile(targetUserId)
                 .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
+        // 2차 미완료(detail==null) 유저는 유효한 소셜 대상이 아님 — 차단 응답/목록 매퍼 NPE 방지.
+        if (target.getDetail() == null) {
+            throw ApiException.badRequest("2차 회원가입이 완료되지 않은 유저입니다.");
+        }
 
         if (userBlockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId)) {
             throw ApiException.badRequest("이미 차단한 유저입니다.");

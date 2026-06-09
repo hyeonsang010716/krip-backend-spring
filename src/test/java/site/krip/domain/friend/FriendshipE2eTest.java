@@ -272,4 +272,19 @@ class FriendshipE2eTest extends IntegrationTestSupport {
                         .content("{}"))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("2차 미완료(detail==null) 유저에게 친구 요청 → 400 (보낸목록 매퍼 NPE 방지)")
+    void requestToPreRegisterUserRejected() throws Exception {
+        String requester = fixtures.createActiveUser("요청자에코");
+        String preRegister = fixtures.createPreRegisterUser();
+
+        mockMvc.perform(post("/api/friend/friendships/requests")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(requester))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"addressee_id\":\"" + preRegister + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
 }

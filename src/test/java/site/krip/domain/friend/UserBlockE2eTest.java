@@ -195,6 +195,21 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("2차 미완료(detail==null) 유저 차단 → 400 (목록 매퍼 NPE 방지)")
+    void blockPreRegisterUserRejected() throws Exception {
+        String a = fixtures.createActiveUser("차단시도A");
+        String preRegister = fixtures.createPreRegisterUser();
+
+        mockMvc.perform(post("/api/friend/blocks")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target_user_id\":\"" + preRegister + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
+    }
+
+    @Test
     @DisplayName("차단 상태가 아닌데 해제 시도 → 400")
     void unblockWhenNotBlocked() throws Exception {
         String a = fixtures.createActiveUser("미차단A");

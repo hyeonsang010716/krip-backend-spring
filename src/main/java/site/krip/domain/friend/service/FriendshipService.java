@@ -73,6 +73,10 @@ public class FriendshipService {
     private FriendshipResponse doSendRequest(String requesterId, String addresseeId) {
         User addressee = userRepository.findByIdWithProfile(addresseeId)
                 .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
+        // 2차 미완료(detail==null) 유저는 유효한 소셜 대상이 아님 — 친구 관계에 끼면 목록 매퍼 NPE.
+        if (addressee.getDetail() == null) {
+            throw ApiException.badRequest("2차 회원가입이 완료되지 않은 유저입니다.");
+        }
 
         // 차단 관계 우선 검증 — 내가 건 차단 우선 안내(actionable)
         List<UserBlock> blocks = userBlockRepository.findBlocksBetween(requesterId, addresseeId);
