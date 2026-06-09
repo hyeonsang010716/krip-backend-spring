@@ -40,6 +40,10 @@ public class PlaceController {
     private static final double DEFAULT_LAT = 37.57594;
     private static final double DEFAULT_LNG = 126.97688;
 
+    // 키워드 검색 기본 반경(m). 매칭 희소 키워드가 컬렉션 전체를 풀스캔하지 않게 $geoNear 순회를 주변으로 한정.
+    // 클라이언트가 max_distance 를 주면 그 값이 우선. 일반 근처 조회엔 적용 안 함(unbounded 라도 저렴).
+    private static final double KEYWORD_SEARCH_DEFAULT_DISTANCE_M = 15_000;
+
     private final PlaceService placeService;
     private final FavoritePlaceService favoritePlaceService;
     private final TourSearchHistoryService searchHistoryService;
@@ -74,7 +78,8 @@ public class PlaceController {
                     log.warn("검색어 저장 실패 (무시)", e);
                 }
             }
-            return placeService.searchNearbyPlaces(actualLat, actualLng, keyword, cursor, maxDistance, userId);
+            double searchDistance = maxDistance != null ? maxDistance : KEYWORD_SEARCH_DEFAULT_DISTANCE_M;
+            return placeService.searchNearbyPlaces(actualLat, actualLng, keyword, cursor, searchDistance, userId);
         }
         return placeService.getNearbyPlaces(actualLat, actualLng, cursor, maxDistance, userId);
     }
