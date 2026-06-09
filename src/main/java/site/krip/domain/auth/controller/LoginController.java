@@ -1,6 +1,8 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -9,6 +11,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.util.UriComponentsBuilder;
 import site.krip.domain.auth.dto.OAuthCallbackResult;
 import site.krip.domain.auth.entity.OAuthProvider;
@@ -25,6 +28,8 @@ import java.net.URI;
 @RestController
 @RequestMapping("/api/auth/login")
 public class LoginController {
+
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
     private final OAuthConfigs oauthConfigs;
     private final OAuthCallbackService callbackService;
@@ -59,20 +64,48 @@ public class LoginController {
                 .build();
     }
 
-    /** OAuth 콜백 — state 검증 후 코드 교환 → JWT 쿠키 발급 + FE 리다이렉트. */
+    /**
+     * OAuth 콜백 — state 검증 → 코드 교환 → JWT 쿠키 + FE 리다이렉트.
+     *
+     * <p>호출자는 Google 리다이렉트 중인 브라우저라, 실패도 JSON 이 아니라 FE 로 {@code ?status=} 리다이렉트한다:
+     * {@code state_invalid}(state/CSRF/만료·더블서브밋), {@code provider_error}(Google 교환·조회 실패),
+     * {@code error}(내부). state 검증 실패 시엔 routing 미상이라 기본 frontend 로 폴백한다.
+     */
     @GetMapping("/callback")
     public ResponseEntity<Void> callback(@RequestParam("code") String code,
                                          @RequestParam("state") String state,
                                          HttpServletRequest request) {
-        OAuthStateService.Parsed parsed = stateService.verify(state, request);
-        OAuthProvider provider = callbackService.parseProvider(parsed.provider());
-        OAuthConfig config = oauthConfigs.webConfig(provider);
-
-        OAuthCallbackResult result = callbackService.exchangeAndRegister(provider, config, code);
-
-        String redirectTo = "server".equals(parsed.routing())
+        OAuthStateService.Parsed parsed;
+        try {
+            parsed = stateService.verify(state, request);
+        } catch (Exception e) {
+            log.warn("OAuth 콜백 state 검증 실패: {}", e.getMessage());
+            return errorRedirect(oauthProperties.frontendUrl(), "state_invalid");
+        }
+        String redirectBase = "server".equals(parsed.routing())
                 ? oauthProperties.frontendUrl() : oauthProperties.localFrontendUrl();
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(redirectTo)
+
+        OAuthProvider provider;
+        try {
+            provider = callbackService.parseProvider(parsed.provider());
+        } catch (Exception e) {
+            log.warn("OAuth 콜백 provider 파싱 실패 (provider={})", parsed.provider());
+            return errorRedirect(redirectBase, "state_invalid");
+        }
+
+        OAuthCallbackResult result;
+        try {
+            OAuthConfig config = oauthConfigs.webConfig(provider);
+            result = callbackService.exchangeAndRegister(provider, config, code);
+        } catch (RestClientException | IllegalStateException e) {
+            log.warn("OAuth 코드 교환/유저조회 실패 (provider={}): {}", provider, e.toString());
+            return errorRedirect(redirectBase, "provider_error");
+        } catch (Exception e) {
+            log.error("OAuth 콜백 내부 처리 실패 (provider={})", provider, e);
+            return errorRedirect(redirectBase, "error");
+        }
+
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(redirectBase)
                 .queryParam("status", result.status().getValue());
         if (result.email() != null) builder.queryParam("email", result.email());
         if (result.name() != null) builder.queryParam("name", result.name());
@@ -81,6 +114,17 @@ public class LoginController {
         return ResponseEntity.status(HttpStatus.FOUND)
                 .location(URI.create(builder.build().encode().toUriString()))
                 .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, stateService.expiredCookie().toString())
+                .build();
+    }
+
+    /** 콜백 실패 → 설정된 FE 로 status 코드와 함께 302(+state 쿠키 정리). 내부정보는 싣지 않음. */
+    private ResponseEntity<Void> errorRedirect(String base, String status) {
+        URI location = UriComponentsBuilder.fromUriString(base)
+                .queryParam("status", status)
+                .build().encode().toUri();
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(location)
                 .header(HttpHeaders.SET_COOKIE, stateService.expiredCookie().toString())
                 .build();
     }
