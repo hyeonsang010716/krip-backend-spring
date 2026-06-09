@@ -34,7 +34,7 @@ import java.util.Map;
 public class FriendSearchService {
 
     private static final int PAGE_SIZE = 30;
-    /** 동명 부분일치 선해석 상한 — 초과 시 일부 작성자 제외(검색 한정 동작). */
+    /** 동명 부분일치 선해석 상한 — 최신순 정렬이라 초과 시 가장 오래된 매치만 제외(최신 결과는 보존). */
     private static final int NAME_MATCH_LIMIT = 500;
     /** 닉네임 매칭 0건일 때 IN 무매칭용 sentinel (실제 user_id 가 될 수 없는 값). */
     private static final Collection<String> NO_NAME_MATCH = List.of("__no_name_match__");

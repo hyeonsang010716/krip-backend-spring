@@ -25,8 +25,16 @@ import java.util.List;
  */
 public interface FriendUserSearchRepository extends Repository<User, String> {
 
-    /** 닉네임 부분일치 → user_id 선해석. user_name trigram 인덱스로 가속(검색 쿼리의 IN 분기 재료). */
-    @Query("select d.userId from UserDetailInform d where lower(d.userName) like lower(:pattern) escape '!'")
+    /**
+     * 닉네임 부분일치 → user_id 선해석. user_name trigram 인덱스로 가속(검색 쿼리의 IN 분기 재료).
+     *
+     * <p>메인 검색과 동일 정렬(created_at desc, user_id desc)로 상한을 적용한다 — 매치가 상한을 넘어도
+     * "가장 최근 가입" 매치를 보존하므로 결과 앞쪽 페이지들은 누락 없이 완전하다(잘리는 건 깊은 꼬리뿐).
+     * 정렬이 없으면 임의의 N개가 뽑혀 최신 유저가 1페이지에서 비결정적으로 사라진다.
+     */
+    @Query("select d.userId from UserDetailInform d join d.user u "
+            + "where lower(d.userName) like lower(:pattern) escape '!' "
+            + "order by u.createdAt desc, u.userId desc")
     List<String> findUserIdsByNameLike(@Param("pattern") String pattern, Pageable limit);
 
     @Query("select distinct u from User u join fetch u.detail d "
