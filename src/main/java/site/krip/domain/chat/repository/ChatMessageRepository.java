@@ -177,16 +177,18 @@ public class ChatMessageRepository {
         return result;
     }
 
-    /** 본문 교체 + edited_at. modified 1 건이면 true. */
+    /** 본문 교체 + edited_at. 미삭제 doc 만 대상 — 동시 삭제와 경합 시 0 건이면 false(호출부가 fan-out 차단). */
     public boolean updateContent(String messageId, Object newContent, java.util.Date editedAt) {
-        return collection.updateOne(Filters.eq("_id", messageId),
+        return collection.updateOne(
+                Filters.and(Filters.eq("_id", messageId), Filters.eq("deleted_at", null)),
                 Updates.combine(Updates.set("content", newContent), Updates.set("edited_at", editedAt)))
                 .getModifiedCount() == 1;
     }
 
-    /** soft delete — deleted_at 세팅 + content=null. row 보존. */
+    /** soft delete — deleted_at 세팅 + content=null. 미삭제 doc 만 대상이라 중복 삭제는 0 건(idempotent). */
     public boolean softDelete(String messageId, java.util.Date deletedAt) {
-        return collection.updateOne(Filters.eq("_id", messageId),
+        return collection.updateOne(
+                Filters.and(Filters.eq("_id", messageId), Filters.eq("deleted_at", null)),
                 Updates.combine(Updates.set("deleted_at", deletedAt), Updates.set("content", null)))
                 .getModifiedCount() == 1;
     }

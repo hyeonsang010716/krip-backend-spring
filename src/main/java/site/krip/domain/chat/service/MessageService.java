@@ -202,7 +202,10 @@ public class MessageService {
             throw ApiException.badRequest("메시지 편집 제한 시간(5분)이 지났습니다.");
         }
 
-        messageRepo.updateContent(messageId, newContent, Date.from(now));
+        if (!messageRepo.updateContent(messageId, newContent, Date.from(now))) {
+            // 사전 검사 후 동시 삭제로 0 건 — 삭제된 메시지에 spurious message.updated 를 쏘지 않는다.
+            throw ApiException.badRequest("삭제된 메시지는 편집할 수 없습니다.");
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "message.updated");
@@ -244,7 +247,10 @@ public class MessageService {
         }
 
         Instant now = Instant.now();
-        messageRepo.softDelete(messageId, Date.from(now));
+        if (!messageRepo.softDelete(messageId, Date.from(now))) {
+            // 사전 검사 후 동시 삭제로 0 건 — 중복 message.deleted 브로드캐스트를 막는다.
+            throw ApiException.badRequest("이미 삭제된 메시지입니다.");
+        }
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("type", "message.deleted");

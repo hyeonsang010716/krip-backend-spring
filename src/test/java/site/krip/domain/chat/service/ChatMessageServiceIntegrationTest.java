@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import site.krip.domain.chat.dto.response.EditMessageResponse;
 import site.krip.domain.chat.dto.response.MessageSentAck;
 import site.krip.domain.chat.entity.MessageType;
 import site.krip.domain.chat.repository.ChatMessageRepository;
@@ -12,6 +13,8 @@ import site.krip.domain.friend.service.UserBlockService;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 import site.krip.support.IntegrationTestSupport;
+
+import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -168,5 +171,37 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
 
         // DB 폴백으로 멤버를 해석해 b 의 stale unread 캐시가 무효화(삭제)되어야 한다.
         assertThat(redis.opsForHash().get(ChatRedisKeys.unread(b), room)).isNull();
+    }
+
+    @Test
+    @DisplayName("편집/삭제 정상 경로: 본인 메시지 편집·삭제 성공, 삭제 후 편집은 차단")
+    void editAndDeleteHappyPath() {
+        String a = fixtures.createActiveUser("edhA");
+        String b = fixtures.createActiveUser("edhB");
+        String room = directRoom(a, b);
+
+        String mid = messageService.sendMessage(a, "sess-a", room, "h1", MessageType.TEXT, "orig").messageId();
+
+        EditMessageResponse edited = messageService.editMessage(mid, a, "sess-a", "updated");
+        assertThat(edited.content()).isEqualTo("updated");
+
+        messageService.deleteMessage(mid, a, "sess-a"); // 정상 — 예외 없음
+
+        assertThatThrownBy(() -> messageService.editMessage(mid, a, "sess-a", "again"))
+                .isInstanceOf(ApiException.class);
+    }
+
+    @Test
+    @DisplayName("편집/삭제는 deleted_at:null doc 만 대상 — 삭제 후 재삭제·편집은 0 건(동시삭제 spurious fan-out 차단)")
+    void editDeleteGatedOnDeletedDoc() {
+        String a = fixtures.createActiveUser("edgA");
+        String b = fixtures.createActiveUser("edgB");
+        String room = directRoom(a, b);
+
+        String mid = messageService.sendMessage(a, "sess-a", room, "g1", MessageType.TEXT, "hi").messageId();
+
+        assertThat(messageRepo.softDelete(mid, new Date())).isTrue();        // 첫 삭제 = 1 건
+        assertThat(messageRepo.softDelete(mid, new Date())).isFalse();       // 재삭제 = 0 건(idempotent)
+        assertThat(messageRepo.updateContent(mid, "edited", new Date())).isFalse(); // 삭제된 doc 편집 = 0 건
     }
 }
