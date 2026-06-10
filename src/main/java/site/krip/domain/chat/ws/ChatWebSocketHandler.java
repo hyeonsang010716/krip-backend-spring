@@ -22,6 +22,7 @@ import site.krip.domain.chat.service.RoomService;
 import site.krip.domain.chat.service.SessionService;
 import site.krip.domain.chat.service.UnreadService;
 import site.krip.global.auth.jwt.JwtProvider;
+import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.config.ExecutorProperties;
 import site.krip.global.support.IsoTimestamp;
@@ -62,6 +63,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     private final UnreadService unreadService;
     private final FanoutService fanout;
     private final JwtProvider jwtProvider;
+    private final TokenRevocationService revocation;
     private final ObjectMapper mapper;
 
     // 채팅 WS 전용 스케줄러(스프링 관리) — 블로킹 @Scheduled 잡과 격리, 종료 시 자동 정리.
@@ -80,7 +82,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     public ChatWebSocketHandler(SessionService sessionService, RoomService roomService,
                                 MessageService messageService, UnreadService unreadService,
                                 FanoutService fanout,
-                                JwtProvider jwtProvider, ObjectMapper mapper,
+                                JwtProvider jwtProvider, TokenRevocationService revocation,
+                                ObjectMapper mapper,
                                 @Qualifier("chatWsScheduler") ThreadPoolTaskScheduler heartbeatScheduler,
                                 @Qualifier("recoverExecutor") Executor recoverExecutor,
                                 @Qualifier("chatOpExecutor") Executor chatOpExecutor,
@@ -91,6 +94,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         this.unreadService = unreadService;
         this.fanout = fanout;
         this.jwtProvider = jwtProvider;
+        this.revocation = revocation;
         this.mapper = mapper;
         this.heartbeatScheduler = heartbeatScheduler;
         this.recoverExecutor = recoverExecutor;
@@ -318,7 +322,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         } catch (Exception e) {
             parsed = null;
         }
-        if (parsed == null || !userId.equals(parsed.userId())) {
+        // refresh 는 세션의 토큰을 교체하는 재인증 — 핸드셰이크와 동일하게 폐기 토큰을 거절한다(폐기된 jti 로 무장 차단).
+        if (parsed == null || !userId.equals(parsed.userId()) || revocation.isRevoked(parsed.jti())) {
             safeSend(session, Map.of("type", "auth_expired"));
             closeQuietly(session, new CloseStatus(CLOSE_AUTH_EXPIRED));
             return;
