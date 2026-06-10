@@ -124,11 +124,6 @@ public class SessionService {
         return Boolean.TRUE.equals(redis.hasKey(ChatRedisKeys.sess(sessionId)));
     }
 
-    public String getUserId(String sessionId) {
-        Object v = redis.opsForHash().get(ChatRedisKeys.sess(sessionId), "user_id");
-        return v != null ? v.toString() : null;
-    }
-
     /** WS 종료/명시 로그아웃 시 Redis 상태 정리. */
     public void terminateSession(String sessionId, String userId) {
         redis.delete(ChatRedisKeys.sess(sessionId));

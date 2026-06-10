@@ -8,14 +8,11 @@ import site.krip.domain.tour.entity.FavoritePlace;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 
 /**
  * 즐겨찾기 RDB 접근.
  */
 public interface FavoritePlaceRepository extends JpaRepository<FavoritePlace, String> {
-
-    Optional<FavoritePlace> findByUserIdAndPlaceId(String userId, String placeId);
 
     boolean existsByUserIdAndPlaceId(String userId, String placeId);
 
