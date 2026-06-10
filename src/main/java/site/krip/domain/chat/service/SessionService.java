@@ -73,7 +73,7 @@ public class SessionService {
                 sessionId, userId, props.nodeId(), tokenJti, String.valueOf(nowMs),
                 String.valueOf(ChatRedisKeys.SESSION_TTL), String.valueOf(nowMs + ChatRedisKeys.SESSION_TTL * 1000));
 
-        enforceSessionLimit(userId);
+        enforceSessionLimit(userId, sessionId);
         return sessionId;
     }
 
@@ -155,15 +155,16 @@ public class SessionService {
 
     /**
      * 만료 청소 + 초과분 oldest evict 를 단일 Lua 로 원자 실행 — 동시 접속이 stale count 로 살아있는
-     * 세션을 잘못 evict 하는 레이스를 막는다. ZSET·키 삭제는 스크립트가, revoke 알림은 evict 목록을 받아
-     * 여기서(best-effort) 보낸다. 알림 시점엔 Redis 상에선 이미 끊긴 상태라 안전.
+     * 세션을 잘못 evict 하는 레이스를 막는다. 동일 score(같은 ms) tie 에서 갓 만든 {@code protectedSid} 가
+     * 최저 정렬로 자기 자신을 죽이지 않도록 스크립트가 보호한다. ZSET·키 삭제는 스크립트가, revoke 알림은
+     * evict 목록을 받아 여기서(best-effort) 보낸다. 알림 시점엔 Redis 상에선 이미 끊긴 상태라 안전.
      */
     @SuppressWarnings("unchecked")
-    private void enforceSessionLimit(String userId) {
+    private void enforceSessionLimit(String userId, String protectedSid) {
         List<String> evicted = (List<String>) redis.execute(
                 enforceSessionLimitScript,
                 List.of(ChatRedisKeys.sessions(userId)),
-                String.valueOf(nowMs()), String.valueOf(ChatRedisKeys.MAX_SESSIONS_PER_USER));
+                String.valueOf(nowMs()), String.valueOf(ChatRedisKeys.MAX_SESSIONS_PER_USER), protectedSid);
         if (evicted == null || evicted.isEmpty()) {
             return;
         }

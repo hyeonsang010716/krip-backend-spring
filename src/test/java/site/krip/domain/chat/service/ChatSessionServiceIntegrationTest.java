@@ -3,7 +3,9 @@ package site.krip.domain.chat.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.RedisScript;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.support.IntegrationTestSupport;
 
@@ -29,6 +31,11 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
     private StringRedisTemplate redis;
+
+    @Autowired
+    @Qualifier("enforceSessionLimitScript")
+    @SuppressWarnings("rawtypes")
+    private RedisScript enforceSessionLimitScript;
 
     private static String randomUser() {
         return "user-" + UUID.randomUUID();
@@ -59,6 +66,36 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
         assertThat(alive).isEqualTo(10);
         // 가장 최근 세션은 살아있다.
         assertThat(sessionService.sessionExists(ids.get(ids.size() - 1))).isTrue();
+    }
+
+    @Test
+    @DisplayName("score tie: 갓 만든(사전순 최저) 세션은 보호되고 기존 세션이 evict 된다")
+    @SuppressWarnings("unchecked")
+    void protectsNewlyCreatedSessionOnScoreTie() {
+        String u = randomUser();
+        String zkey = ChatRedisKeys.sessions(u);
+        long score = System.currentTimeMillis() + 90_000; // 모두 동일 score → 순수 member 사전순 tie
+
+        // 한도(10)를 기존 세션으로 채운다 — 새 세션보다 사전순으로 '높게' 정렬되도록 'WS_z_' 접두.
+        for (int i = 0; i < ChatRedisKeys.MAX_SESSIONS_PER_USER; i++) {
+            redis.opsForZSet().add(zkey, "WS_z_" + i, score);
+        }
+        // 갓 만든 세션 — 같은 score, 사전순 최저(tie 시 victim 1순위 위치). 이게 evict 되면 버그.
+        String fresh = "WS_a_new";
+        redis.opsForZSet().add(zkey, fresh, score);
+
+        List<String> evicted = (List<String>) redis.execute(
+                enforceSessionLimitScript,
+                List.of(zkey),
+                String.valueOf(System.currentTimeMillis()),
+                String.valueOf(ChatRedisKeys.MAX_SESSIONS_PER_USER),
+                fresh);
+
+        // 정확히 1개 evict, 그건 fresh 가 아니라 기존 세션. fresh 는 생존, 총 10개 유지.
+        assertThat(evicted).hasSize(1);
+        assertThat(evicted.get(0)).isNotEqualTo(fresh).startsWith("WS_z_");
+        assertThat(redis.opsForZSet().score(zkey, fresh)).isNotNull();
+        assertThat(redis.opsForZSet().zCard(zkey)).isEqualTo((long) ChatRedisKeys.MAX_SESSIONS_PER_USER);
     }
 
     @Test
