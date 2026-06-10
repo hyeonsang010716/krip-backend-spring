@@ -54,11 +54,8 @@ public class FeedAccessService {
 
     /** 단건 로드 + viewer 가시성 검증. 미존재→404, 차단→403, visibility 미충족→404. */
     public FeedPostRow loadViewablePost(String viewerId, String postId) {
-        List<FeedPostRow> rows = feedPostRepo.findRowByPostId(postId, viewerId);
-        if (rows.isEmpty()) {
-            throw new FeedNotFoundException("존재하지 않는 게시물입니다.");
-        }
-        FeedPostRow row = rows.get(0);
+        FeedPostRow row = feedPostRepo.findRowByPostId(postId, viewerId)
+                .orElseThrow(() -> new FeedNotFoundException("존재하지 않는 게시물입니다."));
         FeedPost post = row.post();
         if (post.getUserId().equals(viewerId)) {
             return row;

@@ -99,8 +99,8 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     }
 
     @Test
-    @DisplayName("타인이 캡션 변경 → 403 (loadOwnedPost 가 소유자 불일치 시 403)")
-    void captionByOtherForbidden() throws Exception {
+    @DisplayName("타인이 캡션 변경 → 404 (비소유자엔 존재 은닉, FeedAccessService 정책과 동일)")
+    void captionByOtherNotFound() throws Exception {
         String owner = fixtures.createActiveUser("주인6");
         String other = fixtures.createActiveUser("타인");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
@@ -110,7 +110,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
                         .header("X-Auth-Token", userToken(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"뺏으려는 캡션\"}"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     // ──────────────────── 가시성 PATCH ────────────────────
@@ -187,7 +187,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     }
 
     @Test
-    @DisplayName("타인이 게시물 삭제 → 403 (loadOwnedPost 가 소유자 불일치 시 403)")
+    @DisplayName("타인이 게시물 삭제 → 404 (비소유자엔 존재 은닉, FeedAccessService 정책과 동일)")
     void deleteByOther() throws Exception {
         String owner = fixtures.createActiveUser("주인10");
         String other = fixtures.createActiveUser("타인2");
@@ -196,6 +196,6 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(delete("/api/feed/posts/" + postId)
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(other)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 }

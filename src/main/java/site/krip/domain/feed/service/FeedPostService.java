@@ -18,7 +18,6 @@ import site.krip.global.common.image.ImageProcessor;
 import site.krip.global.common.image.ImageUploadExecutor;
 import site.krip.global.common.image.ProcessedImageSet;
 import site.krip.global.support.KeysetCursor;
-import site.krip.global.common.exception.ApiException;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
 import site.krip.global.support.AfterCommit;
@@ -178,13 +177,11 @@ public class FeedPostService {
     // ──────────────────── 헬퍼 ────────────────────
 
     private FeedPostRow loadOwnedPost(String userId, String postId) {
-        List<FeedPostRow> rows = feedPostRepo.findRowByPostId(postId, userId);
-        if (rows.isEmpty()) {
-            throw new FeedNotFoundException("존재하지 않는 게시물입니다.");
-        }
-        FeedPostRow row = rows.get(0);
+        FeedPostRow row = feedPostRepo.findRowByPostId(postId, userId)
+                .orElseThrow(() -> new FeedNotFoundException("존재하지 않는 게시물입니다."));
         if (!row.post().getUserId().equals(userId)) {
-            throw ApiException.forbidden("게시물에 대한 권한이 없습니다.");
+            // 비소유자엔 존재를 숨긴다(404 일원화) — FeedAccessService 의 가시성 정책과 동일. 403 은 존재 오라클.
+            throw new FeedNotFoundException("존재하지 않는 게시물입니다.");
         }
         return row;
     }

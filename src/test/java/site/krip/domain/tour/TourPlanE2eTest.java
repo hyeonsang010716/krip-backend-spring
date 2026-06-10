@@ -276,6 +276,37 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("카드 이동 — after_item_id 가 자기 자신 → no-op 200 (오해성 400 아님)")
+    void moveItemAfterSelfIsNoop() throws Exception {
+        String userId = fixtures.createActiveUser();
+        String placeA = seedPlace("place A", "addr A");
+        String planId = createPlan(userId, "자기이동 테스트", 2, placeA);
+
+        String itemId = objectMapper.readTree(mockMvc.perform(get("/api/tour/plans/" + planId)
+                                .header("Authorization", bearer())
+                                .header("X-Auth-Token", userToken(userId)))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .get("items").get(0).get("item_id").asText();
+
+        // X 를 X 뒤로 = 제자리 유지. 400 이 아니라 멱등 200.
+        mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target_day_number\": 1, \"after_item_id\": \"" + itemId + "\"}"))
+                .andExpect(status().isOk());
+
+        // 위치 불변 확인 — day1 에 그대로.
+        mockMvc.perform(get("/api/tour/plans/" + planId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].item_id").value(itemId))
+                .andExpect(jsonPath("$.items[0].day_number").value(1));
+    }
+
+    @Test
     @DisplayName("카드 추가 — day_number 가 travel_days 범위 초과 → 400")
     void addItemDayOutOfRange() throws Exception {
         String userId = fixtures.createActiveUser();

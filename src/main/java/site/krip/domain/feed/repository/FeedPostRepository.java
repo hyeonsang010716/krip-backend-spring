@@ -10,6 +10,7 @@ import site.krip.domain.feed.entity.FeedVisibility;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * FeedPost RDB 접근.
@@ -31,7 +32,7 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, String> {
 
     /** PK 단건 + 카운트 + viewer 좋아요 여부. */
     @Query(SELECT + "from FeedPost p where p.postId = :postId")
-    List<FeedPostRow> findRowByPostId(@Param("postId") String postId, @Param("viewerId") String viewerId);
+    Optional<FeedPostRow> findRowByPostId(@Param("postId") String postId, @Param("viewerId") String viewerId);
 
     /** owner + visibility IN-list 첫 페이지 (created_at DESC, post_id DESC). */
     @Query(SELECT + "from FeedPost p "

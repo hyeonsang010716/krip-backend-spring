@@ -256,6 +256,11 @@ public class TourPlanService {
                     if (targetDayNumber > plan.getTravelDays()) {
                         throw ApiException.badRequest("day_number 가 범위를 벗어났습니다: " + targetDayNumber);
                     }
+                    // 자기 자신 뒤로 이동 = 제자리 유지 no-op. dayItems 가 item 을 제외하므로 그대로 두면
+                    // computePosition 이 afterItemId 를 못 찾아 오해성 400 을 던진다.
+                    if (afterItemId != null && afterItemId.equals(itemId)) {
+                        return;
+                    }
                     List<TourPlanItem> dayItems = itemRepo.findByPlanId(item.getPlanId()).stream()
                             .filter(i -> i.getDayNumber() == targetDayNumber
                                     && !i.getItemId().equals(item.getItemId()))

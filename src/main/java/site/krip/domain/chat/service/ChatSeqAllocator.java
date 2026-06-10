@@ -43,22 +43,21 @@ public class ChatSeqAllocator {
     public long allocateSeq(String roomId) {
         String seqKey = ChatRedisKeys.roomSeq(roomId);
         String ttl = String.valueOf(ChatRedisKeys.ROOM_SEQ_TTL);
-        Long seq = redis.execute(incrFast, List.of(seqKey), ttl);
-        if (seq != null && seq != -1L) {
+        long seq = redis.execute(incrFast, List.of(seqKey), ttl);
+        if (seq != -1L) {
             return seq;
         }
         long mongoMax = messageRepo.getMaxServerSeq(roomId);
         long base = mongoMax > 0 ? mongoMax + ChatRedisKeys.SEQ_RECOVER_GAP : 0;
-        Long recovered = redis.execute(recoverAndIncr, List.of(seqKey), String.valueOf(base), ttl);
-        return recovered != null ? recovered : 0L;
+        // Lua 는 항상 INCR 결과(≥1)를 반환 — long 언박싱이라 만일의 null 은 0 으로 새지 않고 NPE 로 터진다.
+        return redis.execute(recoverAndIncr, List.of(seqKey), String.valueOf(base), ttl);
     }
 
     /** DuplicateKey 재시도 — seq 강제 점프. */
     public long forceJump(String roomId, int jitter) {
-        Long v = redis.execute(forceJump, List.of(ChatRedisKeys.roomSeq(roomId)),
+        return redis.execute(forceJump, List.of(ChatRedisKeys.roomSeq(roomId)),
                 String.valueOf(ChatRedisKeys.SEQ_FORCE_JUMP_GAP), String.valueOf(jitter),
                 String.valueOf(ChatRedisKeys.ROOM_SEQ_TTL));
-        return v != null ? v : 0L;
     }
 
     /** rate limit — 원자적 INCR+EXPIRE. 이번 윈도우 누적 카운트 반환. */

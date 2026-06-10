@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link JwtProvider} 순수 단위 테스트 — issue/parseUserId 라운드트립 및 무효/만료 토큰.
+ * {@link JwtProvider} 순수 단위 테스트 — issue/parse 라운드트립 및 무효/만료 토큰.
  * {@link AuthProperties} 레코드(중첩 Jwt 포함)를 직접 생성해 주입한다.
  */
 class JwtProviderTest {
@@ -38,7 +38,7 @@ class JwtProviderTest {
     }
 
     @Test
-    @DisplayName("issue 한 토큰을 parseUserId 하면 동일한 userId 가 돌아온다")
+    @DisplayName("issue 한 토큰을 parse 하면 동일한 userId 가 돌아온다")
     void issueParseRoundTrip() {
         JwtProvider provider = provider(30);
         String userId = "USER_1717000000_cafebabe";
@@ -46,14 +46,14 @@ class JwtProviderTest {
         String token = provider.issue(userId);
 
         assertThat(token).isNotBlank();
-        assertThat(provider.parseUserId(token)).isEqualTo(userId);
+        assertThat(provider.parse(token).userId()).isEqualTo(userId);
     }
 
     @Test
     @DisplayName("garbage 토큰은 JwtException 을 던진다")
     void garbageTokenThrows() {
         JwtProvider provider = provider(30);
-        assertThatThrownBy(() -> provider.parseUserId("garbage.token.value"))
+        assertThatThrownBy(() -> provider.parse("garbage.token.value"))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -69,7 +69,7 @@ class JwtProviderTest {
         char swapped = first == 'a' ? 'b' : 'a';
         String tampered = token.substring(0, sigStart) + swapped + token.substring(sigStart + 1);
 
-        assertThatThrownBy(() -> provider.parseUserId(tampered))
+        assertThatThrownBy(() -> provider.parse(tampered))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -85,7 +85,7 @@ class JwtProviderTest {
                 .signWith(otherKey)
                 .compact();
 
-        assertThatThrownBy(() -> provider.parseUserId(foreign))
+        assertThatThrownBy(() -> provider.parse(foreign))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -102,7 +102,7 @@ class JwtProviderTest {
                 .signWith(key)
                 .compact();
 
-        assertThatThrownBy(() -> provider.parseUserId(expired))
+        assertThatThrownBy(() -> provider.parse(expired))
                 .isInstanceOf(ExpiredJwtException.class);
     }
 

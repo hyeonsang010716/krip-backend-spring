@@ -66,9 +66,4 @@ public class JwtProvider {
         Instant exp = claims.getExpiration() != null ? claims.getExpiration().toInstant() : null;
         return new ParsedToken(claims.get(CLAIM_USER_ID, String.class), claims.getId(), exp);
     }
-
-    /** user_id 만 필요할 때(WS 등). {@link #parse} 의 축약. */
-    public String parseUserId(String token) {
-        return parse(token).userId();
-    }
 }
