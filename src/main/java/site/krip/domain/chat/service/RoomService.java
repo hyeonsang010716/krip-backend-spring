@@ -334,18 +334,23 @@ public class RoomService {
         roomRepo.findById(roomId)
                 .orElseThrow(() -> new ChatRoomNotFoundException("존재하지 않는 방입니다."));
 
+        // 클라이언트 입력을 방의 현재 seq 로 클램프 — 미래 seq 주입 시 last_read 가 GREATEST 로 영구(비가역)
+        // 박혀 unread 가 영영 0 이 되는 걸 차단. 송신은 room:seq INCR → 저장 순서라 정상 읽음은 깎이지 않는다.
+        long currentSeq = getCurrentSeq(roomId);
+        long upTo = Math.min(upToServerSeq, currentSeq);
+
         Long finalSeq = txTemplate.execute(s -> {
-            int updated = memberRepo.markRead(roomId, meId, upToServerSeq);
+            int updated = memberRepo.markRead(roomId, meId, upTo);
             if (updated == 0) {
                 return null;
             }
-            return memberRepo.findLastReadSeq(roomId, meId).orElse(upToServerSeq);
+            return memberRepo.findLastReadSeq(roomId, meId).orElse(upTo);
         });
         if (finalSeq == null) {
             throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
 
-        syncUnreadCacheAfterRead(meId, roomId, finalSeq);
+        syncUnreadCacheAfterRead(meId, roomId, finalSeq, currentSeq);
 
         fanout.fanOutToSession(meSessionId, Map.of(
                 "type", "read_ack", "room_id", roomId, "up_to_server_seq", finalSeq));
@@ -367,14 +372,14 @@ public class RoomService {
      * <p>경합 가드: 송신 경로는 항상 {@code room:seq} 증가 → … → unread hDel 순서다. 0 기록 후 seq 를 재확인해
      * 그 사이 새 메시지로 진전됐으면 0 을 버린다(상대 hDel 이 0 보다 먼저 일어나 0 이 무효화를 덮어쓰는 경우 방지).
      */
-    private void syncUnreadCacheAfterRead(String meId, String roomId, long finalSeq) {
-        if (finalSeq < getCurrentSeq(roomId)) {
+    private void syncUnreadCacheAfterRead(String meId, String roomId, long finalSeq, long currentSeq) {
+        if (finalSeq < currentSeq) {
             unreadService.clear(meId, roomId);   // 아직 더 최신 메시지 — 다음 읽기에 진실로 재계산
             return;
         }
         unreadService.resetToZero(meId, roomId); // 최신까지 읽음 → 0 확정 (Mongo 불필요)
-        if (getCurrentSeq(roomId) > finalSeq) {
-            unreadService.clear(meId, roomId);   // 0 기록 중 새 메시지 유입 — 0 폐기
+        if (getCurrentSeq(roomId) > finalSeq) {  // fresh read — 0 기록 중 새 메시지 유입 시 0 폐기
+            unreadService.clear(meId, roomId);
         }
     }
 

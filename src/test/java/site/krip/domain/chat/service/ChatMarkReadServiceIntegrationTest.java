@@ -37,19 +37,41 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
         String b = fixtures.createActiveUser("readB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
 
-        long f1 = roomService.markRead(a, "sess-a", room, 5);
-        assertThat(f1).isEqualTo(5);
-        assertThat(memberRepo.findLastReadSeq(room, a)).contains(5L);
+        // server_seq 를 쌓아 클램프 상한 확보 (b 송신, a 가 읽음 주체)
+        MessageSentAck m1 = messageService.sendMessage(b, "sess-b", room, "c1", MessageType.TEXT, "1");
+        messageService.sendMessage(b, "sess-b", room, "c2", MessageType.TEXT, "2");
+        messageService.sendMessage(b, "sess-b", room, "c3", MessageType.TEXT, "3");
+        MessageSentAck m4 = messageService.sendMessage(b, "sess-b", room, "c4", MessageType.TEXT, "4");
+        MessageSentAck m5 = messageService.sendMessage(b, "sess-b", room, "c5", MessageType.TEXT, "5");
 
-        // 더 작은 값(3) → GREATEST 로 5 유지
-        long f2 = roomService.markRead(a, "sess-a", room, 3);
-        assertThat(f2).isEqualTo(5);
-        assertThat(memberRepo.findLastReadSeq(room, a)).contains(5L);
+        long f1 = roomService.markRead(a, "sess-a", room, m4.serverSeq());
+        assertThat(f1).isEqualTo(m4.serverSeq());
+        assertThat(memberRepo.findLastReadSeq(room, a)).contains(m4.serverSeq());
 
-        // 더 큰 값(10) → 갱신
-        long f3 = roomService.markRead(a, "sess-a", room, 10);
-        assertThat(f3).isEqualTo(10);
-        assertThat(memberRepo.findLastReadSeq(room, a)).contains(10L);
+        // 더 작은 값 → GREATEST 로 유지
+        long f2 = roomService.markRead(a, "sess-a", room, m1.serverSeq());
+        assertThat(f2).isEqualTo(m4.serverSeq());
+        assertThat(memberRepo.findLastReadSeq(room, a)).contains(m4.serverSeq());
+
+        // 더 큰 값(현재 seq 이내) → 갱신
+        long f3 = roomService.markRead(a, "sess-a", room, m5.serverSeq());
+        assertThat(f3).isEqualTo(m5.serverSeq());
+        assertThat(memberRepo.findLastReadSeq(room, a)).contains(m5.serverSeq());
+    }
+
+    @Test
+    @DisplayName("현재 seq 를 넘는 up_to 는 현재 seq 로 클램프된다 — 미래 seq 주입 차단")
+    void markReadClampsBeyondCurrentSeq() {
+        String a = fixtures.createActiveUser("clampA");
+        String b = fixtures.createActiveUser("clampB");
+        String room = roomService.createDirectRoom(a, b).chatRoomId();
+
+        messageService.sendMessage(b, "sess-b", room, "c1", MessageType.TEXT, "1");
+        MessageSentAck m2 = messageService.sendMessage(b, "sess-b", room, "c2", MessageType.TEXT, "2");
+
+        long f = roomService.markRead(a, "sess-a", room, 9_999_999_999L);
+        assertThat(f).isEqualTo(m2.serverSeq());
+        assertThat(memberRepo.findLastReadSeq(room, a)).contains(m2.serverSeq());
     }
 
     @Test
