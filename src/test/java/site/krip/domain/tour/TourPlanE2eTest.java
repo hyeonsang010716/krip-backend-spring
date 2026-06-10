@@ -307,6 +307,37 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("카드 이동 — after_item_id 가 자기 자신이어도 다른 day 면 제자리 no-op 이 아니라 실제 이동")
+    void moveItemAfterSelfToOtherDayMoves() throws Exception {
+        String userId = fixtures.createActiveUser();
+        String placeA = seedPlace("place A", "addr A");
+        String planId = createPlan(userId, "타day 자기이동", 2, placeA);
+
+        String itemId = objectMapper.readTree(mockMvc.perform(get("/api/tour/plans/" + planId)
+                                .header("Authorization", bearer())
+                                .header("X-Auth-Token", userToken(userId)))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
+                .get("items").get(0).get("item_id").asText();
+
+        // day1 의 카드를 "day2, after=자기자신" 으로 이동 — 같은 day 가 아니므로 no-op 아님. day2 가 비어 정상 이동.
+        mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target_day_number\": 2, \"after_item_id\": \"" + itemId + "\"}"))
+                .andExpect(status().isOk());
+
+        // day2 로 실제 이동됐는지 확인 (구버그: silent no-op 으로 day1 잔존).
+        mockMvc.perform(get("/api/tour/plans/" + planId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].item_id").value(itemId))
+                .andExpect(jsonPath("$.items[0].day_number").value(2));
+    }
+
+    @Test
     @DisplayName("카드 추가 — day_number 가 travel_days 범위 초과 → 400")
     void addItemDayOutOfRange() throws Exception {
         String userId = fixtures.createActiveUser();

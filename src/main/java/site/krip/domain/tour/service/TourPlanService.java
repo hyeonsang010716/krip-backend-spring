@@ -256,9 +256,9 @@ public class TourPlanService {
                     if (targetDayNumber > plan.getTravelDays()) {
                         throw ApiException.badRequest("day_number 가 범위를 벗어났습니다: " + targetDayNumber);
                     }
-                    // 자기 자신 뒤로 이동 = 제자리 유지 no-op. dayItems 가 item 을 제외하므로 그대로 두면
-                    // computePosition 이 afterItemId 를 못 찾아 오해성 400 을 던진다.
-                    if (afterItemId != null && afterItemId.equals(itemId)) {
+                    // 같은 day 에서 자기 자신 뒤로 = 제자리 no-op (dayItems 가 item 을 제외해 생기는 오해성 400 회피).
+                    // 다른 day 면 제자리가 아니므로 빠져나가 일반 경로를 탄다(빈 day 면 이동, 아니면 bogus anchor 400).
+                    if (afterItemId != null && afterItemId.equals(itemId) && item.getDayNumber() == targetDayNumber) {
                         return;
                     }
                     List<TourPlanItem> dayItems = itemRepo.findByPlanId(item.getPlanId()).stream()
