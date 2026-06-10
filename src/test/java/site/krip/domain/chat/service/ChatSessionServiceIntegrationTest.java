@@ -160,6 +160,34 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("revokeSessionsByTokenJti: 해당 토큰(jti) 세션만 끊고 다른 토큰 세션은 유지")
+    void revokeSessionsByTokenJtiTerminatesOnlyMatchingToken() {
+        String u = randomUser();
+        String a1 = sessionService.createSession(u, "jti-A"); // 토큰 A 기기
+        String a2 = sessionService.createSession(u, "jti-A"); // 토큰 A 재연결(같은 토큰)
+        String b1 = sessionService.createSession(u, "jti-B"); // 토큰 B 기기(다른 기기)
+
+        int revoked = sessionService.revokeSessionsByTokenJti(u, "jti-A");
+
+        assertThat(revoked).isEqualTo(2);
+        assertThat(sessionService.sessionExists(a1)).isFalse();
+        assertThat(sessionService.sessionExists(a2)).isFalse();
+        // 다른 토큰(기기)은 그대로.
+        assertThat(sessionService.sessionExists(b1)).isTrue();
+        assertThat(redis.opsForZSet().zCard(ChatRedisKeys.sessions(u))).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("revokeSessionsByTokenJti: 매칭 토큰 없으면 0, 다른 세션 무영향")
+    void revokeSessionsByTokenJtiNoMatchIsNoop() {
+        String u = randomUser();
+        String b1 = sessionService.createSession(u, "jti-B");
+
+        assertThat(sessionService.revokeSessionsByTokenJti(u, "jti-A")).isZero();
+        assertThat(sessionService.sessionExists(b1)).isTrue();
+    }
+
+    @Test
     @DisplayName("revokeAllSessions: 유저의 모든 세션 제거 후 개수 반환")
     void revokeAllSessions() {
         String u = randomUser();

@@ -101,10 +101,9 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
             return false;
         }
 
-        // jti claim 미사용 — token 앞 32자 fallback (refresh 와 동일 로직).
-        String jti = token.length() > 32 ? token.substring(0, 32) : token;
+        // 세션에 진짜 jti(UUID claim)를 실어, 로그아웃이 이 토큰의 세션만 골라 끊을 수 있게 한다.
         attributes.put(ATTR_WS_USER, userId);
-        attributes.put(ATTR_WS_JTI, jti);
+        attributes.put(ATTR_WS_JTI, parsed.jti());
         return true;
     }
 

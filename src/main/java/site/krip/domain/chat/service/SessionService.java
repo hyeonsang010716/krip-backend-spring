@@ -15,6 +15,7 @@ import site.krip.global.support.IdGenerator;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -133,6 +134,39 @@ public class SessionService {
         redis.delete(ChatRedisKeys.sess(sessionId));
         redis.delete(ChatRedisKeys.wsRoute(sessionId));
         redis.opsForZSet().remove(ChatRedisKeys.sessions(userId), sessionId);
+    }
+
+    /**
+     * 특정 토큰(jti)으로 연결된 세션만 종료 — 로그아웃. 해당 jti 의 소켓만 끊고 다른 기기(다른 토큰)는 유지한다.
+     * 세션 수(≤ {@link ChatRedisKeys#MAX_SESSIONS_PER_USER})가 작아 방별 HGET 으로 충분.
+     */
+    public int revokeSessionsByTokenJti(String userId, String tokenJti) {
+        if (tokenJti == null) {
+            return 0;
+        }
+        Set<String> sessionIds = redis.opsForZSet().range(ChatRedisKeys.sessions(userId), 0, -1);
+        if (sessionIds == null || sessionIds.isEmpty()) {
+            return 0;
+        }
+        List<String> matched = new ArrayList<>();
+        for (String sid : sessionIds) {
+            Object stored = redis.opsForHash().get(ChatRedisKeys.sess(sid), "token_jti");
+            if (stored != null && tokenJti.equals(stored.toString())) {
+                matched.add(sid);
+            }
+        }
+        for (String sid : matched) {
+            fanout.fanOutToSession(sid, Map.of("type", "session_revoked", "session_id", sid));
+        }
+        for (String sid : matched) {
+            redis.delete(ChatRedisKeys.sess(sid));
+            redis.delete(ChatRedisKeys.wsRoute(sid));
+            redis.opsForZSet().remove(ChatRedisKeys.sessions(userId), sid);
+        }
+        if (!matched.isEmpty()) {
+            log.info("로그아웃 — 토큰 세션 revoke: user_id={}, revoked_count={}", userId, matched.size());
+        }
+        return matched.size();
     }
 
     /** 유저의 모든 활성 세션 강제 종료 (회원 탈퇴 등). 오프라인이면 0. */

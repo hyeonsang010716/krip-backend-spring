@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import site.krip.domain.auth.port.UserPurgeCachePort;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.auth.RequestAttributes;
 import site.krip.global.auth.jwt.TokenRevocationService;
@@ -21,10 +22,13 @@ public class LogoutController {
 
     private final LoginCookieFactory cookieFactory;
     private final TokenRevocationService revocation;
+    private final UserPurgeCachePort chatSessions;
 
-    public LogoutController(LoginCookieFactory cookieFactory, TokenRevocationService revocation) {
+    public LogoutController(LoginCookieFactory cookieFactory, TokenRevocationService revocation,
+                            UserPurgeCachePort chatSessions) {
         this.cookieFactory = cookieFactory;
         this.revocation = revocation;
+        this.chatSessions = chatSessions;
     }
 
     @PostMapping
@@ -34,6 +38,8 @@ public class LogoutController {
         Object exp = request.getAttribute(RequestAttributes.JWT_EXP);
         if (jti instanceof String j && exp instanceof Instant e) {
             revocation.revoke(j, e);
+            // 폐기와 동시에 이 토큰의 활성 WS 세션을 즉시 종료 — 핸드셰이크는 새 연결만 막으므로.
+            chatSessions.revokeSessionsForToken(userId, j);
         }
         ResponseCookie expired = cookieFactory.expired();
         return ResponseEntity.ok()

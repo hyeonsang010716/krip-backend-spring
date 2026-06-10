@@ -312,19 +312,19 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     private void handleRefresh(WebSocketSession session, String sessionId, String userId,
                                Map<String, Object> req) {
         String token = str(req.get("token"));
-        String tokenUser;
+        JwtProvider.ParsedToken parsed;
         try {
-            tokenUser = token != null ? jwtProvider.parseUserId(token) : null;
+            parsed = token != null ? jwtProvider.parse(token) : null;
         } catch (Exception e) {
-            tokenUser = null;
+            parsed = null;
         }
-        if (tokenUser == null || !tokenUser.equals(userId)) {
+        if (parsed == null || !userId.equals(parsed.userId())) {
             safeSend(session, Map.of("type", "auth_expired"));
             closeQuietly(session, new CloseStatus(CLOSE_AUTH_EXPIRED));
             return;
         }
-        String newJti = token.length() > 32 ? token.substring(0, 32) : token;
-        sessionService.updateTokenJti(sessionId, newJti);
+        // 세션의 token_jti 를 새 토큰의 진짜 jti 로 갱신 — 로그아웃의 토큰별 종료가 refresh 이후에도 맞도록.
+        sessionService.updateTokenJti(sessionId, parsed.jti());
     }
 
     @Override

@@ -27,6 +27,19 @@ public class UserPurgeCacheService implements UserPurgeCachePort {
     }
 
     @Override
+    public void revokeSessionsForToken(String userId, String tokenJti) {
+        try {
+            int count = sessionService.revokeSessionsByTokenJti(userId, tokenJti);
+            if (count > 0) {
+                log.info("로그아웃 — chat 세션 {}개 즉시 revoke (user_id={})", count, userId);
+            }
+        } catch (Exception e) {
+            log.warn("로그아웃 — chat 세션 revoke 실패 (TTL 만료로 fallback): user_id={}, err={}",
+                    userId, e.toString());
+        }
+    }
+
+    @Override
     public void revokeAllSessions(String userId) {
         try {
             int count = sessionService.revokeAllSessions(userId);
