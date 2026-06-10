@@ -99,16 +99,24 @@ public class FcmClient {
     /** 단일 배치(≤ {@link #MAX_MULTICAST_BATCH}) 발송. 성공 수 반환, 무효 토큰은 {@code invalidOut} 에 누적. */
     private int sendBatch(List<String> tokens, Notification notification, Map<String, String> data,
                           List<String> invalidOut) {
+        // build 는 acquire 보다 먼저 — 페이로드 빌드 실패(우리 버그)는 FCM 장애가 아니고,
+        // probe 선점 후 여기서 throw 하면 probeInFlight 가 영구 고착되기 때문이다.
+        MulticastMessage message;
+        try {
+            message = MulticastMessage.builder()
+                    .addAllTokens(tokens)
+                    .setNotification(notification)
+                    .putAllData(data)
+                    .build();
+        } catch (RuntimeException e) {
+            log.warn("FCM 메시지 빌드 실패 — 서킷 미반영 (count={})", tokens.size(), e);
+            return 0;
+        }
         if (!circuit.tryAcquire()) {
             // FCM 장애로 단락 중 — 워커 스레드를 타임아웃에 묶지 않고 즉시 포기(다음 cooldown 후 probe).
             log.debug("FCM 서킷 open — 배치 단락 (count={})", tokens.size());
             return 0;
         }
-        MulticastMessage message = MulticastMessage.builder()
-                .addAllTokens(tokens)
-                .setNotification(notification)
-                .putAllData(data)
-                .build();
         BatchResponse batch;
         try {
             batch = messaging.sendEachForMulticast(message);
@@ -156,6 +164,9 @@ public class FcmClient {
             circuit.recordSuccess();
         } else if (!batch.getResponses().isEmpty()) {
             circuit.recordFailure();
+        } else {
+            // 응답 0건(이론상) — FCM 건강과 무관하므로 카운트하지 않되 probe 는 반드시 해제한다.
+            circuit.release();
         }
     }
 

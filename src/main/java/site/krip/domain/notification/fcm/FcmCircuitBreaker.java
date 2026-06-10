@@ -56,6 +56,14 @@ final class FcmCircuitBreaker {
         probeInFlight.set(false);
     }
 
+    /**
+     * probe 를 결과 기록 없이 해제 — 빌드 실패 등 FCM 건강과 무관한 중단 시.
+     * 카운터·open 상태는 불변이라 cooldown 후 다시 probe 된다. closed 상태에선 no-op.
+     */
+    void release() {
+        probeInFlight.set(false);
+    }
+
     void recordFailure() {
         // openUntil 갱신을 먼저 해야 재open 직후 probe 가 새지 않는다 — 그 후 probe 해제.
         if (consecutiveFailures.incrementAndGet() >= failureThreshold) {

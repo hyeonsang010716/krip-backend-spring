@@ -97,6 +97,24 @@ class FcmCircuitBreakerTest {
     }
 
     @Test
+    @DisplayName("release: probe 획득 후 결과 미기록(빌드 실패 등) 중단 시 probe 해제로 재probe 가능 — 영구 고착 방지")
+    void releaseFreesStuckProbe() {
+        FcmCircuitBreaker cb = breaker(3, 1000);
+        cb.recordFailure();
+        cb.recordFailure();
+        cb.recordFailure();
+        now.addAndGet(1_000_000_000L);          // cooldown 경과 — half-open
+
+        assertThat(cb.tryAcquire()).isTrue();    // probe 획득 (probeInFlight=true)
+        assertThat(cb.tryAcquire()).isFalse();   // single-flight — in-flight 동안 차단
+
+        cb.release();                            // 결과 미기록 — probe 만 해제(카운터/open 불변)
+
+        // release 없으면 probeInFlight 가 고착돼 이후 영원히 false. release 로 재probe 가능해야 한다.
+        assertThat(cb.tryAcquire()).isTrue();
+    }
+
+    @Test
     @DisplayName("cooldown 경과 직후 다수 스레드가 동시에 진입해도 probe 는 정확히 1건만 통과")
     void concurrentProbeIsSingleFlight() throws Exception {
         FcmCircuitBreaker cb = breaker(3, 1000);
