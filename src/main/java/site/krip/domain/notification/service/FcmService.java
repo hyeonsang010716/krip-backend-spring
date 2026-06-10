@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.port.UserProfileView;
 import site.krip.domain.auth.port.UserQueryPort;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
@@ -36,36 +37,47 @@ public class FcmService {
     private final UserQueryPort userQuery;
     private final FcmClient fcmClient;
     private final Clock clock;
+    private final TransactionTemplate txTemplate;
 
     public FcmService(FcmTokenRepository tokenRepo, ChatRoomMemberRepository memberRepo,
-                      UserQueryPort userQuery, FcmClient fcmClient, Clock clock) {
+                      UserQueryPort userQuery, FcmClient fcmClient, Clock clock,
+                      TransactionTemplate txTemplate) {
         this.tokenRepo = tokenRepo;
         this.memberRepo = memberRepo;
         this.userQuery = userQuery;
         this.fcmClient = fcmClient;
         this.clock = clock;
+        this.txTemplate = txTemplate;
     }
 
-    /** 디바이스 토큰 등록 — UNIQUE(token) 충돌 시 owner 교체 + updated_at 갱신(재로그인/계정 전환), race 안전. */
-    @Transactional
+    /**
+     * 디바이스 토큰 등록 — UNIQUE(token) 충돌 시 owner 교체 + updated_at 갱신(재로그인/계정 전환).
+     *
+     * <p>INSERT 가 충돌하면 그 트랜잭션은 abort 되므로 같은 트랜잭션에서 복구할 수 없다.
+     * 시도마다 독립 트랜잭션을 열어, 충돌 시 새 트랜잭션에서 재조회 후 reassign 한다(race 안전).
+     */
     public FcmTokenResponse registerToken(String userId, String token) {
+        try {
+            return txTemplate.execute(s -> doRegisterToken(userId, token));
+        } catch (DataIntegrityViolationException e) {
+            return txTemplate.execute(s -> {
+                FcmToken raced = tokenRepo.findByToken(token).orElseThrow(() -> e);
+                raced.reassign(userId);
+                tokenRepo.save(raced);
+                return new FcmTokenResponse(raced.getFcmTokenId(), raced.getCreatedAt());
+            });
+        }
+    }
+
+    private FcmTokenResponse doRegisterToken(String userId, String token) {
         FcmToken existing = tokenRepo.findByToken(token).orElse(null);
         if (existing != null) {
             existing.reassign(userId);
             tokenRepo.save(existing);
             return new FcmTokenResponse(existing.getFcmTokenId(), existing.getCreatedAt());
         }
-        try {
-            FcmToken saved = tokenRepo.saveAndFlush(new FcmToken(userId, token));
-            return new FcmTokenResponse(saved.getFcmTokenId(), saved.getCreatedAt());
-        } catch (DataIntegrityViolationException e) {
-            // 동시 등록 race — 재조회 후 재등록 처리.
-            FcmToken raced = tokenRepo.findByToken(token)
-                    .orElseThrow(() -> e);
-            raced.reassign(userId);
-            tokenRepo.save(raced);
-            return new FcmTokenResponse(raced.getFcmTokenId(), raced.getCreatedAt());
-        }
+        FcmToken saved = tokenRepo.saveAndFlush(new FcmToken(userId, token));
+        return new FcmTokenResponse(saved.getFcmTokenId(), saved.getCreatedAt());
     }
 
     /** 본인 소유만 삭제 — 없거나 타인 소유여도 멱등. */
