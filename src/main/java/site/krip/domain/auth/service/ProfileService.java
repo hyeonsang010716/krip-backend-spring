@@ -22,10 +22,13 @@ import site.krip.domain.auth.port.FeedLikeCountPort;
 import site.krip.domain.auth.port.FriendCountPort;
 import site.krip.domain.auth.repository.UserDetailInformRepository;
 import site.krip.domain.auth.repository.UserRepository;
+import site.krip.global.common.image.ImageProcessor;
+import site.krip.global.common.image.ImageUploadExecutor;
+import site.krip.global.common.image.ProcessedVariant;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.storage.StoragePrefix;
 
-import java.io.InputStream;
+import java.io.ByteArrayInputStream;
 import java.util.List;
 
 /**
@@ -45,19 +48,25 @@ public class ProfileService {
     private final FeedLikeCountPort feedLikeCountPort;
     private final FriendCountPort friendCountPort;
     private final TransactionTemplate txTemplate;
+    private final ImageProcessor imageProcessor;
+    private final ImageUploadExecutor imageUploadExecutor;
 
     public ProfileService(UserRepository userRepository,
                           UserDetailInformRepository detailRepository,
                           ObjectStorage storage,
                           FeedLikeCountPort feedLikeCountPort,
                           FriendCountPort friendCountPort,
-                          TransactionTemplate txTemplate) {
+                          TransactionTemplate txTemplate,
+                          ImageProcessor imageProcessor,
+                          ImageUploadExecutor imageUploadExecutor) {
         this.userRepository = userRepository;
         this.detailRepository = detailRepository;
         this.storage = storage;
         this.feedLikeCountPort = feedLikeCountPort;
         this.friendCountPort = friendCountPort;
         this.txTemplate = txTemplate;
+        this.imageProcessor = imageProcessor;
+        this.imageUploadExecutor = imageUploadExecutor;
     }
 
     // TODO 운영 전환 시 — 무한정 전체 조회(대규모 시 메모리/지연 위험). 커서 페이지네이션 +
@@ -119,8 +128,7 @@ public class ProfileService {
 
     // ──────────────────── 프로필 이미지 (유저당 1장) ────────────────────
 
-    public ProfileImageResponse addProfileImage(String userId, InputStream content, long contentLength,
-                                                String fileName, String contentType) {
+    public ProfileImageResponse addProfileImage(String userId, byte[] bytes) {
         // 1) 사전 검증 (짧은 읽기 트랜잭션) — 미등록 404, 이미 존재 409
         txTemplate.executeWithoutResult(status -> {
             UserDetailInform detail = detailRepository.findById(userId)
@@ -130,9 +138,8 @@ public class ProfileService {
             }
         });
 
-        // 2) S3 업로드 (트랜잭션 밖 — DB 커넥션을 외부 I/O 동안 점유하지 않음)
-        String url = storage.uploadPerm(content, contentLength, fileName, contentType,
-                StoragePrefix.profilePrefix(userId));
+        // 2) 정제 후 S3 업로드 (트랜잭션 밖 — DB 커넥션을 외부 I/O 동안 점유하지 않음)
+        String url = sanitizeAndUpload(userId, bytes);
 
         // 3) 컬럼 반영 (짧은 쓰기 트랜잭션) — 행 잠금으로 동시 추가를 직렬화. 이미 채워졌으면 방금 올린 파일 정리 후 409
         try {
@@ -152,8 +159,7 @@ public class ProfileService {
         return new ProfileImageResponse(url);
     }
 
-    public ProfileImageResponse updateProfileImage(String userId, InputStream content, long contentLength,
-                                                   String fileName, String contentType) {
+    public ProfileImageResponse updateProfileImage(String userId, byte[] bytes) {
         // 1) 사전 검증 (짧은 읽기 트랜잭션) — 기존 이미지 없으면 404
         txTemplate.executeWithoutResult(status -> {
             UserDetailInform detail = detailRepository.findById(userId)
@@ -163,9 +169,8 @@ public class ProfileService {
             }
         });
 
-        // 2) S3 업로드 (트랜잭션 밖)
-        String newUrl = storage.uploadPerm(content, contentLength, fileName, contentType,
-                StoragePrefix.profilePrefix(userId));
+        // 2) 정제 후 S3 업로드 (트랜잭션 밖)
+        String newUrl = sanitizeAndUpload(userId, bytes);
 
         // 3) 컬럼 교체 (짧은 쓰기 트랜잭션) — 행 잠금으로 동시 수정을 직렬화. 실패 시 방금 올린 파일 정리, oldUrl 캡처
         String oldUrl;
@@ -206,6 +211,15 @@ public class ProfileService {
 
         safeDelete(oldUrl, userId, "프로필 이미지 파일 삭제");
         log.info("프로필 이미지 삭제 완료 (user_id={})", userId);
+    }
+
+    /** 재인코딩(EXIF/메타데이터 제거·폴리글랏 무력화)으로 정제 후 영구 경로 업로드. content-type·확장자는 감지 포맷에서 도출. */
+    private String sanitizeAndUpload(String userId, byte[] bytes) {
+        ProcessedVariant variant = imageUploadExecutor.process(() -> imageProcessor.sanitize(bytes));
+        return storage.uploadPerm(
+                new ByteArrayInputStream(variant.data()), variant.data().length,
+                "image." + variant.fileExt(), variant.contentType(),
+                StoragePrefix.profilePrefix(userId));
     }
 
     /** 스토리지 삭제 best-effort — 실패해도 orphan 만 남기고 흐름은 진행. */

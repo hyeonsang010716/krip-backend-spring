@@ -32,7 +32,7 @@ import java.util.List;
 public class ProfileController {
 
     private static final List<String> ALLOWED_CONTENT_TYPES =
-            List.of("image/jpeg", "image/png", "image/webp", "image/gif");
+            List.of("image/jpeg", "image/png", "image/webp");
     private static final long MAX_FILE_SIZE = 5L * 1024 * 1024; // 5MB
 
     private final ProfileService profileService;
@@ -71,29 +71,19 @@ public class ProfileController {
     public ProfileImageResponse addProfileImage(@CurrentUserId String userId,
                                                 @RequestParam("file") MultipartFile file) throws IOException {
         imageValidator.validate(file, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE);
-        return profileService.addProfileImage(
-                userId, file.getInputStream(), file.getSize(), filename(file), contentType(file));
+        return profileService.addProfileImage(userId, file.getBytes());
     }
 
     @PutMapping("/image")
     public ProfileImageResponse updateProfileImage(@CurrentUserId String userId,
                                                    @RequestParam("file") MultipartFile file) throws IOException {
         imageValidator.validate(file, ALLOWED_CONTENT_TYPES, MAX_FILE_SIZE);
-        return profileService.updateProfileImage(
-                userId, file.getInputStream(), file.getSize(), filename(file), contentType(file));
+        return profileService.updateProfileImage(userId, file.getBytes());
     }
 
     @DeleteMapping("/image")
     public MessageResponse deleteProfileImage(@CurrentUserId String userId) {
         profileService.deleteProfileImage(userId);
         return new MessageResponse("프로필 이미지가 삭제되었습니다.");
-    }
-
-    private String filename(MultipartFile file) {
-        return file.getOriginalFilename() != null ? file.getOriginalFilename() : "profile";
-    }
-
-    private String contentType(MultipartFile file) {
-        return file.getContentType() != null ? file.getContentType() : "image/jpeg";
     }
 }

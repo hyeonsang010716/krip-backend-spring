@@ -13,7 +13,10 @@ import site.krip.support.FakeObjectStorage;
 import site.krip.support.FakeStorageConfig;
 import site.krip.support.IntegrationTestSupport;
 
-import java.io.ByteArrayInputStream;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -46,8 +49,8 @@ class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         CountDownLatch start = new CountDownLatch(1);
-        Callable<Object> a = () -> attempt(userId, "p1.jpg", start);
-        Callable<Object> b = () -> attempt(userId, "p2.jpg", start);
+        Callable<Object> a = () -> attempt(userId, start);
+        Callable<Object> b = () -> attempt(userId, start);
         Future<Object> fa = pool.submit(a);
         Future<Object> fb = pool.submit(b);
         start.countDown();                      // 동시 출발
@@ -75,13 +78,18 @@ class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
         assertThat(storage.stored).contains(winnerUrl);
     }
 
-    private Object attempt(String userId, String fileName, CountDownLatch start) throws Exception {
+    private Object attempt(String userId, CountDownLatch start) throws Exception {
         start.await();
         try {
-            return profileService.addProfileImage(userId,
-                    new ByteArrayInputStream(new byte[]{1, 2, 3}), 3, fileName, "image/jpeg");
+            return profileService.addProfileImage(userId, validPng());
         } catch (ProfileImageAlreadyExistsException e) {
             return e;
         }
+    }
+
+    private static byte[] validPng() throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", out);
+        return out.toByteArray();
     }
 }
