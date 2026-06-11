@@ -47,16 +47,17 @@ public final class SessionSerialExecutor {
                 return; // 이미 드레인 중 — 큐 추가만으로 순서 보존
             }
             running = true;
-        }
-        try {
-            pool.execute(this::drain);
-        } catch (RuntimeException e) {
-            // 풀 포화 — 방금 넣은 작업을 회수하고 호출측에 백프레셔 전파(거부 = 미실행 보장).
-            synchronized (this) {
+            try {
+                // execute 를 락 안에서 — running=true 와 execute 사이에 창이 없어, 그 사이 다른 스레드가 제출한
+                // 작업이 strand 되지 않는다(execute 실패 시 그 제출자가 drain 을 다시 시작하거나 reject 됨).
+                // pool 은 AbortPolicy(비차단: 큐 적재 또는 즉시 reject, drain 은 별도 스레드)라 락 보유 중 execute 가 안전.
+                pool.execute(this::drain);
+            } catch (RuntimeException e) {
+                // 풀 포화 — 방금 넣은 작업을 회수하고 호출측에 백프레셔 전파(거부 = 미실행 보장).
                 running = false;
                 queue.removeLastOccurrence(task);
+                throw e;
             }
-            throw e;
         }
     }
 
