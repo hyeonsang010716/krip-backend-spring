@@ -13,9 +13,11 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import site.krip.domain.chat.service.RoomService;
+import site.krip.global.auth.jwt.TokenRevocationService;
 import site.krip.support.IntegrationTestSupport;
 
 import java.net.URI;
+import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutionException;
@@ -42,6 +44,9 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private RoomService roomService;
+
+    @Autowired
+    private TokenRevocationService revocation;
 
     private final ObjectMapper om = new ObjectMapper();
 
@@ -127,5 +132,24 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         CollectingHandler h = new CollectingHandler();
         assertThatThrownBy(() -> connect(h, List.of("krip.chat.v1")))
                 .isInstanceOf(ExecutionException.class);
+    }
+
+    @Test
+    @DisplayName("refresh op — 폐기된 토큰이면 auth_expired 로 거절한다 (폐기 jti 재무장 차단)")
+    void refreshWithRevokedTokenRejected() throws Exception {
+        String a = fixtures.createActiveUser("ws리프레시");
+        String token = userToken(a);
+        CollectingHandler h = new CollectingHandler();
+        WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + token));
+        awaitType(h, "connected", 5000);
+
+        // 이 토큰의 jti 를 폐기한 뒤 그 토큰으로 refresh 시도 → 재무장돼선 안 된다.
+        String jti = jwtProvider.parse(token).jti();
+        revocation.revoke(jti, Instant.now().plusSeconds(3600));
+
+        session.sendMessage(new TextMessage("{\"op\":\"refresh\",\"token\":\"" + token + "\"}"));
+
+        // revocation 체크가 빠지면 auth_expired 가 안 와 타임아웃으로 실패한다.
+        awaitType(h, "auth_expired", 5000);
     }
 }

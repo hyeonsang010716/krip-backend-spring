@@ -135,16 +135,31 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("POST /logout → 200 + Set-Cookie")
-    void logout() throws Exception {
+    @DisplayName("POST /logout → 200 + Set-Cookie, 그리고 그 토큰은 폐기돼 재사용 시 401")
+    void logoutRevokesToken() throws Exception {
         String userId = fixtures.createActiveUser("로그아웃유저");
+        String token = userToken(userId); // 한 번 발급해 캡처 — 같은 jti 로 폐기·재사용을 검증
 
+        // 로그아웃 전: 토큰 정상 동작
+        mockMvc.perform(get("/api/auth/profile/me/stats")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", token))
+                .andExpect(status().isOk());
+
+        // 로그아웃 → 200 + Set-Cookie + 이 토큰의 jti 폐기
         mockMvc.perform(post("/api/auth/logout")
                         .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .header("X-Auth-Token", token))
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
                         .header().exists("Set-Cookie"))
                 .andExpect(jsonPath("$.message").exists());
+
+        // 같은 토큰 재사용 → 폐기돼 401 (revoke 가 빠지면 이 단언이 깨진다)
+        mockMvc.perform(get("/api/auth/profile/me/stats")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.detail").value("로그아웃된 토큰입니다."));
     }
 }

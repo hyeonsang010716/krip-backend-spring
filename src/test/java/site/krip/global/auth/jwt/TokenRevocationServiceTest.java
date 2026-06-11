@@ -10,7 +10,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -58,5 +62,41 @@ class TokenRevocationServiceTest {
         svc.revoke("jti3", null);
 
         verifyNoInteractions(redis);
+    }
+
+    @Test
+    @DisplayName("isRevoked: 키 존재 → true, 부재 → false")
+    void isRevokedReflectsKeyPresence() {
+        when(redis.hasKey("jwt:revoked:jtiA")).thenReturn(true);
+        when(redis.hasKey("jwt:revoked:jtiB")).thenReturn(false);
+
+        assertThat(svc.isRevoked("jtiA")).isTrue();
+        assertThat(svc.isRevoked("jtiB")).isFalse();
+    }
+
+    @Test
+    @DisplayName("isRevoked: Redis 장애 시 false(미폐기) 로 fail-open — 예외를 삼키고 인증을 막지 않는다")
+    void isRevokedFailsOpenOnRedisError() {
+        when(redis.hasKey(any())).thenThrow(new RuntimeException("redis down"));
+
+        assertThat(svc.isRevoked("jtiX")).isFalse();
+    }
+
+    @Test
+    @DisplayName("isRevoked: jti 가 null 이면 Redis 조회 없이 false")
+    void isRevokedFalseOnNullJti() {
+        assertThat(svc.isRevoked(null)).isFalse();
+        verifyNoInteractions(redis);
+    }
+
+    @Test
+    @DisplayName("revoke: Redis set 실패는 삼켜 예외를 전파하지 않는다(로그아웃이 깨지지 않게)")
+    void revokeSwallowsRedisError() {
+        when(redis.opsForValue()).thenReturn(ops);
+        doThrow(new RuntimeException("redis down")).when(ops)
+                .set(any(), any(), any(Duration.class));
+
+        assertThatCode(() -> svc.revoke("jtiY", FIXED.plusSeconds(60)))
+                .doesNotThrowAnyException();
     }
 }
