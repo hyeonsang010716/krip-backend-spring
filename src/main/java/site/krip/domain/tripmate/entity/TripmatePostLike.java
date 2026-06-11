@@ -19,7 +19,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "tripmate_post_like", indexes = {
-        @Index(name = "ix_tripmate_post_like_post_id", columnList = "post_id")
+        @Index(name = "ix_tripmate_post_like_post_created", columnList = "post_id, created_at DESC, user_id DESC")
 })
 @IdClass(TripmatePostLikeId.class)
 @Getter

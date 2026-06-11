@@ -20,13 +20,13 @@ import java.time.Instant;
 /**
  * 피드 게시물 — 이미지 1장 + visibility + caption.
  *
- * <p>URL 3종(original/small/medium) 모두 NOT NULL. 컴파운드 인덱스 {@code (user_id, visibility, created_at, post_id)} 로
- * 본인/친구/비친구 모든 페이지네이션 케이스를 reverse-scan 커버.
+ * <p>URL 3종(original/small/medium) 모두 NOT NULL. 컴파운드 인덱스 {@code (user_id, created_at DESC, post_id DESC)} 로
+ * 본인/친구/비친구 페이지네이션을 인덱스 정렬 그대로 커버하고, visibility 는 힙 필터로 처리한다(V10).
  */
 @Entity
 @Table(name = "feed_post", indexes = {
-        @Index(name = "ix_feed_post_owner_visibility_created",
-                columnList = "user_id, visibility, created_at, post_id")
+        @Index(name = "ix_feed_post_owner_created",
+                columnList = "user_id, created_at DESC, post_id DESC")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
