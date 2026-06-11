@@ -160,12 +160,20 @@ public class S3ObjectStorage implements ObjectStorage {
         } while (continuationToken != null);
     }
 
+    /**
+     * 파일명에서 안전한 확장자만 추출 — 영숫자 1~10자만 허용, 그 외(경로 traversal·특수문자·길이남용)는 무시.
+     * 현재 호출부는 모두 서버 생성 파일명({@code "image."+감지포맷})을 넘기지만, 키에 들어가는 값이라 방어한다.
+     */
     private String extension(String fileName) {
         if (fileName == null) {
             return "";
         }
         int dot = fileName.lastIndexOf('.');
-        return (dot >= 0) ? fileName.substring(dot) : "";
+        if (dot < 0) {
+            return "";
+        }
+        String ext = fileName.substring(dot + 1);
+        return ext.matches("[A-Za-z0-9]{1,10}") ? "." + ext.toLowerCase() : "";
     }
 
     private String keyFromUrl(String url) {
