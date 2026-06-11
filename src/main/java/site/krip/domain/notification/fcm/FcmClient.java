@@ -128,36 +128,47 @@ public class FcmClient {
         }
         List<SendResponse> responses = batch.getResponses();
         int successCount = batch.getSuccessCount();
-        boolean batchHadSuccess = successCount > 0;
-        boolean hasNonTokenFailure = false;
-        int invalidArgHeld = 0;
-        for (int i = 0; i < responses.size(); i++) {
-            SendResponse r = responses.get(i);
-            if (r.isSuccessful()) {
-                continue;
-            }
-            FirebaseMessagingException ex = r.getException();
-            MessagingErrorCode code = ex != null ? ex.getMessagingErrorCode() : null;
-            if (!isTokenLevelError(code)) {
-                hasNonTokenFailure = true; // 서버/전송 계열(UNAVAILABLE 등)·미상 코드 → FCM 열화 신호
-            }
-            if (isPermanentlyInvalid(code, batchHadSuccess)) {
-                invalidOut.add(tokens.get(i));
-            } else {
-                if (code == MessagingErrorCode.INVALID_ARGUMENT) {
-                    invalidArgHeld++;
+        if (responses == null || responses.isEmpty()) {
+            circuit.release(); // 응답 0건/누락 — FCM 건강과 무관, probe 만 해제
+            return successCount;
+        }
+        // 응답 처리 중 예외가 나도 probe 가 새지 않게 try 로 감싼다 — acquire(115) 후 미해제 시 half-open 영구 고착.
+        try {
+            boolean batchHadSuccess = successCount > 0;
+            boolean hasNonTokenFailure = false;
+            int invalidArgHeld = 0;
+            for (int i = 0; i < responses.size(); i++) {
+                SendResponse r = responses.get(i);
+                if (r.isSuccessful()) {
+                    continue;
                 }
-                log.warn("FCM 발송 실패 token_prefix={} error={}",
-                        tokens.get(i).substring(0, Math.min(16, tokens.get(i).length())),
-                        ex != null ? ex.getMessage() : "unknown");
+                FirebaseMessagingException ex = r.getException();
+                MessagingErrorCode code = ex != null ? ex.getMessagingErrorCode() : null;
+                if (!isTokenLevelError(code)) {
+                    hasNonTokenFailure = true; // 서버/전송 계열(UNAVAILABLE 등)·미상 코드 → FCM 열화 신호
+                }
+                if (isPermanentlyInvalid(code, batchHadSuccess)) {
+                    invalidOut.add(tokens.get(i));
+                } else {
+                    if (code == MessagingErrorCode.INVALID_ARGUMENT) {
+                        invalidArgHeld++;
+                    }
+                    log.warn("FCM 발송 실패 token_prefix={} error={}",
+                            tokens.get(i).substring(0, Math.min(16, tokens.get(i).length())),
+                            ex != null ? ex.getMessage() : "unknown");
+                }
             }
+            if (invalidArgHeld > 0) {
+                log.warn("FCM INVALID_ARGUMENT 전건 실패 — 페이로드 결함 의심, 토큰 삭제 보류 (count={})", invalidArgHeld);
+            }
+            // 서킷 반영 — (성공 수 + FCM 열화 여부)로 판정. probe 는 여기서 해제된다.
+            recordBatchOutcome(circuit, successCount, true, hasNonTokenFailure);
+            return successCount;
+        } catch (RuntimeException e) {
+            circuit.release(); // 처리 중 결함(우리측) — FCM 장애 아님, 카운터 불변·probe 만 해제
+            log.warn("FCM 응답 처리 실패 — 서킷 미반영 (count={})", tokens.size(), e);
+            return 0;
         }
-        if (invalidArgHeld > 0) {
-            log.warn("FCM INVALID_ARGUMENT 전건 실패 — 페이로드 결함 의심, 토큰 삭제 보류 (count={})", invalidArgHeld);
-        }
-        // 서킷 반영 — 루프 뒤에서 (성공 수 + FCM 열화 여부)로 판정. probe 는 여기서 해제된다.
-        recordBatchOutcome(circuit, successCount, !responses.isEmpty(), hasNonTokenFailure);
-        return successCount;
     }
 
     /**
