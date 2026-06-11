@@ -23,6 +23,7 @@ import java.util.Map;
  * <p>진실은 RDB {@code last_read_message_server_seq} + Mongo 메시지(system 제외)뿐이고,
  * {@code unread:{uid}} 해시는 재계산 가능한 캐시다. 절대 증분하지 않고 진실에서만 채운다 —
  * 읽기는 캐시 miss 인 방만 {@code countAfterSeq} 로 계산, 새 메시지는 수신자 캐시를 무효화한다.
+ * 읽기 경로는 계산~기록 사이 {@code room:seq} 가 진전되면 캐시를 폐기해 stale lost-update 를 막는다.
  * 999 캡. 모든 Redis 접근은 best-effort.
  */
 @Service
@@ -65,7 +66,11 @@ public class UnreadService {
         }
 
         Map<String, Integer> computed = new LinkedHashMap<>();
+        Map<String, Long> seqBefore = new LinkedHashMap<>();
         if (!misses.isEmpty()) {
+            for (String roomId : misses.keySet()) {
+                seqBefore.put(roomId, roomSeqSnapshot(roomId)); // 계산 전 방별 스냅샷 (lost-update 가드)
+            }
             // 캐시 miss 인 방을 단일 aggregate 로 배치 계산 — 방마다 countDocuments 치던 N+1 제거.
             try {
                 Map<String, Long> counts = messageRepo.countAfterSeqByRooms(misses);
@@ -79,6 +84,12 @@ public class UnreadService {
             }
         }
         writeCache(userId, computed);
+        // 계산~기록 사이 새 메시지로 진전된 방은 캐시 폐기 — 다음 읽기에 진실로 재계산.
+        for (String roomId : computed.keySet()) {
+            if (roomSeqSnapshot(roomId) > seqBefore.get(roomId)) {
+                clear(userId, roomId);
+            }
+        }
         return result;
     }
 
@@ -92,6 +103,7 @@ public class UnreadService {
         } catch (Exception ignore) {
             // 캐시 오류 → 계산으로 폴백
         }
+        long seqBefore = roomSeqSnapshot(roomId); // 계산 전 스냅샷 (lost-update 가드)
         long lastRead = memberRepo.findLastReadSeq(roomId, userId).orElse(0L);
         int v;
         try {
@@ -101,6 +113,9 @@ public class UnreadService {
             return 0;
         }
         writeCache(userId, Map.of(roomId, v));
+        if (roomSeqSnapshot(roomId) > seqBefore) {
+            clear(userId, roomId); // 계산~기록 사이 새 메시지 유입 — stale 캐시 폐기
+        }
         return v;
     }
 
@@ -149,6 +164,16 @@ public class UnreadService {
     private int compute(String roomId, long lastRead) {
         long raw = messageRepo.countAfterSeq(roomId, lastRead, UNREAD_COUNT_LIMIT);
         return (int) Math.min(raw, UNREAD_COUNT_CAP);
+    }
+
+    /** room:seq 스냅샷 — 변경 감지 전용(부재/오류는 0). 유일 writer 가 allocateSeq(단조 증가)라 증가=새 메시지. */
+    private long roomSeqSnapshot(String roomId) {
+        try {
+            String raw = redis.opsForValue().get(ChatRedisKeys.roomSeq(roomId));
+            return raw != null ? Long.parseLong(raw) : 0L;
+        } catch (Exception e) {
+            return 0L;
+        }
     }
 
     private Map<String, Long> loadLastReads(String userId) {
