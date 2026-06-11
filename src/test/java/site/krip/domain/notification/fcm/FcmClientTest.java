@@ -1,8 +1,6 @@
 package site.krip.domain.notification.fcm;
 
-import com.google.firebase.messaging.BatchResponse;
 import com.google.firebase.messaging.MessagingErrorCode;
-import com.google.firebase.messaging.SendResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -97,42 +95,62 @@ class FcmClientTest {
     }
 
     @Nested
-    @DisplayName("recordBatchOutcome — 건별 결과로 서킷 판정 (호출 성공 ≠ 전송 성공)")
-    class BatchOutcome {
+    @DisplayName("isTokenLevelError — FCM 건강과 무관한 토큰/클라이언트 오류 판정")
+    class TokenLevelClassification {
 
-        /** 응답 {@code total} 건 중 {@code successCount} 건 성공한 배치 결과. */
-        private static BatchResponse fakeBatch(int successCount, int total) {
-            List<SendResponse> responses = new ArrayList<>();
-            for (int i = 0; i < total; i++) {
-                responses.add(null); // recordBatchOutcome 은 크기만 본다
-            }
-            return new BatchResponse() {
-                @Override public List<SendResponse> getResponses() { return responses; }
-                @Override public int getSuccessCount() { return successCount; }
-                @Override public int getFailureCount() { return total - successCount; }
-            };
+        @Test
+        @DisplayName("UNREGISTERED·SENDER_ID_MISMATCH·INVALID_ARGUMENT 는 토큰 계열(서킷 미반영)")
+        void tokenLevelCodes() {
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.UNREGISTERED)).isTrue();
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.SENDER_ID_MISMATCH)).isTrue();
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.INVALID_ARGUMENT)).isTrue();
         }
 
         @Test
-        @DisplayName("전송은 됐지만 전건 실패한 배치가 임계치만큼 반복되면 서킷 open")
-        void allFailedBatchesOpenCircuit() {
+        @DisplayName("서버/전송 계열·미상 코드는 FCM 열화 신호(토큰 계열 아님)")
+        void serverAndUnknownCodes() {
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.UNAVAILABLE)).isFalse();
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.INTERNAL)).isFalse();
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.QUOTA_EXCEEDED)).isFalse();
+            assertThat(FcmClient.isTokenLevelError(MessagingErrorCode.THIRD_PARTY_AUTH_ERROR)).isFalse();
+            assertThat(FcmClient.isTokenLevelError(null)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("recordBatchOutcome — 건별 결과로 서킷 판정 (호출 성공 ≠ 전송 성공)")
+    class BatchOutcome {
+
+        @Test
+        @DisplayName("성공 0건 + 서버/전송 계열 실패가 임계치만큼 반복되면 서킷 open")
+        void serverFailuresOpenCircuit() {
             FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
             assertThat(cb.tryAcquire()).isTrue(); // 아직 임계치 미만
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
-            assertThat(cb.tryAcquire()).isFalse(); // 3연속 전건 실패 → open
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
+            assertThat(cb.tryAcquire()).isFalse(); // 3연속 FCM 열화 → open
+        }
+
+        @Test
+        @DisplayName("성공 0건이라도 전건 토큰 무효(UNREGISTERED 등)면 서킷에 실패로 반영 안 함 — 멀쩡한 FCM 보호")
+        void allTokenInvalidNeverOpensCircuit() {
+            FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
+            for (int i = 0; i < 10; i++) {
+                FcmClient.recordBatchOutcome(cb, 0, true, false); // 응답은 있으나 전건 토큰 무효
+            }
+            assertThat(cb.tryAcquire()).isTrue(); // 아무리 반복해도 open 되지 않음
         }
 
         @Test
         @DisplayName("성공 1건이라도 있으면 close + 실패 카운트 리셋")
         void anySuccessResetsCircuit() {
             FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
-            FcmClient.recordBatchOutcome(cb, fakeBatch(3, 10)); // 일부 성공 → 리셋
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 10));
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
+            FcmClient.recordBatchOutcome(cb, 3, true, true); // 일부 성공 → 리셋
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
+            FcmClient.recordBatchOutcome(cb, 0, true, true);
             assertThat(cb.tryAcquire()).isTrue(); // 리셋 덕분에 아직 3연속 아님
         }
 
@@ -140,7 +158,7 @@ class FcmClientTest {
         @DisplayName("응답이 없는 배치는 실패로 기록하지 않는다(no-op)")
         void emptyBatchDoesNotRecordFailure() {
             FcmCircuitBreaker cb = new FcmCircuitBreaker(1, 60_000);
-            FcmClient.recordBatchOutcome(cb, fakeBatch(0, 0));
+            FcmClient.recordBatchOutcome(cb, 0, false, false);
             assertThat(cb.tryAcquire()).isTrue();
         }
     }

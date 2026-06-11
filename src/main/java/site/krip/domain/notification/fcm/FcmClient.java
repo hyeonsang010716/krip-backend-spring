@@ -126,10 +126,10 @@ public class FcmClient {
             log.warn("FCM multicast 배치 실패 (count={})", tokens.size(), e);
             return 0;
         }
-        recordBatchOutcome(circuit, batch);
-
         List<SendResponse> responses = batch.getResponses();
-        boolean batchHadSuccess = batch.getSuccessCount() > 0;
+        int successCount = batch.getSuccessCount();
+        boolean batchHadSuccess = successCount > 0;
+        boolean hasNonTokenFailure = false;
         int invalidArgHeld = 0;
         for (int i = 0; i < responses.size(); i++) {
             SendResponse r = responses.get(i);
@@ -138,6 +138,9 @@ public class FcmClient {
             }
             FirebaseMessagingException ex = r.getException();
             MessagingErrorCode code = ex != null ? ex.getMessagingErrorCode() : null;
+            if (!isTokenLevelError(code)) {
+                hasNonTokenFailure = true; // 서버/전송 계열(UNAVAILABLE 등)·미상 코드 → FCM 열화 신호
+            }
             if (isPermanentlyInvalid(code, batchHadSuccess)) {
                 invalidOut.add(tokens.get(i));
             } else {
@@ -152,21 +155,28 @@ public class FcmClient {
         if (invalidArgHeld > 0) {
             log.warn("FCM INVALID_ARGUMENT 전건 실패 — 페이로드 결함 의심, 토큰 삭제 보류 (count={})", invalidArgHeld);
         }
-        return batch.getSuccessCount();
+        // 서킷 반영 — 루프 뒤에서 (성공 수 + FCM 열화 여부)로 판정. probe 는 여기서 해제된다.
+        recordBatchOutcome(circuit, successCount, !responses.isEmpty(), hasNonTokenFailure);
+        return successCount;
     }
 
     /**
-     * 배치 호출 결과를 서킷에 반영 — 호출이 성공해도 건별로 전건 실패할 수 있으므로(FCM 열화),
-     * 성공이 1건 이상일 때만 close 하고 응답이 있는데 전건 실패면 failure 로 기록한다.
+     * 배치 결과를 서킷에 반영 — 호출이 성공해도 건별 전건 실패할 수 있으므로(FCM 열화) 성공 0건이면
+     * 실패로 본다. 단 전건이 토큰 무효(UNREGISTERED 등)면 FCM 은 정상 응답한 것이라 실패로 치지 않는다
+     * (전부 stale 한 방 push 가 멀쩡한 FCM 의 서킷을 여는 오작동 방지).
      */
-    static void recordBatchOutcome(FcmCircuitBreaker circuit, BatchResponse batch) {
-        if (batch.getSuccessCount() > 0) {
+    static void recordBatchOutcome(FcmCircuitBreaker circuit, int successCount,
+                                   boolean hasResponses, boolean hasNonTokenFailure) {
+        if (successCount > 0) {
             circuit.recordSuccess();
-        } else if (!batch.getResponses().isEmpty()) {
-            circuit.recordFailure();
-        } else {
+        } else if (!hasResponses) {
             // 응답 0건(이론상) — FCM 건강과 무관하므로 카운트하지 않되 probe 는 반드시 해제한다.
             circuit.release();
+        } else if (hasNonTokenFailure) {
+            circuit.recordFailure();
+        } else {
+            // 전건 토큰 무효 — FCM 은 정상 응답. probe 성공 처리(half-open 이면 close).
+            circuit.recordSuccess();
         }
     }
 
@@ -188,6 +198,16 @@ public class FcmClient {
             return true;
         }
         return code == MessagingErrorCode.INVALID_ARGUMENT && batchHadSuccess;
+    }
+
+    /**
+     * 토큰/클라이언트 계열 오류 여부 — FCM 건강과 무관(서킷에 실패로 반영하지 않는다).
+     * UNREGISTERED·SENDER_ID_MISMATCH 는 죽은 토큰, INVALID_ARGUMENT 는 페이로드 결함(우리 버그)이라 모두 FCM 정상.
+     */
+    static boolean isTokenLevelError(MessagingErrorCode code) {
+        return code == MessagingErrorCode.UNREGISTERED
+                || code == MessagingErrorCode.SENDER_ID_MISMATCH
+                || code == MessagingErrorCode.INVALID_ARGUMENT;
     }
 
     /** 발송 결과 — 성공 수 + 무효 토큰(즉시 정리 대상). */
