@@ -338,6 +338,56 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("카드 이동 — 같은 슬롯 반복 삽입으로 position 갭이 붕괴해도 재정규화로 계속 성공·순서 보존")
+    void moveItemRenormalizesOnGapCollapse() throws Exception {
+        String userId = fixtures.createActiveUser();
+        String planId = createPlan(userId, "갭 붕괴", 1, seedPlace("c0", "addr0"));
+
+        String c0 = objectMapper.readTree(mockMvc.perform(get("/api/tour/plans/" + planId)
+                                .header("Authorization", bearer())
+                                .header("X-Auth-Token", userToken(userId)))
+                        .andReturn().getResponse().getContentAsString())
+                .get("items").get(0).get("item_id").asText();
+        String c1 = addCard(planId, userId, seedPlace("c1", "addr1"));
+        String c2 = addCard(planId, userId, seedPlace("c2", "addr2"));
+
+        // c1/c2 를 번갈아 "c0 바로 뒤"로 이동 — 매번 c0 와 후속 사이 갭이 절반으로 줄어 ~51회째 double 표현 한계.
+        // 붕괴 후 retry 가 같은 충돌값만 재계산하면 400 이지만, day 재정규화 폴백이 끼어 계속 200 이어야 한다.
+        for (int i = 0; i < 60; i++) {
+            String moving = (i % 2 == 0) ? c2 : c1;
+            mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + moving + "/move")
+                            .header("Authorization", bearer())
+                            .header("X-Auth-Token", userToken(userId))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"target_day_number\": 1, \"after_item_id\": \"" + c0 + "\"}"))
+                    .andExpect(status().isOk());
+        }
+
+        // 최종: 3장 보존, 마지막 이동(i=59→c1)이 c0 바로 뒤 → 순서 [c0, c1, c2], 모두 day1.
+        mockMvc.perform(get("/api/tour/plans/" + planId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(3))
+                .andExpect(jsonPath("$.items[0].item_id").value(c0))
+                .andExpect(jsonPath("$.items[1].item_id").value(c1))
+                .andExpect(jsonPath("$.items[2].item_id").value(c2))
+                .andExpect(jsonPath("$.items[2].day_number").value(1));
+    }
+
+    /** day1 끝에 카드 추가 후 item_id 반환. */
+    private String addCard(String planId, String userId, String placeId) throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"day_number\": 1, \"place_id\": \"" + placeId + "\", \"visit_time\": \"10:00\"}"))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return objectMapper.readTree(res.getResponse().getContentAsString()).get("item_id").asText();
+    }
+
+    @Test
     @DisplayName("카드 추가 — day_number 가 travel_days 범위 초과 → 400")
     void addItemDayOutOfRange() throws Exception {
         String userId = fixtures.createActiveUser();

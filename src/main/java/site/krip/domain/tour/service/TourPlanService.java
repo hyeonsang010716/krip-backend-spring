@@ -21,6 +21,7 @@ import site.krip.domain.tour.repository.TourPlanRepository;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.share.ShareTokenProvider;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -265,9 +266,7 @@ public class TourPlanService {
                             .filter(i -> i.getDayNumber() == targetDayNumber
                                     && !i.getItemId().equals(item.getItemId()))
                             .toList();
-                    double newPos = computePosition(dayItems, afterItemId);
-
-                    item.moveTo(targetDayNumber, newPos);
+                    placeInDay(item, dayItems, targetDayNumber, afterItemId);
                     plan.touch();
                     itemRepo.flush();
                 });
@@ -297,26 +296,64 @@ public class TourPlanService {
     // ──────────────────── position 계산 / 조회 헬퍼 ────────────────────
 
     /**
-     * day_items(position ASC) 중 after_item_id 다음 자리의 position 계산.
-     * 빈 day → SPACING / after=null → first/2 / 마지막 뒤 → last+SPACING / 그 외 → 두 이웃 평균.
+     * item 을 targetDay 의 after_item_id 다음 자리에 배치(dayItems 는 position ASC, item 제외).
+     * 분수 position 으로 단건 갱신하되, 빈틈이 double 로 표현 불가하게 붕괴했으면 그 day 를 재정규화한다
+     * (1024→512→… 반복 맨앞삽입·이웃 평균 고갈 시 retry 가 같은 충돌값만 재계산하던 비복구 케이스 차단).
      */
-    private static double computePosition(List<TourPlanItem> dayItems, String afterItemId) {
+    private void placeInDay(TourPlanItem item, List<TourPlanItem> dayItems, int targetDay, String afterItemId) {
         if (dayItems.isEmpty()) {
-            return POSITION_SPACING;
+            item.moveTo(targetDay, POSITION_SPACING); // 빈 day — afterItemId 무시(타 day 자기이동 등 정상 이동)
+            return;
         }
+        int insertIdx = resolveInsertIndex(dayItems, afterItemId);
+        Double pos = fractionalPosition(dayItems, insertIdx);
+        if (pos != null) {
+            item.moveTo(targetDay, pos);
+            return;
+        }
+        renormalizeAndPlace(item, dayItems, targetDay, insertIdx);
+    }
+
+    /** 삽입 인덱스: after=null → 맨 앞(0), after=X → X 다음(idx+1). anchor 없으면 400. */
+    private static int resolveInsertIndex(List<TourPlanItem> dayItems, String afterItemId) {
         if (afterItemId == null) {
-            return dayItems.get(0).getPosition() / 2;
+            return 0;
         }
         for (int idx = 0; idx < dayItems.size(); idx++) {
-            TourPlanItem it = dayItems.get(idx);
-            if (it.getItemId().equals(afterItemId)) {
-                if (idx == dayItems.size() - 1) {
-                    return it.getPosition() + POSITION_SPACING;
-                }
-                return (it.getPosition() + dayItems.get(idx + 1).getPosition()) / 2;
+            if (dayItems.get(idx).getItemId().equals(afterItemId)) {
+                return idx + 1;
             }
         }
         throw ApiException.badRequest("after_item_id 가 해당 day 에 없습니다: " + afterItemId);
+    }
+
+    /** insertIdx 자리의 분수 position(dayItems 비어있지 않음). 표현 가능한 빈틈이 없으면 null(→ 재정규화 필요). */
+    private static Double fractionalPosition(List<TourPlanItem> dayItems, int insertIdx) {
+        if (insertIdx == 0) {
+            double p = dayItems.get(0).getPosition() / 2;
+            return p > 0 ? p : null;
+        }
+        if (insertIdx == dayItems.size()) {
+            return dayItems.get(dayItems.size() - 1).getPosition() + POSITION_SPACING;
+        }
+        double a = dayItems.get(insertIdx - 1).getPosition();
+        double b = dayItems.get(insertIdx).getPosition();
+        double mid = (a + b) / 2;
+        return (mid > a && mid < b) ? mid : null;
+    }
+
+    /**
+     * day 전체를 기존 최댓값 위로 SPACING 간격 재배치하며 item 을 insertIdx 에 삽입.
+     * 새 값이 전부 기존 최댓값 초과라 재배치 중 어떤 기존 position 과도 안 겹쳐 UNIQUE 충돌이 없다(단일 패스).
+     */
+    private void renormalizeAndPlace(TourPlanItem item, List<TourPlanItem> dayItems, int targetDay, int insertIdx) {
+        List<TourPlanItem> ordered = new ArrayList<>(dayItems);
+        ordered.add(insertIdx, item);
+        double p = dayItems.isEmpty() ? 0 : dayItems.get(dayItems.size() - 1).getPosition();
+        for (TourPlanItem it : ordered) {
+            p += POSITION_SPACING;
+            it.moveTo(targetDay, p);
+        }
     }
 
     private TourPlan findOwnedPlan(String planId, String userId, String forbiddenMessage) {
