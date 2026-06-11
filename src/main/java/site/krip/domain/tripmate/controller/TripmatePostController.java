@@ -84,10 +84,13 @@ public class TripmatePostController {
                                         @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String keyword,
                                         @RequestParam(value = "cursor", required = false) String cursor) {
         // @NotBlank 로 공백·빈 검색어 거부 (LIKE '%%' 전체조회·빈 검색기록 저장 방지).
-        try {
-            searchHistoryService.saveSearch(userId, keyword);
-        } catch (Exception e) {
-            log.warn("검색 기록 저장 실패: user_id={}, keyword={}", userId, keyword);
+        // 첫 페이지에서만 저장 — '더보기'마다 갱신하면 created_at 이 검색이 아닌 스크롤 시점을 반영.
+        if (cursor == null || cursor.isBlank()) {
+            try {
+                searchHistoryService.saveSearch(userId, keyword);
+            } catch (Exception e) {
+                log.warn("검색 기록 저장 실패: user_id={}, keyword={}", userId, keyword);
+            }
         }
         return postService.searchPosts(keyword, cursor, userId);
     }
