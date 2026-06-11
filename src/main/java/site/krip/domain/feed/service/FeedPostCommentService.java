@@ -79,14 +79,18 @@ public class FeedPostCommentService {
     @Transactional(readOnly = true)
     public CommentListResponse listComments(String viewerId, String postId, String cursor) {
         FeedPost post = access.loadViewablePost(viewerId, postId).post();
-        PageRequest page = PageRequest.of(0, FeedPostCommentRepository.PAGE_SIZE);
-        List<FeedPostComment> comments;
+        // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
+        PageRequest page = PageRequest.of(0, FeedPostCommentRepository.PAGE_SIZE + 1);
+        List<FeedPostComment> fetched;
         if (cursor == null) {
-            comments = commentRepo.findByPostFirstPage(post.getPostId(), page);
+            fetched = commentRepo.findByPostFirstPage(post.getPostId(), page);
         } else {
             KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-            comments = commentRepo.findByPostAfterCursor(post.getPostId(), c.sortKey(), c.id(), page);
+            fetched = commentRepo.findByPostAfterCursor(post.getPostId(), c.sortKey(), c.id(), page);
         }
+        boolean hasMore = fetched.size() > FeedPostCommentRepository.PAGE_SIZE;
+        List<FeedPostComment> comments = hasMore
+                ? fetched.subList(0, FeedPostCommentRepository.PAGE_SIZE) : fetched;
 
         List<String> userIds = comments.stream().map(FeedPostComment::getUserId).distinct().toList();
         Map<String, UserProfileView> profiles = userQuery.findProfiles(userIds);
@@ -97,8 +101,7 @@ public class FeedPostCommentService {
                     p != null ? p.profileImageUrl() : null);
         }).toList();
 
-        FeedPostComment last = comments.size() == FeedPostCommentRepository.PAGE_SIZE
-                ? comments.get(comments.size() - 1) : null;
+        FeedPostComment last = hasMore ? comments.get(comments.size() - 1) : null;
         String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getCommentId());
         return new CommentListResponse(items, nextCursor);
     }

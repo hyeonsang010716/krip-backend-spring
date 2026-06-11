@@ -112,21 +112,24 @@ public class UserBlockService {
 
     @Transactional(readOnly = true)
     public UserBlockListResponse getBlockedUsers(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
-        List<UserBlock> items;
+        // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
+        Pageable p = PageRequest.of(0, PAGE_SIZE + 1, PAGE_SORT);
+        List<UserBlock> fetched;
         if (cursor == null || cursor.isBlank()) {
-            items = userBlockRepository.findBlocksFirstPage(userId, p);
+            fetched = userBlockRepository.findBlocksFirstPage(userId, p);
         } else {
             // 커서에 (createdAt, blockId)를 담아 디코딩 — 경계 행을 재조회하지 않아 그 행 삭제 시에도 안 잘린다.
             KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-            items = userBlockRepository.findBlocksAfterCursor(userId, c.sortKey(), c.id(), p);
+            fetched = userBlockRepository.findBlocksAfterCursor(userId, c.sortKey(), c.id(), p);
         }
+        boolean hasMore = fetched.size() > PAGE_SIZE;
+        List<UserBlock> items = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
 
         List<UserBlockResponse> dtos = items.stream()
                 .map(b -> new UserBlockResponse(
                         b.getBlockId(), FriendPeerResponse.from(b.getBlocked()), b.getCreatedAt()))
                 .toList();
-        UserBlock last = items.size() == PAGE_SIZE ? items.get(items.size() - 1) : null;
+        UserBlock last = hasMore ? items.get(items.size() - 1) : null;
         String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getBlockId());
         return new UserBlockListResponse(dtos, nextCursor);
     }

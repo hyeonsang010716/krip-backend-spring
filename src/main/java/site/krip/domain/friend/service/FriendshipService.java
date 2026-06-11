@@ -34,6 +34,8 @@ import java.util.List;
 public class FriendshipService {
 
     private static final int PAGE_SIZE = 30;
+    // hasMore 판정용 +1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
+    private static final int FETCH_SIZE = PAGE_SIZE + 1;
     private static final Sort PAGE_SORT =
             Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("friendshipId"));
 
@@ -180,7 +182,7 @@ public class FriendshipService {
 
     @Transactional(readOnly = true)
     public FriendshipListResponse getFriends(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
+        Pageable p = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
                 ? friendshipRepository.findFriendsFirstPage(userId, FriendshipStatus.ACCEPTED, p)
                 : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findFriendsAfterCursor(
@@ -190,7 +192,7 @@ public class FriendshipService {
 
     @Transactional(readOnly = true)
     public FriendshipListResponse getReceivedRequests(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
+        Pageable p = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
                 ? friendshipRepository.findReceivedFirstPage(userId, FriendshipStatus.PENDING, p)
                 : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findReceivedAfterCursor(
@@ -200,7 +202,7 @@ public class FriendshipService {
 
     @Transactional(readOnly = true)
     public FriendshipListResponse getSentRequests(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
+        Pageable p = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
                 ? friendshipRepository.findSentFirstPage(userId, FriendshipStatus.PENDING, p)
                 : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findSentAfterCursor(
@@ -217,11 +219,13 @@ public class FriendshipService {
 
     // ──────────────────── 내부 변환 ────────────────────
 
-    private FriendshipListResponse buildListResponse(List<Friendship> items, String viewerId) {
+    private FriendshipListResponse buildListResponse(List<Friendship> fetched, String viewerId) {
+        boolean hasMore = fetched.size() > PAGE_SIZE;
+        List<Friendship> items = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
         List<FriendshipResponse> dtos = items.stream()
                 .map(f -> toResponse(f, viewerId, peerOf(f, viewerId)))
                 .toList();
-        Friendship last = items.size() == PAGE_SIZE ? items.get(items.size() - 1) : null;
+        Friendship last = hasMore ? items.get(items.size() - 1) : null;
         String nextCursor = last == null ? null : KeysetCursor.encode(last.getUpdatedAt(), last.getFriendshipId());
         return new FriendshipListResponse(dtos, nextCursor);
     }
