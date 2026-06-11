@@ -191,7 +191,8 @@ public class FeedPostService {
         if (visibilities.isEmpty()) {
             return List.of();
         }
-        PageRequest page = PageRequest.of(0, FeedPostRepository.PAGE_SIZE);
+        // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
+        PageRequest page = PageRequest.of(0, FeedPostRepository.PAGE_SIZE + 1);
         if (cursor == null) {
             return feedPostRepo.findByOwnerFirstPage(ownerId, visibilities, viewerId, page);
         }
@@ -199,8 +200,10 @@ public class FeedPostService {
         return feedPostRepo.findByOwnerAfterCursor(ownerId, visibilities, viewerId, c.sortKey(), c.id(), page);
     }
 
-    private static FeedPostListResponse toListResponse(List<FeedPostRow> rows) {
-        FeedPostRow last = rows.size() == FeedPostRepository.PAGE_SIZE ? rows.get(rows.size() - 1) : null;
+    private static FeedPostListResponse toListResponse(List<FeedPostRow> fetched) {
+        boolean hasMore = fetched.size() > FeedPostRepository.PAGE_SIZE;
+        List<FeedPostRow> rows = hasMore ? fetched.subList(0, FeedPostRepository.PAGE_SIZE) : fetched;
+        FeedPostRow last = hasMore ? rows.get(rows.size() - 1) : null;
         String nextCursor = last == null ? null
                 : KeysetCursor.encode(last.post().getCreatedAt(), last.post().getPostId());
         return new FeedPostListResponse(rows.stream().map(FeedPostResponse::from).toList(), nextCursor);
