@@ -304,8 +304,9 @@ public class FanoutService {
         WebSocketSession target = deliveryTarget(ws);
         try {
             String json = mapper.writeValueAsString(payload);
-            // 데코레이터가 동시 send 직렬화·상한을 보장하지만, 인라인 폴백을 대비해 세션 단위 락도 유지.
-            synchronized (target) {
+            // raw 세션 모니터로 직렬화 — 핸들러의 sendPing/safeSend(둘 다 synchronized(rawSession))와 상호배제해야
+            // 같은 소켓에 동시 write(IllegalStateException)가 안 난다. write 는 상한 데코레이터를 통해 보낸다.
+            synchronized (ws) {
                 target.sendMessage(new TextMessage(json));
             }
         } catch (IOException | SessionLimitExceededException e) {
