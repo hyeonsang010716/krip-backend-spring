@@ -49,6 +49,8 @@ public class TripmatePostService {
 
     private static final Logger log = LoggerFactory.getLogger(TripmatePostService.class);
     private static final int PAGE_SIZE = 30;
+    // hasMore 판정용 +1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
+    private static final int FETCH_SIZE = PAGE_SIZE + 1;
     private static final Sort PAGE_SORT =
             Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("postId"));
     /** 작성자 닉네임 부분일치 상한 — 동명 다수 시 검색 작성자 분기를 이 수로 제한. */
@@ -153,7 +155,7 @@ public class TripmatePostService {
         // 동명 부분일치가 한도를 넘으면 일부 작성자는 제외(검색 한정 동작). 빈 결과는 sentinel 로 IN 무매칭 처리.
         List<String> authorIds = userQuery.findUserIdsByNameLike(pattern, AUTHOR_NAME_MATCH_LIMIT);
         Collection<String> authorIdParam = authorIds.isEmpty() ? NO_AUTHOR_MATCH : authorIds;
-        Pageable pageable = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
+        Pageable pageable = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<TripmatePost> posts;
         if (cursor == null || cursor.isBlank()) {
             posts = postRepository.searchFirstPage(pattern, authorIdParam, userId, pageable);
@@ -283,7 +285,7 @@ public class TripmatePostService {
     }
 
     private List<TripmatePost> fetchDisplayedPage(String cursor, String viewerId) {
-        Pageable pageable = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
+        Pageable pageable = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         if (cursor == null || cursor.isBlank()) {
             return postRepository.findDisplayedFirstPage(viewerId, pageable);
         }
@@ -291,10 +293,13 @@ public class TripmatePostService {
         return postRepository.findDisplayedAfterCursor(c.sortKey(), c.id(), viewerId, pageable);
     }
 
-    private PostListResponse buildListResponse(List<TripmatePost> posts, String userId) {
-        if (posts.isEmpty()) {
+    private PostListResponse buildListResponse(List<TripmatePost> fetched, String userId) {
+        if (fetched.isEmpty()) {
             return new PostListResponse(List.of(), null);
         }
+        // FETCH_SIZE(=PAGE_SIZE+1) 로 가져왔으므로 초과분 존재 여부가 곧 hasMore. 초과분은 잘라 응답.
+        boolean hasMore = fetched.size() > PAGE_SIZE;
+        List<TripmatePost> posts = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
         List<String> ids = posts.stream().map(TripmatePost::getPostId).toList();
 
         Map<String, Long> counts = new HashMap<>();
@@ -308,8 +313,8 @@ public class TripmatePostService {
                         liked.contains(p.getPostId())))
                 .toList();
 
-        TripmatePost last = posts.size() == PAGE_SIZE ? posts.get(posts.size() - 1) : null;
-        String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getPostId());
+        TripmatePost last = posts.get(posts.size() - 1);
+        String nextCursor = hasMore ? KeysetCursor.encode(last.getCreatedAt(), last.getPostId()) : null;
         return new PostListResponse(dtos, nextCursor);
     }
 
