@@ -82,17 +82,40 @@ public class FanoutService {
 
     // ──────────────────── 등록/해제 (로컬 전용) ────────────────────
 
+    /**
+     * key→Set 에 ws 를 원자적으로 추가/제거. add 와 "비면 key 제거"를 둘 다 {@code compute}(키별 락) 안에서 하여
+     * 상호배제 — 동시 register/unregister 시 빈-set 제거가 갓 추가된 live 세션의 key 를 날려버리는 race 를 막는다.
+     * (Set 은 ConcurrentHashMap.newKeySet — 읽기측 {@code List.copyOf} 가 compute 밖에서 약-일관 순회.)
+     */
+    private static void addToSet(Map<String, Set<WebSocketSession>> map, String key, WebSocketSession ws) {
+        map.compute(key, (k, set) -> {
+            Set<WebSocketSession> s = (set != null) ? set : ConcurrentHashMap.newKeySet();
+            s.add(ws);
+            return s;
+        });
+    }
+
+    private static void removeFromSet(Map<String, Set<WebSocketSession>> map, String key, WebSocketSession ws) {
+        map.compute(key, (k, set) -> {
+            if (set == null) {
+                return null;
+            }
+            set.remove(ws);
+            return set.isEmpty() ? null : set;
+        });
+    }
+
     public void registerSession(WebSocketSession ws) {
         String sid = sessionId(ws);
         localWsBySession.put(sid, ws);
-        userSubs.computeIfAbsent(userId(ws), k -> ConcurrentHashMap.newKeySet()).add(ws);
+        addToSet(userSubs, userId(ws), ws);
         // 전송 상한 데코레이터 + 세션 직렬 실행기 — fan-out 송신을 폴 스레드에서 분리하고 느린 소켓을 차단.
         deliveryDecorated.put(sid, new ConcurrentWebSocketSessionDecorator(ws, sendTimeLimitMs, sendBufferBytes));
         deliveryExecutors.put(sid, new SessionSerialExecutor(deliveryPool, deliverySessionMaxQueued));
     }
 
     public void registerWsToRoom(WebSocketSession ws, String roomId) {
-        roomSubs.computeIfAbsent(roomId, k -> ConcurrentHashMap.newKeySet()).add(ws);
+        addToSet(roomSubs, roomId, ws);
         rooms(ws).add(roomId);
     }
 
@@ -105,24 +128,12 @@ public class FanoutService {
             deliveryExecutors.remove(sid);
         }
         if (uid != null) {
-            Set<WebSocketSession> set = userSubs.get(uid);
-            if (set != null) {
-                set.remove(ws);
-                if (set.isEmpty()) {
-                    userSubs.remove(uid);
-                }
-            }
+            removeFromSet(userSubs, uid, ws);
         }
         Set<String> subscribed = rooms(ws);
         if (subscribed != null) {
             for (String roomId : List.copyOf(subscribed)) {
-                Set<WebSocketSession> set = roomSubs.get(roomId);
-                if (set != null) {
-                    set.remove(ws);
-                    if (set.isEmpty()) {
-                        roomSubs.remove(roomId);
-                    }
-                }
+                removeFromSet(roomSubs, roomId, ws);
             }
         }
     }
@@ -212,18 +223,12 @@ public class FanoutService {
         if (affected == null || affected.isEmpty()) {
             return;
         }
-        Set<WebSocketSession> roomSet = roomSubs.get(roomId);
         for (WebSocketSession ws : List.copyOf(affected)) {
             Set<String> r = rooms(ws);
             if (r != null) {
                 r.remove(roomId);
             }
-            if (roomSet != null) {
-                roomSet.remove(ws);
-            }
-        }
-        if (roomSet != null && roomSet.isEmpty()) {
-            roomSubs.remove(roomId);
+            removeFromSet(roomSubs, roomId, ws);
         }
     }
 

@@ -13,7 +13,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -136,5 +144,71 @@ class FanoutServiceTest {
         fanout.fanOutToRoom("room-1", payload("message.new", null));
 
         assertThat(captured.get(ws)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("동시 register/unregister 경합 — 갓 등록한 세션이 userSubs 에서 누락(orphan)되지 않는다")
+    void concurrentRegisterUnregisterNoOrphan() throws Exception {
+        // 같은 user 의 세션을 여러 스레드가 동시에 register/unregister. 막 등록한 세션은 fanOutToUser 가 반드시
+        // 닿아야 한다 — 닿지 않으면 빈-set 키 제거 race 로 live 세션이 userSubs 에서 누락된 것(orphan).
+        String uid = "race-user";
+        Map<WebSocketSession, Set<String>> recvByWs = new ConcurrentHashMap<>();
+        AtomicInteger marker = new AtomicInteger();
+        AtomicReference<String> violation = new AtomicReference<>();
+
+        int threads = 6;
+        int iters = 400;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+        for (int t = 0; t < threads; t++) {
+            pool.execute(() -> {
+                try {
+                    start.await();
+                    for (int i = 0; i < iters && violation.get() == null; i++) {
+                        WebSocketSession ws = raceSession(uid, recvByWs);
+                        fanout.registerSession(ws);
+                        String mk = "m" + marker.incrementAndGet();
+                        fanout.fanOutToUser(uid, Map.of("type", mk));
+                        boolean got = recvByWs.getOrDefault(ws, Set.of()).stream()
+                                .anyMatch(j -> j.contains("\"type\":\"" + mk + "\""));
+                        if (!got) {
+                            violation.compareAndSet(null, "registered session missed fan-out: " + mk);
+                        }
+                        fanout.unregisterWs(ws);
+                    }
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } finally {
+                    done.countDown();
+                }
+            });
+        }
+        start.countDown();
+        assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+        assertThat(violation.get()).isNull();
+        pool.shutdownNow();
+    }
+
+    /** 고유 sessionId + 공유 uid 를 가진 mock 세션. 수신 메시지를 thread-safe set 에 적재. */
+    private WebSocketSession raceSession(String uid, Map<WebSocketSession, Set<String>> recvByWs) {
+        WebSocketSession ws = mock(WebSocketSession.class);
+        Map<String, Object> attrs = new ConcurrentHashMap<>();
+        attrs.put(FanoutService.ATTR_SESSION_ID, "s-" + UUID.randomUUID());
+        attrs.put(FanoutService.ATTR_USER_ID, uid);
+        attrs.put(FanoutService.ATTR_ROOMS, ConcurrentHashMap.newKeySet());
+        when(ws.getAttributes()).thenReturn(attrs);
+        when(ws.isOpen()).thenReturn(true);
+        Set<String> recv = ConcurrentHashMap.newKeySet();
+        recvByWs.put(ws, recv);
+        try {
+            doAnswer(inv -> {
+                recv.add(((TextMessage) inv.getArgument(0)).getPayload());
+                return null;
+            }).when(ws).sendMessage(any());
+        } catch (Exception ignored) {
+            // mock 설정엔 체크예외가 실제로 발생하지 않음
+        }
+        return ws;
     }
 }
