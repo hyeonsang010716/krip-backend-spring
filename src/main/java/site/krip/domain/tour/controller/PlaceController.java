@@ -1,6 +1,8 @@
 package site.krip.domain.tour.controller;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import org.slf4j.Logger;
@@ -59,8 +61,12 @@ public class PlaceController {
 
     @GetMapping
     public PlaceListResponse getPlaces(@CurrentUserId String userId,
-                                       @RequestParam(required = false) Double lat,
-                                       @RequestParam(required = false) Double lng,
+                                       @RequestParam(required = false)
+                                       @DecimalMin(value = "-90", message = "위도는 -90 ~ 90 사이여야 합니다.")
+                                       @DecimalMax(value = "90", message = "위도는 -90 ~ 90 사이여야 합니다.") Double lat,
+                                       @RequestParam(required = false)
+                                       @DecimalMin(value = "-180", message = "경도는 -180 ~ 180 사이여야 합니다.")
+                                       @DecimalMax(value = "180", message = "경도는 -180 ~ 180 사이여야 합니다.") Double lng,
                                        @RequestParam(required = false)
                                        @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String keyword,
                                        @RequestParam(required = false) String cursor,
