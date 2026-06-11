@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.repository;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -7,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 import site.krip.domain.tripmate.entity.TripmatePostLike;
 import site.krip.domain.tripmate.entity.TripmatePostLikeId;
 
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -23,8 +25,19 @@ public interface TripmatePostLikeRepository extends JpaRepository<TripmatePostLi
     @Query("delete from TripmatePostLike l where l.userId = :userId and l.postId = :postId")
     int deleteByUserIdAndPostId(@Param("userId") String userId, @Param("postId") String postId);
 
-    @Query("select l.userId from TripmatePostLike l where l.postId = :postId order by l.createdAt desc")
-    List<String> findUserIdsByPostId(@Param("postId") String postId);
+    /** 게시글 좋아요 유저 첫 페이지 — (created_at, user_id) desc keyset 정렬. */
+    @Query("select l from TripmatePostLike l where l.postId = :postId "
+            + "order by l.createdAt desc, l.userId desc")
+    List<TripmatePostLike> findLikesFirstPage(@Param("postId") String postId, Pageable pageable);
+
+    /** 커서 이후 페이지 — 경계 행을 재조회하지 않아 동시 삭제에도 안 잘린다. */
+    @Query("select l from TripmatePostLike l where l.postId = :postId "
+            + "and (l.createdAt < :cursorAt or (l.createdAt = :cursorAt and l.userId < :cursorUserId)) "
+            + "order by l.createdAt desc, l.userId desc")
+    List<TripmatePostLike> findLikesAfterCursor(@Param("postId") String postId,
+                                                @Param("cursorAt") Instant cursorAt,
+                                                @Param("cursorUserId") String cursorUserId,
+                                                Pageable pageable);
 
     /** 여러 게시글의 좋아요 수 집계 (목록/검색 일괄). */
     @Query("select l.postId as postId, count(l) as cnt from TripmatePostLike l "

@@ -154,7 +154,8 @@ public class TripmatePostController {
     }
 
     @GetMapping("/{post_id}/likes")
-    public LikedUsersResponse getLikedUsers(@CurrentUserId String userId, @PathVariable("post_id") String postId) {
-        return new LikedUsersResponse(postId, likeService.getLikedUserIds(userId, postId));
+    public LikedUsersResponse getLikedUsers(@CurrentUserId String userId, @PathVariable("post_id") String postId,
+                                            @RequestParam(value = "cursor", required = false) String cursor) {
+        return likeService.getLikedUsers(userId, postId, cursor);
     }
 }

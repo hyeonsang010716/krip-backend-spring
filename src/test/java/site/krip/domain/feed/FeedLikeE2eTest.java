@@ -1,7 +1,9 @@
 package site.krip.domain.feed;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import site.krip.domain.feed.entity.FeedVisibility;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -15,6 +17,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 경로: {@code /api/feed/posts/{postId}/like[s]}. 게시물은 리포지토리로 직접 시드(S3 우회).
  */
 class FeedLikeE2eTest extends FeedTestSupport {
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("좋아요 추가(201)→중복(400)→목록→취소(200)→재취소(400)")
@@ -93,5 +98,40 @@ class FeedLikeE2eTest extends FeedTestSupport {
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(userId)))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("좋아요 목록 커서 페이지네이션 — 31명: 첫 페이지 30명+커서, 다음 페이지 1명+null 커서")
+    void likedUsersPaginates() throws Exception {
+        String owner = fixtures.createActiveUser("페이지작성자");
+        String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
+
+        // 31명 좋아요 — tight loop 라 created_at 이 겹쳐 (created_at, user_id) tiebreak 까지 검증된다.
+        for (int i = 0; i < 31; i++) {
+            String liker = fixtures.createActiveUser("좋아요" + i);
+            mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
+                            .header("Authorization", bearer())
+                            .header("X-Auth-Token", userToken(liker)))
+                    .andExpect(status().isCreated());
+        }
+
+        // 첫 페이지 — 30명 + next_cursor 존재
+        String body = mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(30))
+                .andExpect(jsonPath("$.next_cursor").isNotEmpty())
+                .andReturn().getResponse().getContentAsString();
+        String cursor = objectMapper.readTree(body).get("next_cursor").asText();
+
+        // 다음 페이지 — 남은 1명 + next_cursor null(마지막 페이지)
+        mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
+                        .param("cursor", cursor)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(1))
+                .andExpect(jsonPath("$.next_cursor").isEmpty());
     }
 }

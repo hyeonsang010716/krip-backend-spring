@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import site.krip.domain.feed.dto.response.LikeResponse;
@@ -39,7 +40,8 @@ public class FeedLikeController {
     }
 
     @GetMapping("/{post_id}/likes")
-    public LikedUsersResponse getLikedUsers(@CurrentUserId String viewerId, @PathVariable("post_id") String postId) {
-        return likeService.getLikedUsers(viewerId, postId);
+    public LikedUsersResponse getLikedUsers(@CurrentUserId String viewerId, @PathVariable("post_id") String postId,
+                                            @RequestParam(value = "cursor", required = false) String cursor) {
+        return likeService.getLikedUsers(viewerId, postId, cursor);
     }
 }

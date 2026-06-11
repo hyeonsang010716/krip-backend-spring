@@ -1,17 +1,21 @@
 package site.krip.domain.tripmate.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.auth.port.UserProfileView;
 import site.krip.domain.auth.port.UserQueryPort;
+import site.krip.domain.tripmate.dto.response.LikedUsersResponse;
 import site.krip.domain.tripmate.entity.TripmatePost;
 import site.krip.domain.tripmate.entity.TripmatePostLike;
 import site.krip.domain.tripmate.port.TripmateNotificationPort;
 import site.krip.domain.tripmate.repository.TripmatePostLikeRepository;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.AfterCommit;
+import site.krip.global.support.KeysetCursor;
 
 import java.util.List;
 
@@ -23,6 +27,8 @@ import java.util.List;
  */
 @Service
 public class TripmatePostLikeService {
+
+    private static final int PAGE_SIZE = 30;
 
     private final TripmatePostAccessGuard accessGuard;
     private final TripmatePostLikeRepository likeRepository;
@@ -43,9 +49,27 @@ public class TripmatePostLikeService {
     }
 
     @Transactional(readOnly = true)
-    public List<String> getLikedUserIds(String viewerId, String postId) {
+    public LikedUsersResponse getLikedUsers(String viewerId, String postId, String cursor) {
         accessGuard.loadViewablePost(viewerId, postId);
-        return likeRepository.findUserIdsByPostId(postId);
+        Pageable page = PageRequest.of(0, PAGE_SIZE + 1);
+        List<TripmatePostLike> fetched = (cursor == null || cursor.isBlank())
+                ? likeRepository.findLikesFirstPage(postId, page)
+                : likesAfterCursor(postId, cursor, page);
+
+        boolean hasMore = fetched.size() > PAGE_SIZE;
+        List<TripmatePostLike> likes = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
+        List<String> userIds = likes.stream().map(TripmatePostLike::getUserId).toList();
+
+        String nextCursor = hasMore
+                ? KeysetCursor.encode(likes.get(likes.size() - 1).getCreatedAt(),
+                        likes.get(likes.size() - 1).getUserId())
+                : null;
+        return new LikedUsersResponse(postId, userIds, nextCursor);
+    }
+
+    private List<TripmatePostLike> likesAfterCursor(String postId, String cursor, Pageable page) {
+        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+        return likeRepository.findLikesAfterCursor(postId, c.sortKey(), c.id(), page);
     }
 
     public long addLike(String userId, String postId) {

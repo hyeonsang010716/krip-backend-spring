@@ -14,8 +14,11 @@ import site.krip.domain.feed.entity.FeedPost;
 import site.krip.domain.feed.entity.FeedPostLike;
 import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostLikeRepository;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.AfterCommit;
+import site.krip.global.support.KeysetCursor;
 
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,7 @@ import java.util.Map;
 public class FeedPostLikeService {
 
     private static final Logger log = LoggerFactory.getLogger(FeedPostLikeService.class);
+    private static final int PAGE_SIZE = 30;
 
     private final FeedAccessService access;
     private final FeedPostLikeRepository likeRepo;
@@ -89,18 +93,34 @@ public class FeedPostLikeService {
     }
 
     @Transactional(readOnly = true)
-    public LikedUsersResponse getLikedUsers(String viewerId, String postId) {
+    public LikedUsersResponse getLikedUsers(String viewerId, String postId, String cursor) {
         FeedPost post = access.loadViewablePost(viewerId, postId).post();
-        List<FeedPostLike> likes = likeRepo.findByPostIdOrderByCreatedAtDesc(post.getPostId());
+        Pageable page = PageRequest.of(0, PAGE_SIZE + 1);
+        List<FeedPostLike> fetched = (cursor == null || cursor.isBlank())
+                ? likeRepo.findLikesFirstPage(post.getPostId(), page)
+                : likesAfterCursor(post.getPostId(), cursor, page);
+
+        boolean hasMore = fetched.size() > PAGE_SIZE;
+        List<FeedPostLike> likes = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
+
         List<String> userIds = likes.stream().map(FeedPostLike::getUserId).toList();
         Map<String, UserProfileView> profiles = userQuery.findProfiles(userIds);
-
         List<LikedUserItem> items = likes.stream().map(like -> {
             UserProfileView p = profiles.get(like.getUserId());
             return new LikedUserItem(like.getUserId(),
                     p != null ? p.userName() : "",
                     p != null ? p.profileImageUrl() : null);
         }).toList();
-        return new LikedUsersResponse(postId, items);
+
+        String nextCursor = hasMore
+                ? KeysetCursor.encode(likes.get(likes.size() - 1).getCreatedAt(),
+                        likes.get(likes.size() - 1).getUserId())
+                : null;
+        return new LikedUsersResponse(postId, items, nextCursor);
+    }
+
+    private List<FeedPostLike> likesAfterCursor(String postId, String cursor, Pageable page) {
+        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
+        return likeRepo.findLikesAfterCursor(postId, c.sortKey(), c.id(), page);
     }
 }
