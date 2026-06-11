@@ -71,7 +71,7 @@ public class UserBlockService {
 
     private UserBlockResponse doBlock(String userId, String targetUserId) {
         User target = userRepository.findByIdWithProfile(targetUserId)
-                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.notFound("존재하지 않는 유저입니다."));
         // 2차 미완료(detail==null) 유저는 유효한 소셜 대상이 아님 — 차단 응답/목록 매퍼 NPE 방지.
         if (target.getDetail() == null) {
             throw ApiException.badRequest("2차 회원가입이 완료되지 않은 유저입니다.");
@@ -97,7 +97,7 @@ public class UserBlockService {
     @Transactional
     public void unblockUser(String userId, String targetUserId) {
         UserBlock block = userBlockRepository.findByBlockerIdAndBlockedId(userId, targetUserId)
-                .orElseThrow(() -> ApiException.badRequest("차단 상태가 아닙니다."));
+                .orElseThrow(() -> ApiException.notFound("차단 상태가 아닙니다."));
         userBlockRepository.delete(block);
         // 커밋 전(fail-closed)과 커밋 후(동시 read 가 미커밋 삭제를 못 보고 "차단됨" 으로 재적재한 stale 캐시
         // 제거) 이중 무효화. 잔여 race 는 캐시 TTL 로 상한(doBlock 과 동일).

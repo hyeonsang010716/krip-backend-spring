@@ -33,7 +33,7 @@ public class RegisterService {
     @Transactional
     public void registerDetail(String userId, RegisterRequest request) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> ApiException.conflict("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.notFound("존재하지 않는 유저입니다."));
 
         // 이 경로는 RegisterCheckFilter 제외 대상 — INACTIVE(탈퇴 유예) 유저의 가입 완료를 직접 차단.
         if (user.getStatus() == UserStatus.INACTIVE) {

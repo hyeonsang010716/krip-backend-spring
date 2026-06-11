@@ -60,7 +60,7 @@ public class FavoritePlaceService {
     @Transactional
     public void removeFavorite(String userId, String placeId) {
         if (favRepo.deleteByUserIdAndPlaceId(userId, placeId) == 0) {
-            throw ApiException.badRequest("즐겨찾기하지 않은 장소입니다.");
+            throw ApiException.notFound("즐겨찾기하지 않은 장소입니다.");
         }
     }
 

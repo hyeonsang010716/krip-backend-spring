@@ -210,18 +210,18 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("존재하지 않는 친구 요청 수락 → 400")
+    @DisplayName("존재하지 않는 친구 요청 수락 → 404")
     void acceptMissingFriendship() throws Exception {
         String a = fixtures.createActiveUser("미존재수락자");
 
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", "no-such-friendship")
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(a)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    @DisplayName("존재하지 않는 유저 차단 → 400")
+    @DisplayName("존재하지 않는 유저 차단 → 404")
     void blockNonexistentUser() throws Exception {
         String a = fixtures.createActiveUser("차단요청자");
 
@@ -230,7 +230,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
                         .header("X-Auth-Token", userToken(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"target_user_id\":\"no-such-user\"}"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").exists());
     }
 }

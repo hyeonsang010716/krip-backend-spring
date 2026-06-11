@@ -73,7 +73,7 @@ public class FriendshipService {
 
     private FriendshipResponse doSendRequest(String requesterId, String addresseeId) {
         User addressee = userRepository.findByIdWithProfile(addresseeId)
-                .orElseThrow(() -> ApiException.badRequest("존재하지 않는 유저입니다."));
+                .orElseThrow(() -> ApiException.notFound("존재하지 않는 유저입니다."));
         // 2차 미완료(detail==null) 유저는 유효한 소셜 대상이 아님 — 친구 관계에 끼면 목록 매퍼 NPE.
         if (addressee.getDetail() == null) {
             throw ApiException.badRequest("2차 회원가입이 완료되지 않은 유저입니다.");
@@ -173,7 +173,7 @@ public class FriendshipService {
 
     private Friendship requireFriendship(String friendshipId, String notFoundMessage) {
         return friendshipRepository.findById(friendshipId)
-                .orElseThrow(() -> ApiException.badRequest(notFoundMessage));
+                .orElseThrow(() -> ApiException.notFound(notFoundMessage));
     }
 
     // ──────────────────── 목록 조회 ────────────────────

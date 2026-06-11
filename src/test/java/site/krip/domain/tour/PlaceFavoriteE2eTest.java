@@ -169,14 +169,14 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("즐겨찾기 해제 — 등록되지 않은 장소 → 400")
+    @DisplayName("즐겨찾기 해제 — 등록되지 않은 장소 → 404")
     void removeFavoriteNotRegistered() throws Exception {
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("종묘");
         mockMvc.perform(delete("/api/tour/places/favorites/" + placeId)
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(userId)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isNotFound());
     }
 
     // ──────────────────── 검색 기록 ────────────────────

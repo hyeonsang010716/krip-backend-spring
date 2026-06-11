@@ -210,7 +210,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("차단 상태가 아닌데 해제 시도 → 400")
+    @DisplayName("차단 상태가 아닌데 해제 시도 → 404")
     void unblockWhenNotBlocked() throws Exception {
         String a = fixtures.createActiveUser("미차단A");
         String b = fixtures.createActiveUser("미차단B");
@@ -218,7 +218,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(delete("/api/friend/blocks/{targetUserId}", b)
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(a)))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").exists());
     }
 }
