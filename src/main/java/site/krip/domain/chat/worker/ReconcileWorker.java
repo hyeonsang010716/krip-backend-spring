@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 채팅 last_message 역정규화 reconcile.
@@ -66,44 +67,54 @@ public class ReconcileWorker {
         }
     }
 
-    /** dirty 에서 한 배치 pop 후 RDB last_message_* 를 Mongo 값으로 갱신. pop 한 방 개수 반환. */
+    /**
+     * dirty 에서 한 배치를 읽어(제거하지 않음) RDB last_message_* 를 Mongo 값으로 갱신하고, 해소된 방만 SREM.
+     * 해소 방 개수 반환.
+     *
+     * <p>at-least-once: SPOP(선제거) 대신 SRANDMEMBER(읽기) → 성공분만 SREM 한다. 크래시/재시작이 read 와
+     * SREM 사이에 끼어도 방이 set 에 남아 다음 tick 에 재처리된다({@code updateLastMessageIfGreater} 가 멱등·단조라
+     * 재처리 무해). {@code @SchedulerLock}+{@code @Scheduled}(non-overlapping) 로 소비자는 단일이라 경합 없음.
+     */
     int reconcileOnce() {
-        List<String> roomIds = redis.opsForSet().pop(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, BATCH_SIZE);
-        if (roomIds == null || roomIds.isEmpty()) {
+        Set<String> sampled = redis.opsForSet()
+                .distinctRandomMembers(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, BATCH_SIZE);
+        if (sampled == null || sampled.isEmpty()) {
             return 0;
         }
+        List<String> roomIds = new ArrayList<>(sampled);
 
         Map<String, LastMessage> lastByRoom;
         try {
             lastByRoom = messageRepo.findLastByRooms(roomIds);
         } catch (Exception e) {
-            log.warn("reconcile: Mongo aggregate 실패 → {}개 방 재적재", roomIds.size(), e);
-            redis.opsForSet().add(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, roomIds.toArray(new String[0]));
+            // 읽기만 했으므로 방은 set 에 그대로 — 다음 tick 재시도(at-least-once).
+            log.warn("reconcile: Mongo aggregate 실패 → {}개 방 다음 tick 재시도", roomIds.size(), e);
             return 0;
         }
-        if (lastByRoom.isEmpty()) {
-            log.info("reconcile: pop={} 이지만 Mongo hit 0 — skip", roomIds.size());
-            return roomIds.size();
-        }
 
-        List<String> failed = new ArrayList<>();
+        // 해소된 방만 제거: 갱신 성공 + Mongo 데이터 없음(수렴할 것 없음) = 해소. UPDATE 실패는 남겨 재시도.
+        List<String> resolved = new ArrayList<>();
         int updated = 0;
-        for (var e : lastByRoom.entrySet()) {
-            LastMessage doc = e.getValue();
+        for (String roomId : roomIds) {
+            LastMessage doc = lastByRoom.get(roomId);
+            if (doc == null) {
+                resolved.add(roomId); // Mongo 메시지 없음 — reconcile 불필요, 해소 처리
+                continue;
+            }
             try {
-                roomRepo.updateLastMessageIfGreater(e.getKey(), doc.messageId(), doc.serverSeq(),
+                roomRepo.updateLastMessageIfGreater(roomId, doc.messageId(), doc.serverSeq(),
                         doc.createdAt().toInstant());
                 updated++;
+                resolved.add(roomId);
             } catch (Exception ex) {
-                log.warn("reconcile: 방 {} UPDATE 실패 — 재적재", e.getKey(), ex);
-                failed.add(e.getKey());
+                log.warn("reconcile: 방 {} UPDATE 실패 — set 에 유지(다음 tick 재시도)", roomId, ex);
             }
         }
-        if (!failed.isEmpty()) {
-            redis.opsForSet().add(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, failed.toArray(new String[0]));
+        if (!resolved.isEmpty()) {
+            redis.opsForSet().remove(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, resolved.toArray());
         }
-        log.info("reconcile: pop={}, mongo_hit={}, updated={}, requeued={}",
-                roomIds.size(), lastByRoom.size(), updated, failed.size());
-        return roomIds.size();
+        log.info("reconcile: read={}, mongo_hit={}, updated={}, resolved={}",
+                roomIds.size(), lastByRoom.size(), updated, resolved.size());
+        return resolved.size();
     }
 }
