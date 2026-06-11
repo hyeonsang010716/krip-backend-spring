@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 import site.krip.domain.notification.document.InboxItem;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
@@ -34,9 +35,11 @@ public class InboxRepository {
     private static final long TTL_SECONDS = 60L * 60 * 24 * 30;
 
     private final MongoTemplate mongo;
+    private final Clock clock;
 
-    public InboxRepository(MongoTemplate mongo) {
+    public InboxRepository(MongoTemplate mongo, Clock clock) {
         this.mongo = mongo;
+        this.clock = clock;
     }
 
     @PostConstruct
@@ -130,7 +133,7 @@ public class InboxRepository {
         Query q = Query.query(Criteria.where("_id").in(ids)
                 .and("recipient_id").is(recipientId)
                 .and("read_at").is(null));
-        return mongo.updateMulti(q, new Update().set("read_at", Instant.now()), InboxItem.class)
+        return mongo.updateMulti(q, new Update().set("read_at", clock.instant()), InboxItem.class)
                 .getModifiedCount();
     }
 

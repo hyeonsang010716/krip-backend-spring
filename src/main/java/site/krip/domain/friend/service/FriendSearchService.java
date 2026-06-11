@@ -107,7 +107,8 @@ public class FriendSearchService {
                                             List<TravelStyle> styles) {
         FriendshipStatus status = null;
         Boolean isRequester = null;
-        if (friendship != null) {
+        // REJECTED 는 재요청 가능(reopenAsPending)이라 기능상 "관계 없음" — 노출하면 거절 사실 누설·UI 부정확.
+        if (friendship != null && friendship.getStatus() != FriendshipStatus.REJECTED) {
             status = friendship.getStatus();
             // isRequester 는 PENDING 일 때만 의미 있음
             isRequester = friendship.getStatus() == FriendshipStatus.PENDING

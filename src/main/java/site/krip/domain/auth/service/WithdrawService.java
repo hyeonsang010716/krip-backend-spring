@@ -20,6 +20,7 @@ import site.krip.global.config.WithdrawProperties;
 import site.krip.global.storage.ObjectStorage;
 import site.krip.global.support.AfterCommit;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -57,6 +58,7 @@ public class WithdrawService {
     // 외부 도메인(tripmate/friend/...)의 Mongo 유저 데이터 정리 어댑터 — 도메인별 1개씩 등록되어 모두 호출된다.
     private final List<ExternalUserDataPurgePort> externalPurges;
     private final TransactionTemplate txTemplate;
+    private final Clock clock;
     private final int graceDays;
 
     public WithdrawService(UserRepository userRepository,
@@ -67,6 +69,7 @@ public class WithdrawService {
                            InboxCascadePort inboxCascade,
                            List<ExternalUserDataPurgePort> externalPurges,
                            TransactionTemplate txTemplate,
+                           Clock clock,
                            WithdrawProperties props) {
         this.userRepository = userRepository;
         this.withdrawalRequestRepository = withdrawalRequestRepository;
@@ -76,6 +79,7 @@ public class WithdrawService {
         this.inboxCascade = inboxCascade;
         this.externalPurges = externalPurges;
         this.txTemplate = txTemplate;
+        this.clock = clock;
         this.graceDays = props.gracePeriodDays();
     }
 
@@ -96,7 +100,7 @@ public class WithdrawService {
 
         user.changeStatus(UserStatus.INACTIVE);
 
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         Instant purgeAt = now.plus(graceDays, ChronoUnit.DAYS);
         // purge 스케줄러의 작업 큐(doc)는 INACTIVE 전환과 같은 트랜잭션에 묶어 둔다.
         // 빼내면 RDB=INACTIVE 인데 doc 누락 → 영구 삭제 누락 위험. orphan doc(역방향)은 worker STALE_DOC 가 정리.
