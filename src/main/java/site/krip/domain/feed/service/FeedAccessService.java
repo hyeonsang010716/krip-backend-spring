@@ -3,7 +3,6 @@ package site.krip.domain.feed.service;
 import org.springframework.stereotype.Component;
 import site.krip.domain.feed.entity.FeedPost;
 import site.krip.domain.feed.entity.FeedVisibility;
-import site.krip.domain.feed.exception.FeedBlockedException;
 import site.krip.domain.feed.exception.FeedNotFoundException;
 import site.krip.domain.feed.repository.FeedPostRepository;
 import site.krip.domain.feed.repository.FeedPostRow;
@@ -17,8 +16,8 @@ import java.util.List;
 /**
  * 피드 접근 권한 service 간 공유 helper.
  *
- * <p>block 우선 → friendship(ACCEPTED) → visibility. 미충족은 404 일원화(정보 누출 회피),
- * 양방향 차단은 403. viewer==owner fast-path 는 차단/친구 조회 skip.
+ * <p>block 우선 → friendship(ACCEPTED) → visibility. 차단·미충족 모두 404 일원화(정보 누출 회피).
+ * viewer==owner fast-path 는 차단/친구 조회 skip.
  */
 @Component
 public class FeedAccessService {
@@ -34,13 +33,14 @@ public class FeedAccessService {
         this.feedPostRepo = feedPostRepo;
     }
 
-    /** viewer 가 owner 피드에서 볼 수 있는 visibility 부분집합. 양방향 차단 시 {@link FeedBlockedException}. */
+    /** viewer 가 owner 피드에서 볼 수 있는 visibility 부분집합. 차단 시 {@link FeedNotFoundException}(404 일원화). */
     public List<FeedVisibility> resolveViewerVisibilities(String viewerId, String ownerId) {
         if (viewerId.equals(ownerId)) {
             return List.of(FeedVisibility.values());
         }
         if (!blockRepo.findBlocksBetween(viewerId, ownerId).isEmpty()) {
-            throw new FeedBlockedException("차단 관계인 유저의 피드에 접근할 수 없습니다.");
+            // 차단은 미존재/미충족과 동일 응답으로 위장 — 차단 사실 누출 차단.
+            throw new FeedNotFoundException("존재하지 않는 게시물입니다.");
         }
         Friendship friendship = friendshipRepo.findBetween(viewerId, ownerId).orElse(null);
         boolean isFriend = friendship != null && friendship.getStatus() == FriendshipStatus.ACCEPTED;
@@ -52,7 +52,7 @@ public class FeedAccessService {
         return List.of(FeedVisibility.PUBLIC);
     }
 
-    /** 단건 로드 + viewer 가시성 검증. 미존재→404, 차단→403, visibility 미충족→404. */
+    /** 단건 로드 + viewer 가시성 검증. 미존재·차단·visibility 미충족 모두 404. */
     public FeedPostRow loadViewablePost(String viewerId, String postId) {
         FeedPostRow row = feedPostRepo.findRowByPostId(postId, viewerId)
                 .orElseThrow(() -> new FeedNotFoundException("존재하지 않는 게시물입니다."));

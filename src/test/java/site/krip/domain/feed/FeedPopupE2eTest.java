@@ -10,7 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 피드 팝업 E2E — 프로필 + 가시성 부분집합 피드. 경로: {@code GET /api/feed/popup/{userId}}.
- * user 미존재 404, 차단 403, 가시성은 viewer 관계에 따라 PUBLIC/FRIENDS+PUBLIC/전체.
+ * user 미존재·차단 404, 가시성은 viewer 관계에 따라 PUBLIC/FRIENDS+PUBLIC/전체.
  */
 class FeedPopupE2eTest extends FeedTestSupport {
 
@@ -54,8 +54,8 @@ class FeedPopupE2eTest extends FeedTestSupport {
     }
 
     @Test
-    @DisplayName("차단 관계 유저 팝업 → 403")
-    void blockedPopupForbidden() throws Exception {
+    @DisplayName("차단 관계 유저 팝업 → 404 (차단 사실 은닉)")
+    void blockedPopupNotFound() throws Exception {
         String owner = fixtures.createActiveUser("팝업주인3");
         String blockedViewer = fixtures.createActiveUser("차단된이");
         block(owner, blockedViewer);
@@ -63,7 +63,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         mockMvc.perform(get("/api/feed/popup/" + owner)
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(blockedViewer)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test

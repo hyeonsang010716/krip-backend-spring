@@ -41,7 +41,7 @@ public class FeedPopupService {
         UserProfileView owner = userQuery.findProfile(ownerId)
                 .orElseThrow(() -> new PopupTargetNotFoundException("존재하지 않는 유저입니다."));
 
-        // viewer==owner fast-path 포함. 차단 시 FeedBlockedException(403)
+        // viewer==owner fast-path 포함. 차단 시 404 일원화(존재하지 않는 게시물)
         List<FeedVisibility> visibilities = access.resolveViewerVisibilities(viewerId, ownerId);
 
         List<FeedPostResponse> feedItems = feedPostRepo

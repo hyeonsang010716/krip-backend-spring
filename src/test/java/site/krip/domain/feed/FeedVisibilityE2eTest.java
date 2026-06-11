@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 피드 가시성 매트릭스 E2E — PRIVATE/FRIENDS/PUBLIC × (owner/friend/stranger/blocked).
  * 단건 조회는 {@code GET /api/feed/posts/{postId}} 가 아니라 owner 전용이므로, 타 유저 가시성은
- * 좋아요 진입점({@code POST .../like})으로 검증한다(가시성 미충족 404, 차단 403).
+ * 좋아요 진입점({@code POST .../like})으로 검증한다(가시성 미충족·차단 모두 404).
  *
  * <p>owner 단건은 {@code /api/feed/posts/{postId}} 가 본인 글만 반환(loadOwnedPost)하고,
  * 타 유저 피드 목록은 {@code /api/feed/users/{ownerId}} 가 viewer 가시성 부분집합만 반환한다.
@@ -137,8 +137,8 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     }
 
     @Test
-    @DisplayName("차단 관계 유저의 PUBLIC 글 접근 → 403")
-    void blockedUserForbidden() throws Exception {
+    @DisplayName("차단 관계 유저의 PUBLIC 글 접근 → 404 (차단 사실 은닉)")
+    void blockedUserNotFound() throws Exception {
         String owner = fixtures.createActiveUser("주인8");
         String blockedViewer = fixtures.createActiveUser("차단된이");
         block(owner, blockedViewer); // owner 가 viewer 를 차단 (helper 는 방향 무관)
@@ -147,7 +147,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         mockMvc.perform(get("/api/feed/posts/" + pub + "/likes")
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(blockedViewer)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     @Test
