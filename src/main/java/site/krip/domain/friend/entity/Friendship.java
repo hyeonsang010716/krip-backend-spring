@@ -30,8 +30,10 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "friendship", indexes = {
-        @Index(name = "ix_friendship_requester_status", columnList = "requester_id, status"),
-        @Index(name = "ix_friendship_addressee_status", columnList = "addressee_id, status")
+        @Index(name = "ix_friendship_requester_status_updated",
+                columnList = "requester_id, status, updated_at DESC, friendship_id DESC"),
+        @Index(name = "ix_friendship_addressee_status_updated",
+                columnList = "addressee_id, status, updated_at DESC, friendship_id DESC")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -19,7 +19,7 @@ import java.time.Instant;
  */
 @Entity
 @Table(name = "feed_post_comment", indexes = {
-        @Index(name = "ix_feed_post_comment_post_created", columnList = "post_id, created_at")
+        @Index(name = "ix_feed_post_comment_post_created", columnList = "post_id, created_at DESC, comment_id DESC")
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
