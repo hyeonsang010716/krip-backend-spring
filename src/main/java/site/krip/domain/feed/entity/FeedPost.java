@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.DynamicUpdate;
 import site.krip.global.support.IdGenerator;
 
 import java.time.Instant;
@@ -29,6 +30,8 @@ import java.time.Instant;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+// dirty 컬럼만 UPDATE — visibility/caption 동시 수정이 서로를 stale 값으로 덮어쓰는 lost-update 차단.
+@DynamicUpdate
 public class FeedPost {
 
     public static final int CAPTION_MAX_LENGTH = 100;

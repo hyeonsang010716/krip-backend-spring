@@ -18,6 +18,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.DynamicUpdate;
 import site.krip.domain.auth.entity.User;
 import site.krip.global.support.IdGenerator;
 
@@ -42,6 +43,8 @@ import java.util.List;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+// dirty 컬럼만 UPDATE — updatePost(폼 전체) vs toggleDisplay(displayed) 동시 수정 lost-update 차단.
+@DynamicUpdate
 public class TripmatePost {
 
     @Id
