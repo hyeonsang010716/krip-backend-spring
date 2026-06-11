@@ -21,7 +21,6 @@ import site.krip.domain.friend.port.FriendQueryPort;
 import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -50,6 +49,7 @@ public class RoomService {
     private final UnreadService unreadService;
     private final site.krip.domain.chat.repository.ChatMessageRepository messageRepo;
     private final StringRedisTemplate redis;
+    private final ChatSetCache setCache;
     private final TransactionTemplate txTemplate;
 
     public RoomService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
@@ -57,7 +57,7 @@ public class RoomService {
                        UserQueryPort userQuery, FanoutService fanout, MessageService messageService,
                        UnreadService unreadService,
                        site.krip.domain.chat.repository.ChatMessageRepository messageRepo,
-                       StringRedisTemplate redis, TransactionTemplate txTemplate) {
+                       StringRedisTemplate redis, ChatSetCache setCache, TransactionTemplate txTemplate) {
         this.roomRepo = roomRepo;
         this.memberRepo = memberRepo;
         this.friendQuery = friendQuery;
@@ -67,6 +67,7 @@ public class RoomService {
         this.unreadService = unreadService;
         this.messageRepo = messageRepo;
         this.redis = redis;
+        this.setCache = setCache;
         this.txTemplate = txTemplate;
     }
 
@@ -111,8 +112,8 @@ public class RoomService {
         }
 
         String roomId = created.getChatRoomId();
-        redis.opsForSet().add(ChatRedisKeys.roomMembers(roomId), userA, userB);
-        redis.expire(ChatRedisKeys.roomMembers(roomId), Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
+        setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
+                List.of(userA, userB));
 
         // 구독을 fan-out 보다 먼저 — race 차단.
         fanout.subscribeUserToRoom(userA, roomId);
@@ -158,8 +159,8 @@ public class RoomService {
         });
 
         String roomId = created.getChatRoomId();
-        redis.opsForSet().add(ChatRedisKeys.roomMembers(roomId), allMemberIds.toArray(new String[0]));
-        redis.expire(ChatRedisKeys.roomMembers(roomId), Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
+        setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
+                new ArrayList<>(allMemberIds));
         for (String uid : allMemberIds) {
             unreadService.resetToZero(uid, roomId);
         }
@@ -230,8 +231,8 @@ public class RoomService {
             return new InviteResult(List.of(), skipped);
         }
 
-        redis.opsForSet().add(ChatRedisKeys.roomMembers(roomId), invited.toArray(new String[0]));
-        redis.expire(ChatRedisKeys.roomMembers(roomId), Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
+        setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
+                new ArrayList<>(invited));
         // 재입장은 보존된 last_read 로 다음 읽기에 재계산(gap-safe), 신규는 0.
         for (String uid : rejoined) {
             unreadService.clear(uid, roomId);

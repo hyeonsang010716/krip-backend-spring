@@ -57,13 +57,14 @@ public class MessageService {
     private final ChatPushPort push;
     private final UnreadService unreadService;
     private final StringRedisTemplate redis;
+    private final ChatSetCache setCache;
     private final StringRedisTemplate dedupeRedis;
     private final Executor pushExecutor;
 
     public MessageService(ChatRoomMemberRepository memberRepo, ChatRoomRepository roomRepo,
                           ChatMessageRepository messageRepo, FriendQueryPort friendQuery,
                           FanoutService fanout, ChatSeqAllocator seq, ChatPushPort push,
-                          UnreadService unreadService, StringRedisTemplate redis,
+                          UnreadService unreadService, StringRedisTemplate redis, ChatSetCache setCache,
                           @Qualifier("dedupeRedisTemplate") StringRedisTemplate dedupeRedis,
                           @Qualifier("pushExecutor") Executor pushExecutor) {
         this.memberRepo = memberRepo;
@@ -75,6 +76,7 @@ public class MessageService {
         this.push = push;
         this.unreadService = unreadService;
         this.redis = redis;
+        this.setCache = setCache;
         this.dedupeRedis = dedupeRedis;
         this.pushExecutor = pushExecutor;
     }
@@ -277,8 +279,7 @@ public class MessageService {
         if (members.isEmpty()) {
             throw ApiException.badRequest("존재하지 않는 방이거나 멤버가 없습니다.");
         }
-        redis.opsForSet().add(key, members.toArray(new String[0]));
-        redis.expire(key, Duration.ofSeconds(ChatRedisKeys.ROOM_MEMBERS_TTL));
+        setCache.saddWithTtl(key, ChatRedisKeys.ROOM_MEMBERS_TTL, members);
         if (!members.contains(senderUserId)) {
             throw ApiException.forbidden("이 방의 멤버가 아닙니다.");
         }
@@ -301,8 +302,7 @@ public class MessageService {
             if (members.isEmpty()) {
                 members.add("__none__");
             }
-            redis.opsForSet().add(key, members.toArray(new String[0]));
-            redis.expire(key, Duration.ofSeconds(ChatRedisKeys.ROOM_BLOCKS_TTL));
+            setCache.saddWithTtl(key, ChatRedisKeys.ROOM_BLOCKS_TTL, members);
         }
         return Boolean.TRUE.equals(redis.opsForSet().isMember(key, senderUserId + ":" + peerId))
                 || Boolean.TRUE.equals(redis.opsForSet().isMember(key, peerId + ":" + senderUserId));

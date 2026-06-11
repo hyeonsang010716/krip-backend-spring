@@ -57,6 +57,12 @@ public class ChatLuaConfig {
         return load("update_token_jti.lua");
     }
 
+    /** SADD + EXPIRE 원자화 — 멤버/차단 캐시의 TTL 없는 좀비 set 누수 차단. */
+    @Bean
+    public RedisScript<Long> saddWithTtlScript() {
+        return load("sadd_with_ttl.lua");
+    }
+
     /** 세션 한도 강제 — evict 된 session_id 목록 반환(List). */
     @Bean
     @SuppressWarnings({"unchecked", "rawtypes"})
