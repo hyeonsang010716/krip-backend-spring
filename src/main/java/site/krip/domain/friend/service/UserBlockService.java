@@ -81,11 +81,9 @@ public class UserBlockService {
             throw ApiException.badRequest("이미 차단한 유저입니다.");
         }
 
-        // 두 유저 간 friendship(방향 무관) 정리 — PENDING/ACCEPTED 즉시 단절, REJECTED 도 삭제
-        friendshipRepository.findBetween(userId, targetUserId).ifPresent(f -> {
-            friendshipRepository.delete(f);
-            friendshipRepository.flush();
-        });
+        // 두 유저 간 friendship(방향 무관) 정리 — PENDING/ACCEPTED 즉시 단절, REJECTED 도 삭제.
+        // 버전 무시 bulk delete: 동시 accept 가 버전을 올려도 차단이 항상 이긴다(엔티티 delete 면 낙관락 409 로 실패).
+        friendshipRepository.deleteBetween(userId, targetUserId);
 
         UserBlock saved = userBlockRepository.saveAndFlush(new UserBlock(userId, targetUserId));
 

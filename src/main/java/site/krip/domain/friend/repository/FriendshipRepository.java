@@ -2,6 +2,7 @@ package site.krip.domain.friend.repository;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.krip.domain.friend.entity.Friendship;
@@ -24,6 +25,18 @@ public interface FriendshipRepository extends JpaRepository<Friendship, String> 
             + "(f.requesterId = :a and f.addresseeId = :b) "
             + "or (f.requesterId = :b and f.addresseeId = :a)")
     Optional<Friendship> findBetween(@Param("a") String userA, @Param("b") String userB);
+
+    /**
+     * 두 유저 간 관계(방향 무관) 일괄 삭제 — 버전 무시.
+     *
+     * <p>차단은 무조건 관계를 단절해야 하므로, 엔티티 delete(version 체크) 대신 bulk delete 로
+     * 동시 accept 가 버전을 올려도 차단이 낙관락 충돌로 지지 않게 한다.
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("delete from Friendship f where "
+            + "(f.requesterId = :a and f.addresseeId = :b) "
+            + "or (f.requesterId = :b and f.addresseeId = :a)")
+    void deleteBetween(@Param("a") String userA, @Param("b") String userB);
 
     /** ACCEPTED 친구 수 (마이페이지 stats). */
     @Query("select count(f) from Friendship f where f.status = site.krip.domain.friend.entity.FriendshipStatus.ACCEPTED "
