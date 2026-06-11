@@ -33,8 +33,9 @@ import java.util.Set;
  * 다중 노드 fan-out 인프라 (Redis Stream).
  *
  * <p>{@code fanout-mode=redis_stream} 일 때만 활성화. 공유 Stream {@code chat:stream} 을 노드 ID 이름의
- * consumer group 으로 읽어 {@link FanoutService#dispatchEnvelope} 로 라우팅한다. group 커서가 Redis 에
- * 남으므로, 노드 재시작/단절 뒤에도 끊긴 지점부터 이어 읽어 이벤트가 유실되지 않는다(안정적 node-id 전제).
+ * consumer group 으로 읽어 {@link FanoutService#dispatchEnvelope} 로 라우팅한다. NOACK(best-effort) 전송 —
+ * 노드 다운 중 도착분은 group 커서가 Redis 에 남아 재시작 시 이어 읽지만, 읽은 뒤 dispatch 전 크래시한
+ * in-flight 배치는 유실된다(at-most-once). 실시간 전용이며 영속/복구는 Mongo + REST 히스토리가 담당.
  *
  * <p>node-id 가 매 기동마다 바뀌면 죽은 group 이 쌓이므로, heartbeat 주기에 활성 노드(ZSET) 명단에 없는
  * group 을 청소하고 Stream 을 근사 트림한다.
