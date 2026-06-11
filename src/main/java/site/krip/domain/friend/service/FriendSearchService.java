@@ -64,21 +64,24 @@ public class FriendSearchService {
         // 빈 결과는 sentinel 로 IN 무매칭 처리(JPQL 빈 IN 회피).
         List<String> nameIds = searchRepository.findUserIdsByNameLike(pattern, PageRequest.of(0, NAME_MATCH_LIMIT));
         Collection<String> nameMatchedIds = nameIds.isEmpty() ? NO_NAME_MATCH : nameIds;
-        Pageable p = PageRequest.of(0, PAGE_SIZE, PAGE_SORT);
+        // PAGE_SIZE+1 fetch — 결과가 PAGE_SIZE 배수일 때의 phantom 커서 방지.
+        Pageable p = PageRequest.of(0, PAGE_SIZE + 1, PAGE_SORT);
 
-        List<User> users;
+        List<User> fetched;
         if (cursor == null || cursor.isBlank()) {
-            users = searchRepository.searchFirstPage(viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, p);
+            fetched = searchRepository.searchFirstPage(viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, p);
         } else {
             KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-            users = searchRepository.searchAfterCursor(
+            fetched = searchRepository.searchAfterCursor(
                     viewerId, UserStatus.ACTIVE, pattern, nameMatchedIds, c.sortKey(), c.id(), p);
         }
 
-        if (users.isEmpty()) {
+        if (fetched.isEmpty()) {
             return new FriendSearchListResponse(List.of(), null);
         }
 
+        boolean hasMore = fetched.size() > PAGE_SIZE;
+        List<User> users = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
         List<String> peerIds = users.stream().map(User::getUserId).toList();
 
         // peer 별 friendship (방향 무관) 일괄 조회
@@ -98,7 +101,7 @@ public class FriendSearchService {
                 .map(u -> toItem(viewerId, u, friendshipByPeer.get(u.getUserId()),
                         stylesByUser.getOrDefault(u.getUserId(), List.of())))
                 .toList();
-        User last = users.size() == PAGE_SIZE ? users.get(users.size() - 1) : null;
+        User last = hasMore ? users.get(users.size() - 1) : null;
         String nextCursor = last == null ? null : KeysetCursor.encode(last.getCreatedAt(), last.getUserId());
         return new FriendSearchListResponse(items, nextCursor);
     }
