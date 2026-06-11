@@ -37,10 +37,11 @@ class FanoutServiceStreamTest {
 
     @BeforeEach
     void setUp() {
-        ChatProperties props = new ChatProperties("redis_stream", "test-node", 1);
+        ChatProperties props = new ChatProperties("redis_stream", "test-node", 1, 60_000, 1 << 20, 1000);
         redis = mock(StringRedisTemplate.class);
         when(redis.opsForStream()).thenReturn(streamOps);
-        fanout = new FanoutService(props, redis, new ObjectMapper());
+        // 동기 실행기(Runnable::run) — 송신을 인라인 유지해 단위 테스트가 결정적이게 한다.
+        fanout = new FanoutService(props, redis, new ObjectMapper(), Runnable::run);
     }
 
     @Test

@@ -11,6 +11,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code imageProcess*}: 이미지 decode/resize+업로드 동시 처리 한도(포화 시 429). {@code imageUpload*}: variant S3 병렬 업로드 풀.
  * {@code chatOp*}: WS op(send/read) 처리를 컨테이너 I/O 스레드에서 격리. {@code chatOpSessionMaxQueued}는
  * 세션당 대기 한도(초과 시 server_busy 백프레셔).
+ * {@code chatDelivery*}: redis_stream fan-out 전송을 폴 스레드에서 분리하는 전용 풀(인바운드 chatOp 와 격리해
+ * 아웃바운드 폭주가 인바운드를 굶기지 않게 한다). 포화 시 해당 전달만 드롭(best-effort).
  */
 @ConfigurationProperties(prefix = "krip.executor")
 public record ExecutorProperties(
@@ -24,6 +26,8 @@ public record ExecutorProperties(
         int imageUploadQueueCapacity,
         int chatOpPoolSize,
         int chatOpQueueCapacity,
-        int chatOpSessionMaxQueued
+        int chatOpSessionMaxQueued,
+        int chatDeliveryPoolSize,
+        int chatDeliveryQueueCapacity
 ) {
 }

@@ -34,9 +34,10 @@ class FanoutServiceTest {
 
     @BeforeEach
     void setUp() {
-        ChatProperties props = new ChatProperties("in_process", "node-1", 1);
+        ChatProperties props = new ChatProperties("in_process", "node-1", 1, 60_000, 1 << 20, 1000);
         StringRedisTemplate redis = mock(StringRedisTemplate.class);
-        fanout = new FanoutService(props, redis, new ObjectMapper());
+        // 동기 실행기(Runnable::run) — 송신을 인라인 유지해 단위 테스트가 결정적이게 한다.
+        fanout = new FanoutService(props, redis, new ObjectMapper(), Runnable::run);
     }
 
     /** session_id/user_id/subscribed_rooms 속성을 가진 열린(또는 닫힌) 가짜 WS 세션. 송신을 captured 에 적재. */

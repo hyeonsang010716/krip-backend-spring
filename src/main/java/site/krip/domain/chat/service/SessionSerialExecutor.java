@@ -1,4 +1,4 @@
-package site.krip.domain.chat.ws;
+package site.krip.domain.chat.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -11,13 +11,14 @@ import java.util.concurrent.RejectedExecutionException;
 /**
  * 세션 단위 직렬 실행기 — 제출 순서대로 한 번에 하나씩, 공유 풀 위에서 실행한다.
  *
- * <p>WS op(send/read)를 컨테이너 I/O 스레드에서 떼어내되, 같은 세션의 처리 순서(server_seq 단조성)는
+ * <p>WS op(인바운드) 또는 fan-out 전송(아웃바운드)을 I/O/폴 스레드에서 떼어내되, 같은 세션의 순서는
  * 보존해야 한다. 드레인 1회당 풀 스레드 1개가 그 세션 큐를 빌 때까지 순차 처리하므로 세션당 최대 1개의
  * 풀 스레드만 점유한다. 세션당 대기 한도({@code maxQueued}) 초과 시 제출이 거부돼 호출측이 백프레셔할 수 있다.
  *
- * <p>{@code submit}은 한 세션당 단일 컨테이너 스레드에서만 호출된다(컨테이너가 세션별 프레임을 직렬 전달).
+ * <p>{@code submit}은 thread-safe 다(synchronized). 같은 세션에 여러 스레드가 제출해도 안전하며,
+ * 각 제출원의 순서는 보존되고 제출원 간 인터리브만 비결정적이다.
  */
-final class SessionSerialExecutor {
+public final class SessionSerialExecutor {
 
     private static final Logger log = LoggerFactory.getLogger(SessionSerialExecutor.class);
 
@@ -26,7 +27,7 @@ final class SessionSerialExecutor {
     private final Deque<Runnable> queue = new ArrayDeque<>();
     private boolean running = false;
 
-    SessionSerialExecutor(Executor pool, int maxQueued) {
+    public SessionSerialExecutor(Executor pool, int maxQueued) {
         this.pool = pool;
         this.maxQueued = maxQueued;
     }
@@ -36,7 +37,7 @@ final class SessionSerialExecutor {
      *
      * @throws RejectedExecutionException 세션 대기 한도 초과 또는 공유 풀 포화
      */
-    void submit(Runnable task) {
+    public void submit(Runnable task) {
         synchronized (this) {
             if (queue.size() >= maxQueued) {
                 throw new RejectedExecutionException("session op queue full (" + maxQueued + ")");

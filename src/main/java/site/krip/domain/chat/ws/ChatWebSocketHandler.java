@@ -19,6 +19,7 @@ import site.krip.domain.chat.entity.MessageType;
 import site.krip.domain.chat.service.FanoutService;
 import site.krip.domain.chat.service.MessageService;
 import site.krip.domain.chat.service.RoomService;
+import site.krip.domain.chat.service.SessionSerialExecutor;
 import site.krip.domain.chat.service.SessionService;
 import site.krip.domain.chat.service.UnreadService;
 import site.krip.global.auth.jwt.JwtProvider;

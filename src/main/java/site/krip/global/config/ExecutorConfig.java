@@ -71,6 +71,20 @@ public class ExecutorConfig {
     }
 
     @Bean
+    public ThreadPoolTaskExecutor chatDeliveryExecutor(ExecutorProperties props) {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(props.chatDeliveryPoolSize());
+        executor.setMaxPoolSize(props.chatDeliveryPoolSize());
+        executor.setQueueCapacity(props.chatDeliveryQueueCapacity());
+        executor.setThreadNamePrefix("chat-deliver-");
+        executor.setTaskDecorator(MdcTaskDecorator.instance());
+        // 기본 AbortPolicy: 포화 시 RejectedExecutionException → FanoutService 가 해당 전달만 드롭(best-effort).
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(5);
+        return executor;
+    }
+
+    @Bean
     public ImageUploadExecutor imageUploadExecutor(ExecutorProperties props) {
         return new ImageUploadExecutor(
                 props.imageProcessPoolSize(), props.imageProcessQueueCapacity(),
