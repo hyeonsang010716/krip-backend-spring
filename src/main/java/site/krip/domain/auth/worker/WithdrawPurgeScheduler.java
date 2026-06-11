@@ -11,6 +11,7 @@ import site.krip.domain.auth.repository.WithdrawalRequestRepository;
 import site.krip.domain.auth.service.WithdrawService;
 import site.krip.global.support.MdcTaskDecorator;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
@@ -52,6 +53,7 @@ public class WithdrawPurgeScheduler {
 
     private final WithdrawalRequestRepository requestRepository;
     private final WithdrawService withdrawService;
+    private final Clock clock;
 
     /**
      * 유저별 purge 를 실행하고 타임아웃을 거는 전용 실행자. cached 풀(0~N, 60s keep-alive, 데몬 스레드) —
@@ -60,9 +62,11 @@ public class WithdrawPurgeScheduler {
     private final ExecutorService purgeExecutor;
 
     public WithdrawPurgeScheduler(WithdrawalRequestRepository requestRepository,
-                                  WithdrawService withdrawService) {
+                                  WithdrawService withdrawService,
+                                  Clock clock) {
         this.requestRepository = requestRepository;
         this.withdrawService = withdrawService;
+        this.clock = clock;
         this.purgeExecutor = new ThreadPoolExecutor(
                 0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS,
                 new SynchronousQueue<>(), new PurgeThreadFactory());
@@ -81,7 +85,7 @@ public class WithdrawPurgeScheduler {
 
     /** 한 사이클 — 처리 대상 수 반환 (성공/실패 모두 포함). */
     public int purgeDueWithdrawalsOnce() {
-        Instant now = Instant.now();
+        Instant now = clock.instant();
         List<WithdrawalRequest> due = requestRepository.findDue(now);
 
         if (due.isEmpty()) {

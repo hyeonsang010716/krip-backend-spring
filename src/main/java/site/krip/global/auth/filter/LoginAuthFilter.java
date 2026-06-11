@@ -57,7 +57,8 @@ public class LoginAuthFilter extends OncePerRequestFilter {
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie c : cookies) {
-                if (cookieName.equals(c.getName())) {
+                // 빈 쿠키는 "토큰 없음"으로 취급 — 헤더 경로와 동일하게 blank 스킵.
+                if (cookieName.equals(c.getName()) && c.getValue() != null && !c.getValue().isBlank()) {
                     return c.getValue();
                 }
             }

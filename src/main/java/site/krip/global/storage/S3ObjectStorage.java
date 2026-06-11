@@ -67,7 +67,7 @@ public class S3ObjectStorage implements ObjectStorage {
     @Override
     public String uploadToKey(InputStream content, long contentLength, String fileName,
                               String contentType, String prefix) {
-        String key = PERM_ROOT + "/" + prefix + "/" + fileName;
+        String key = PERM_ROOT + "/" + prefix + "/" + safeObjectName(fileName);
         s3.putObject(
                 PutObjectRequest.builder()
                         .bucket(bucket)
@@ -174,6 +174,17 @@ public class S3ObjectStorage implements ObjectStorage {
         }
         String ext = fileName.substring(dot + 1);
         return ext.matches("[A-Za-z0-9]{1,10}") ? "." + ext.toLowerCase() : "";
+    }
+
+    /**
+     * 키에 직접 들어가는 오브젝트명 방어 — 영숫자·{@code . _ -} 만 허용해 경로 구분자/traversal 주입을 차단한다.
+     * 현재 호출부는 모두 서버 생성명({@code "image."+감지포맷})이라 위반은 곧 서버 결함이므로 fail-fast.
+     */
+    private static String safeObjectName(String fileName) {
+        if (fileName == null || !fileName.matches("[A-Za-z0-9._-]{1,100}") || fileName.contains("..")) {
+            throw new IllegalArgumentException("허용되지 않는 오브젝트 파일명입니다.");
+        }
+        return fileName;
     }
 
     private String keyFromUrl(String url) {
