@@ -64,4 +64,14 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
     @Query("select m.lastReadMessageServerSeq from ChatRoomMember m "
             + "where m.chatRoomId = :roomId and m.userId = :userId")
     Optional<Long> findLastReadSeq(@Param("roomId") String chatRoomId, @Param("userId") String userId);
+
+    /**
+     * 퇴장/강퇴 soft delete — 활성 멤버일 때만 is_left=true.
+     * @return 영향 row 수(1=이번 호출이 실제로 전이, 0=이미 탈퇴/미존재 → 중복 호출).
+     */
+    @Modifying(clearAutomatically = true)
+    @Query(value = "UPDATE chat_room_member SET is_left = true "
+            + "WHERE chat_room_id = :roomId AND user_id = :userId AND is_left = false",
+            nativeQuery = true)
+    int markLeftIfActive(@Param("roomId") String chatRoomId, @Param("userId") String userId);
 }

@@ -260,19 +260,12 @@ public class RoomService {
         if (room.getType() != ChatRoomType.GROUP) {
             throw ApiException.badRequest("그룹 방만 퇴장할 수 있습니다.");
         }
-        ChatRoomMember member = memberRepo.findById(
-                new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, meId)).orElse(null);
-        if (member == null || member.isLeft()) {
+        // 활성→탈퇴 전이를 DB 단일 UPDATE 로 원자화 — 동시 중복 호출 중 1건만 전이, 나머지는 0 건.
+        // 전이한 호출만 시스템 메시지를 보내 "방 나감" 중복 기록/브로드캐스트를 차단.
+        Integer updated = txTemplate.execute(s -> memberRepo.markLeftIfActive(roomId, meId));
+        if (updated == null || updated == 0) {
             throw ApiException.forbidden("이 방의 활성 멤버가 아닙니다.");
         }
-
-        txTemplate.executeWithoutResult(s -> {
-            ChatRoomMember m = memberRepo.findById(
-                    new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, meId))
-                    .orElseThrow(() -> ApiException.forbidden("이 방의 활성 멤버가 아닙니다."));
-            m.markLeft();
-            memberRepo.save(m);
-        });
 
         // 커밋 성공 후에만 Redis 정리 — tx 롤백 시 캐시가 RDB 보다 앞서지 않게.
         redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), meId);
@@ -301,19 +294,13 @@ public class RoomService {
         if (!memberRepo.isActiveMember(roomId, meId)) {
             throw ApiException.forbidden("방장이 이미 방을 떠난 상태입니다.");
         }
-        ChatRoomMember target = memberRepo.findById(
-                new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, targetUserId)).orElse(null);
-        if (target == null || target.isLeft()) {
+
+        // 활성→탈퇴 전이를 DB 단일 UPDATE 로 원자화 — 동시 중복 강퇴 중 1건만 전이.
+        // 전이한 호출만 시스템 메시지를 보내 "강퇴" 중복 기록/브로드캐스트를 차단.
+        Integer updated = txTemplate.execute(s -> memberRepo.markLeftIfActive(roomId, targetUserId));
+        if (updated == null || updated == 0) {
             throw ApiException.badRequest("강퇴 대상이 활성 멤버가 아닙니다.");
         }
-
-        txTemplate.executeWithoutResult(s -> {
-            ChatRoomMember m = memberRepo.findById(
-                    new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, targetUserId))
-                    .orElseThrow(() -> ApiException.badRequest("강퇴 대상이 활성 멤버가 아닙니다."));
-            m.markLeft();
-            memberRepo.save(m);
-        });
 
         // 커밋 성공 후에만 Redis 정리 — tx 롤백 시 캐시가 RDB 보다 앞서지 않게.
         redis.opsForSet().remove(ChatRedisKeys.roomMembers(roomId), targetUserId);
