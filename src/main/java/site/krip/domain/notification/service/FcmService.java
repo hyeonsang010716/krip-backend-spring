@@ -31,6 +31,7 @@ public class FcmService {
 
     private static final Logger log = LoggerFactory.getLogger(FcmService.class);
     private static final String DEFAULT_CHAT_PUSH_TITLE = "새 메시지";
+    private static final int MAX_REGISTER_RETRY = 3;
 
     private final FcmTokenRepository tokenRepo;
     private final ChatRoomMemberRepository memberRepo;
@@ -53,20 +54,22 @@ public class FcmService {
     /**
      * 디바이스 토큰 등록 — UNIQUE(token) 충돌 시 owner 교체 + updated_at 갱신(재로그인/계정 전환).
      *
-     * <p>INSERT 가 충돌하면 그 트랜잭션은 abort 되므로 같은 트랜잭션에서 복구할 수 없다.
-     * 시도마다 독립 트랜잭션을 열어, 충돌 시 새 트랜잭션에서 재조회 후 reassign 한다(race 안전).
+     * <p>INSERT 가 충돌하면 그 트랜잭션은 abort 되므로 같은 트랜잭션에서 복구할 수 없다. 시도마다 독립
+     * 트랜잭션을 열어 바운디드 재시도한다 — 다음 시도의 findByToken 이 reassign(행 존재) 또는
+     * 재삽입(충돌 행이 그새 삭제됨)을 자연 처리한다. reassign 은 PK UPDATE 라 충돌은 insert 경로에서만 난다.
      */
     public FcmTokenResponse registerToken(String userId, String token) {
-        try {
-            return txTemplate.execute(s -> doRegisterToken(userId, token));
-        } catch (DataIntegrityViolationException e) {
-            return txTemplate.execute(s -> {
-                FcmToken raced = tokenRepo.findByToken(token).orElseThrow(() -> e);
-                raced.reassign(userId);
-                tokenRepo.save(raced);
-                return new FcmTokenResponse(raced.getFcmTokenId(), raced.getCreatedAt());
-            });
+        for (int attempt = 0; attempt < MAX_REGISTER_RETRY; attempt++) {
+            try {
+                return txTemplate.execute(s -> doRegisterToken(userId, token));
+            } catch (DataIntegrityViolationException e) {
+                if (attempt == MAX_REGISTER_RETRY - 1) {
+                    throw e;
+                }
+                // 동시 insert 충돌 — 다음 iteration 에서 재조회 후 reassign 또는 재삽입.
+            }
         }
+        throw new IllegalStateException("unreachable");
     }
 
     private FcmTokenResponse doRegisterToken(String userId, String token) {
