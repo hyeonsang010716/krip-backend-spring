@@ -56,13 +56,6 @@ public class ChatRoomMember {
         this.left = false;
     }
 
-    /** 재초대 — soft delete 해제 + joined_at 갱신 + mute 리셋(last_read 는 유지). */
-    public void rejoin() {
-        this.left = false;
-        this.joinedAt = Instant.now();
-        this.notificationMuted = null;
-    }
-
     /** 퇴장/강퇴 — soft delete. */
     public void markLeft() {
         this.left = true;

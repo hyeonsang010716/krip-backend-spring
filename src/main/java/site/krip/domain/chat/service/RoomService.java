@@ -206,23 +206,23 @@ public class RoomService {
         List<String> newMembers = new ArrayList<>();
         List<String> rejoined = new ArrayList<>();
 
+        // 재입장 전이를 조건부 UPDATE 로 원자화 — 동시 재초대 중 1건만 전이, 나머지는 skip.
+        // invited(=시스템 메시지·room_joined 대상)에 실제 전이분만 넣어 "입장" 중복을 차단.
         txTemplate.executeWithoutResult(s -> {
             for (String uid : new TreeSet<>(targets)) {
                 ChatRoomMember existing = memberRepo.findById(
                         new site.krip.domain.chat.entity.ChatRoomMemberId(roomId, uid)).orElse(null);
-                if (existing != null && !existing.isLeft()) {
-                    skipped.add(uid);
-                    continue;
-                }
-                if (existing != null && existing.isLeft()) {
-                    existing.rejoin();
-                    memberRepo.save(existing);
-                    rejoined.add(uid);
-                    invited.add(uid);
-                } else {
+                if (existing == null) {
                     memberRepo.save(new ChatRoomMember(roomId, uid, currentSeq > 0 ? currentSeq : null));
                     newMembers.add(uid);
                     invited.add(uid);
+                } else if (!existing.isLeft()) {
+                    skipped.add(uid);                          // 이미 활성
+                } else if (memberRepo.rejoinIfLeft(roomId, uid) == 1) {
+                    rejoined.add(uid);
+                    invited.add(uid);                          // 재입장 승자
+                } else {
+                    skipped.add(uid);                          // 경합으로 먼저 재입장됨
                 }
             }
         });

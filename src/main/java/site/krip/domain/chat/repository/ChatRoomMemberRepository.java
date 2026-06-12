@@ -74,4 +74,16 @@ public interface ChatRoomMemberRepository extends JpaRepository<ChatRoomMember, 
             + "WHERE chat_room_id = :roomId AND user_id = :userId AND is_left = false",
             nativeQuery = true)
     int markLeftIfActive(@Param("roomId") String chatRoomId, @Param("userId") String userId);
+
+    /**
+     * 재초대 — 탈퇴 멤버만 재입장(is_left=false) + joined_at 갱신 + mute 리셋(last_read 유지).
+     * 루프 내 신규 insert 와 섞여 호출되므로 flush 후 실행해 보류 중인 insert 유실을 막는다.
+     * @return 영향 row 수(1=이번 호출이 실제로 재입장, 0=활성/미존재 → 경합으로 먼저 처리됨).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "UPDATE chat_room_member "
+            + "SET is_left = false, joined_at = now(), notification_muted = NULL "
+            + "WHERE chat_room_id = :roomId AND user_id = :userId AND is_left = true",
+            nativeQuery = true)
+    int rejoinIfLeft(@Param("roomId") String chatRoomId, @Param("userId") String userId);
 }
