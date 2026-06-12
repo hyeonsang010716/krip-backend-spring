@@ -48,6 +48,11 @@ public final class ChatRedisKeys {
         return "unread:" + userId;
     }
 
+    /** 방별 무효화 epoch — 새 메시지 삽입 후 INCR. 읽기 경로의 lost-update 가드가 계산 전후로 비교한다. */
+    public static String unreadEpoch(String roomId) {
+        return "unread:epoch:" + roomId;
+    }
+
     public static String roomSeq(String roomId) {
         return "room:seq:" + roomId;
     }

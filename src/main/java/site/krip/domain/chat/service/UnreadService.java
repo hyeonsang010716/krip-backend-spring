@@ -23,7 +23,8 @@ import java.util.Map;
  * <p>진실은 RDB {@code last_read_message_server_seq} + Mongo 메시지(system 제외)뿐이고,
  * {@code unread:{uid}} 해시는 재계산 가능한 캐시다. 절대 증분하지 않고 진실에서만 채운다 —
  * 읽기는 캐시 miss 인 방만 {@code countAfterSeq} 로 계산, 새 메시지는 수신자 캐시를 무효화한다.
- * 읽기 경로는 계산~기록 사이 {@code room:seq} 가 진전되면 캐시를 폐기해 stale lost-update 를 막는다.
+ * 읽기 경로는 계산~기록 사이 방의 {@code unread:epoch} 가 바뀌면 캐시를 폐기해 stale lost-update 를 막는다
+ * (epoch 는 메시지 삽입 후 무효화에서 INCR — room:seq 와 달리 삽입을 앞지르지 않아 insert-lag 경합도 잡는다).
  * 999 캡. 모든 Redis 접근은 best-effort.
  */
 @Service
@@ -66,10 +67,10 @@ public class UnreadService {
         }
 
         Map<String, Integer> computed = new LinkedHashMap<>();
-        Map<String, Long> seqBefore = new LinkedHashMap<>();
+        Map<String, Long> epochBefore = new LinkedHashMap<>();
         if (!misses.isEmpty()) {
             for (String roomId : misses.keySet()) {
-                seqBefore.put(roomId, roomSeqSnapshot(roomId)); // 계산 전 방별 스냅샷 (lost-update 가드)
+                epochBefore.put(roomId, invalidationEpoch(roomId)); // 계산 전 방별 epoch (lost-update 가드)
             }
             // 캐시 miss 인 방을 단일 aggregate 로 배치 계산 — 방마다 countDocuments 치던 N+1 제거.
             try {
@@ -84,9 +85,9 @@ public class UnreadService {
             }
         }
         writeCache(userId, computed);
-        // 계산~기록 사이 새 메시지로 진전된 방은 캐시 폐기 — 다음 읽기에 진실로 재계산.
+        // 계산~기록 사이 새 메시지로 무효화된 방은 캐시 폐기 — 다음 읽기에 진실로 재계산.
         for (String roomId : computed.keySet()) {
-            if (roomSeqSnapshot(roomId) > seqBefore.get(roomId)) {
+            if (invalidationEpoch(roomId) != epochBefore.get(roomId)) {
                 clear(userId, roomId);
             }
         }
@@ -103,7 +104,7 @@ public class UnreadService {
         } catch (Exception ignore) {
             // 캐시 오류 → 계산으로 폴백
         }
-        long seqBefore = roomSeqSnapshot(roomId); // 계산 전 스냅샷 (lost-update 가드)
+        long epochBefore = invalidationEpoch(roomId); // 계산 전 epoch (lost-update 가드)
         long lastRead = memberRepo.findLastReadSeq(roomId, userId).orElse(0L);
         int v;
         try {
@@ -113,8 +114,8 @@ public class UnreadService {
             return 0;
         }
         writeCache(userId, Map.of(roomId, v));
-        if (roomSeqSnapshot(roomId) > seqBefore) {
-            clear(userId, roomId); // 계산~기록 사이 새 메시지 유입 — stale 캐시 폐기
+        if (invalidationEpoch(roomId) != epochBefore) {
+            clear(userId, roomId); // 계산~기록 사이 새 메시지 무효화 — stale 캐시 폐기
         }
         return v;
     }
@@ -147,11 +148,15 @@ public class UnreadService {
             return;
         }
         try {
+            String epochKey = ChatRedisKeys.unreadEpoch(roomId);
             redis.executePipelined((RedisCallback<Object>) connection -> {
                 StringRedisConnection conn = (StringRedisConnection) connection;
                 for (String uid : recipientUserIds) {
                     conn.hDel(ChatRedisKeys.unread(uid), roomId);
                 }
+                // 읽기 가드용 epoch 진전 — hDel 과 동일 시점(삽입 후)이라 동시 읽기의 stale writeCache 를 폐기시킨다.
+                conn.incr(epochKey);
+                conn.expire(epochKey, ChatRedisKeys.UNREAD_TTL);
                 return null;
             });
         } catch (Exception e) {
@@ -166,10 +171,13 @@ public class UnreadService {
         return (int) Math.min(raw, UNREAD_COUNT_CAP);
     }
 
-    /** room:seq 스냅샷 — 변경 감지 전용(부재/오류는 0). 유일 writer 가 allocateSeq(단조 증가)라 증가=새 메시지. */
-    private long roomSeqSnapshot(String roomId) {
+    /**
+     * 무효화 epoch 스냅샷 — 변경 감지 전용(부재/오류는 0). {@link #invalidateForRecipients} 가 메시지 삽입 후
+     * INCR 하므로, room:seq(allocate 시점 증가)와 달리 삽입을 앞지르지 않아 insert-lag 경합도 감지한다.
+     */
+    private long invalidationEpoch(String roomId) {
         try {
-            String raw = redis.opsForValue().get(ChatRedisKeys.roomSeq(roomId));
+            String raw = redis.opsForValue().get(ChatRedisKeys.unreadEpoch(roomId));
             return raw != null ? Long.parseLong(raw) : 0L;
         } catch (Exception e) {
             return 0L;
