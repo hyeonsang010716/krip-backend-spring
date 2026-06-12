@@ -199,11 +199,8 @@ public class TourPlanService {
                     if (dayNumber > plan.getTravelDays()) {
                         throw ApiException.badRequest("day_number 가 범위를 벗어났습니다: " + dayNumber);
                     }
-                    List<TourPlanItem> dayItems = itemRepo.findByPlanId(planId).stream()
-                            .filter(i -> i.getDayNumber() == dayNumber).toList();
-                    double pos = dayItems.isEmpty()
-                            ? POSITION_SPACING
-                            : dayItems.get(dayItems.size() - 1).getPosition() + POSITION_SPACING;
+                    Double maxPos = itemRepo.findMaxPosition(planId, dayNumber);
+                    double pos = (maxPos == null) ? POSITION_SPACING : maxPos + POSITION_SPACING;
 
                     TourPlanItem item = itemRepo.saveAndFlush(new TourPlanItem(
                             planId, dayNumber, pos, placeId,
@@ -262,9 +259,9 @@ public class TourPlanService {
                     if (afterItemId != null && afterItemId.equals(itemId) && item.getDayNumber() == targetDayNumber) {
                         return;
                     }
-                    List<TourPlanItem> dayItems = itemRepo.findByPlanId(item.getPlanId()).stream()
-                            .filter(i -> i.getDayNumber() == targetDayNumber
-                                    && !i.getItemId().equals(item.getItemId()))
+                    List<TourPlanItem> dayItems = itemRepo
+                            .findByPlanIdAndDayNumber(item.getPlanId(), targetDayNumber).stream()
+                            .filter(i -> !i.getItemId().equals(item.getItemId()))
                             .toList();
                     placeInDay(item, dayItems, targetDayNumber, afterItemId);
                     plan.touch();

@@ -13,10 +13,16 @@ import java.util.List;
  */
 public interface TourPlanItemRepository extends JpaRepository<TourPlanItem, String> {
 
-    /** 플랜의 모든 카드 (day_number ASC, position ASC) — 이웃 position 계산용. */
-    @Query("select i from TourPlanItem i where i.planId = :planId "
-            + "order by i.dayNumber asc, i.position asc")
-    List<TourPlanItem> findByPlanId(@Param("planId") String planId);
+    /** 대상 day 의 최대 position (빈 day 면 null) — addItem 의 맨 끝 append 용. */
+    @Query("select max(i.position) from TourPlanItem i "
+            + "where i.planId = :planId and i.dayNumber = :dayNumber")
+    Double findMaxPosition(@Param("planId") String planId, @Param("dayNumber") int dayNumber);
+
+    /** 대상 day 의 카드 (position ASC) — moveItem 의 분수 position 계산용. */
+    @Query("select i from TourPlanItem i where i.planId = :planId and i.dayNumber = :dayNumber "
+            + "order by i.position asc")
+    List<TourPlanItem> findByPlanIdAndDayNumber(@Param("planId") String planId,
+                                                @Param("dayNumber") int dayNumber);
 
     /**
      * 특정 plan/day 의 카드 일괄 삭제 — 빈 day 에도 idempotent.
