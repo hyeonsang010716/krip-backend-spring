@@ -127,6 +127,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
                 if (lastPongAt.getOrDefault(sessionId, System.currentTimeMillis()) < deadline || !sendPing(ws)) {
                     log.info("WS liveness 종료 — pong 미수신/ping 실패: session_id={}", sessionId);
                     closeQuietly(ws, new CloseStatus(CLOSE_LIVENESS_TIMEOUT));
+                    // wedged 소켓은 afterConnectionClosed 콜백이 지연될 수 있어 sweep 이 즉시 정리한다(콜백과 멱등).
+                    cleanupLocalSession(ws);
                     continue;
                 }
                 String userId = (String) ws.getAttributes().get(FanoutService.ATTR_USER_ID);
@@ -335,6 +337,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        cleanupLocalSession(session);
+    }
+
+    /**
+     * 로컬 세션 정리 — fan-out 등록 해제 + 로컬 맵 제거 + Redis 세션 상태 정리.
+     * afterConnectionClosed(콜백)와 sweepLiveness(즉시) 양쪽에서 호출되며, 모든 연산이 멱등이라 이중 실행 안전.
+     */
+    private void cleanupLocalSession(WebSocketSession session) {
         String sessionId = (String) session.getAttributes().get(FanoutService.ATTR_SESSION_ID);
         String userId = (String) session.getAttributes().get(FanoutService.ATTR_USER_ID);
 
