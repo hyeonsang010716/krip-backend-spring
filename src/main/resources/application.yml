@@ -117,6 +117,15 @@ krip:
     ws-send-buffer-bytes: ${CHAT_WS_SEND_BUFFER_BYTES:524288}
     # fan-out 전송을 세션별 직렬 실행기로 offload 할 때 세션당 대기 한도(초과 시 그 전달만 드롭).
     delivery-session-max-queued: ${CHAT_DELIVERY_SESSION_MAX_QUEUED:64}
+  ai:
+    # FastAPI AI 서비스. enabled=false 면 호출 차단(503). read 타임아웃은 LLM 추론 고려해 길게.
+    enabled: ${AI_ENABLED:true}
+    service-url: ${AI_SERVICE_URL:http://localhost:8001}
+    connect-timeout-ms: ${AI_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${AI_READ_TIMEOUT_MS:180000}
+    # 서킷 브레이커 — 연속 실패 N회 시 cooldown(ms) 동안 호출 단락(fast-fail).
+    circuit-failure-threshold: ${AI_CIRCUIT_FAILURE_THRESHOLD:5}
+    circuit-open-ms: ${AI_CIRCUIT_OPEN_MS:30000}
   fcm:
     # Firebase 서비스 계정 JSON 경로. 미설정/파일 부재 시 FCM 발송 비활성(토큰/뮤트/인박스는 정상).
     enabled: ${FCM_ENABLED:true}
