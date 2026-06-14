@@ -1,0 +1,25 @@
+[project]
+name = "krip-ai"
+version = "0.1.0"
+description = "Krip AI server — 핵심 AI 추론 전용 (OCR / 번역 / 여행 일정). DB·인증·영속화는 Spring 담당."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    # web
+    "fastapi[standard]==0.118.0",
+    "httpx==0.27.2",
+    "pydantic-settings==2.10.1",
+    "dependency-injector==4.48.2",
+    "loguru==0.7.3",
+    # metrics
+    "prometheus-client>=0.21.0",
+    # LLM — Gemini 추론 + 구조화 출력.
+    # protobuf/google-ai-generativelanguage 는 backend-fastapi 의 검증된 버전으로 고정한다.
+    # (protobuf 7.x 의 _upb C확장이 arm64 에서 SIGILL 로 죽어 부팅 불가 → 6.x 로 핀)
+    "langchain==1.0.0",
+    "langchain-google-genai==3.2.0",
+    "google-ai-generativelanguage==0.11.0",
+    "protobuf==6.33.5",
+    "grpcio==1.80.0",
+    "google-api-core>=2.19.0",
+]
