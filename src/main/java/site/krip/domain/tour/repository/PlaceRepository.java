@@ -52,6 +52,50 @@ public class PlaceRepository {
                 mongo.findOne(Query.query(Criteria.where("place_id").is(placeId)), Place.class));
     }
 
+    // ──────────────────── 추천 후보 조회 (Tour Planner) ────────────────────
+
+    /**
+     * 추천 검색점 기준 반경 내 후보 장소(거리순, {@code limit}개). 커서 없이 한 번에 가져온다.
+     *
+     * <p>{@code foodFilter}(halal/vegetarian)는 식당(types 에 'restaurant')에만 강제하고, 식당이 아닌
+     * 장소는 통과시킨다. {@code any}/null 이면 필터를 적용하지 않는다. 집계 산출 distance 는 매핑하지 않는다.
+     */
+    public List<Place> findNearbyForPlanner(double lat, double lng, String foodFilter,
+                                            double maxDistance, int limit) {
+        Document geoNear = new Document()
+                .append("near", new Document("type", "Point").append("coordinates", List.of(lng, lat)))
+                .append("distanceField", "distance")
+                .append("spherical", true)
+                .append("maxDistance", maxDistance);
+        Document foodQuery = foodFilterQuery(foodFilter);
+        if (foodQuery != null) {
+            geoNear.append("query", foodQuery);
+        }
+
+        List<AggregationOperation> ops = new ArrayList<>();
+        ops.add(ctx -> new Document("$geoNear", geoNear));
+        ops.add(ctx -> new Document("$sort", new Document("distance", 1).append("place_id", 1)));
+        ops.add(ctx -> new Document("$limit", limit));
+
+        return mongo.aggregate(Aggregation.newAggregation(ops), "place", Place.class).getMappedResults();
+    }
+
+    /** 음식 필터 → MongoDB 쿼리. 식당이 아니면 통과 OR types 에 허용 식당 타입 포함. any/null 이면 null. */
+    private static Document foodFilterQuery(String foodFilter) {
+        List<String> allowed;
+        if ("halal".equals(foodFilter)) {
+            allowed = List.of("halal_restaurant");
+        } else if ("vegetarian".equals(foodFilter)) {
+            allowed = List.of("vegan_restaurant", "vegetarian_restaurant");
+        } else {
+            return null;
+        }
+        return new Document("$or", List.of(
+                new Document("types", new Document("$nin", List.of("restaurant"))),
+                new Document("types", new Document("$in", allowed))
+        ));
+    }
+
     // ──────────────────── 거리순 조회 ────────────────────
 
     /** 현재 위치 기준 가까운 장소 (거리순, PAGE_SIZE). */
