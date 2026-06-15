@@ -193,15 +193,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             log.warn("방 목록 로드 실패: user_id={}", userId, e);
         }
 
+        // 'connected' 전에 인바운드 처리기·liveness 등록 — 첫 op 무음 드롭 방지.
+        // (lastPongAt 을 liveSessions 보다 먼저 — 첫 sweep 오판 방지)
+        sessionExecutors.put(sessionId, new SessionSerialExecutor(chatOpExecutor, sessionOpMaxQueued));
+        lastPongAt.put(sessionId, System.currentTimeMillis());
+        liveSessions.put(sessionId, session);
+
         fanout.sendToSessionDirect(session, Map.of("type", "connected", "session_id", sessionId));
 
         // 커서 파생 계산은 Mongo 를 칠 수 있어 연결 스레드를 막지 않도록 항상 백그라운드로.
         spawnUnreadSync(session, userId);
-
-        sessionExecutors.put(sessionId, new SessionSerialExecutor(chatOpExecutor, sessionOpMaxQueued));
-        // pong 기준선을 먼저 심어 첫 sweep 이 갓 연결된 세션을 미수신으로 오판하지 않게 한다.
-        lastPongAt.put(sessionId, System.currentTimeMillis());
-        liveSessions.put(sessionId, session);
     }
 
     /**
