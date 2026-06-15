@@ -5,8 +5,6 @@ AI-only 서버라 원본의 worker/chat/fcm/db/redis/mongo instrumentation 은 �
 """
 from app.core.instrumentation.ai import (
     AI_MODEL_NAMES,
-    AI_PROVIDERS,
-    AI_RESULTS,
     GeminiInstrumentationHandler,
     ai_external_call,
     ai_inference,
@@ -17,8 +15,6 @@ from app.core.instrumentation.ai import (
 
 __all__ = (
     "AI_MODEL_NAMES",
-    "AI_PROVIDERS",
-    "AI_RESULTS",
     "GeminiInstrumentationHandler",
     "ai_external_call",
     "ai_inference",

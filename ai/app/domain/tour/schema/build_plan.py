@@ -1,7 +1,7 @@
 """Tour build-plan(내부) 스키마.
 
 Spring이 DB 조회(추가 장소 + 후보 풀)를 모두 끝낸 뒤 호출하는 무상태 추론 진입점의 입출력.
-응답은 /tour/recommend 와 동일한 TourRecommendResponse 를 재사용한다.
+응답은 추천 응답 스키마 TourRecommendResponse 를 재사용한다.
 """
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field

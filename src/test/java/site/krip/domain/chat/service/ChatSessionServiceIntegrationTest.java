@@ -202,15 +202,4 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
         assertThat(sessionService.sessionExists(s2)).isFalse();
         assertThat(sessionService.sessionExists(s3)).isFalse();
     }
-
-    @Test
-    @DisplayName("heartbeat 후에도 세션이 유지된다")
-    void heartbeatKeepsSessionAlive() {
-        String u = randomUser();
-        String sid = sessionService.createSession(u, "jti-1");
-
-        sessionService.heartbeat(sid, u);
-
-        assertThat(sessionService.sessionExists(sid)).isTrue();
-    }
 }

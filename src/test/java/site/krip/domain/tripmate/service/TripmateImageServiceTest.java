@@ -3,8 +3,6 @@ package site.krip.domain.tripmate.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.InOrder;
-import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.domain.tripmate.repository.TripmateImageRepository;
 import site.krip.domain.tripmate.repository.TripmatePostDraftRepository;
 import site.krip.domain.tripmate.repository.TripmatePostImageRepository;
@@ -13,19 +11,14 @@ import site.krip.global.common.image.ImageUploadExecutor;
 import site.krip.global.common.image.ProcessedVariant;
 import site.krip.global.storage.ObjectStorage;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 import java.util.function.Supplier;
 
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -71,30 +64,5 @@ class TripmateImageServiceTest {
                 .isInstanceOf(RuntimeException.class);
 
         verify(storage).delete("https://s3/uploads/perm/u/x.jpg"); // 보상 삭제
-    }
-
-    @Test
-    @DisplayName("삭제: DB(메타데이터) 삭제 후 스토리지 삭제 — DB-우선 순서")
-    void deleteIsDbFirstThenStorage() {
-        TripmateImage image = new TripmateImage("u", "img", "https://s3/x.jpg", Instant.now());
-        when(imageRepository.findByImageId("img")).thenReturn(Optional.of(image));
-
-        service.deleteImage("u", "img");
-
-        InOrder ordered = inOrder(imageRepository, storage);
-        ordered.verify(imageRepository).deleteByImageId("img");
-        ordered.verify(storage).delete("https://s3/x.jpg");
-    }
-
-    @Test
-    @DisplayName("삭제: 스토리지 삭제 실패해도 row 는 이미 삭제됐고 예외를 던지지 않는다(best-effort)")
-    void deleteToleratesStorageFailure() {
-        TripmateImage image = new TripmateImage("u", "img", "https://s3/x.jpg", Instant.now());
-        when(imageRepository.findByImageId("img")).thenReturn(Optional.of(image));
-        doThrow(new RuntimeException("s3 down")).when(storage).delete(anyString());
-
-        assertThatCode(() -> service.deleteImage("u", "img")).doesNotThrowAnyException();
-
-        verify(imageRepository).deleteByImageId("img");
     }
 }

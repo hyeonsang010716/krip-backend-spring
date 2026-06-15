@@ -9,7 +9,6 @@ import site.krip.domain.tripmate.document.TripmateImage;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -33,15 +32,6 @@ public class TripmateImageRepository {
         Query query = Query.query(Criteria.where("user_id").is(userId))
                 .with(Sort.by(Sort.Direction.DESC, "timestamp"));
         return mongo.find(query, TripmateImage.class);
-    }
-
-    public Optional<TripmateImage> findByImageId(String imageId) {
-        return Optional.ofNullable(
-                mongo.findOne(Query.query(Criteria.where("image_id").is(imageId)), TripmateImage.class));
-    }
-
-    public void deleteByImageId(String imageId) {
-        mongo.remove(Query.query(Criteria.where("image_id").is(imageId)), TripmateImage.class);
     }
 
     public void deleteByImageIds(List<String> imageIds) {

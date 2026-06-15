@@ -26,7 +26,7 @@ import java.util.Map;
 /**
  * 피드 좋아요 서비스.
  *
- * <p>모든 진입점이 가시성 검증 우선 — 차단 403, visibility 미충족 404. 본인 글 본인 좋아요 허용.
+ * <p>모든 진입점이 가시성 검증 우선 — 차단·visibility 미충족 모두 404(정보 누출 회피). 본인 글 본인 좋아요 허용.
  * 중복 add / 미존재 remove 는 400. add 인박스 fan-out 은 트랜잭션 커밋 후 best-effort(본인→본인 skip).
  */
 @Service

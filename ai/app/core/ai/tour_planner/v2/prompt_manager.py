@@ -5,53 +5,8 @@ LLM이 생성하는 텍스트는 모두 영어로 통일한다.
 권역(cluster) 이름도 영문 표준명을 사용한다.
 """
 
-from typing import Dict, Tuple
+from typing import Dict
 from functools import lru_cache
-
-
-# ──────────────────── 권역 좌표 데이터 (영문 표준명) ────────────────────
-# 라우터 검증과 검색점 계산에서 동일 키를 공유한다.
-
-CLUSTER_COORDINATES: Dict[str, Tuple[float, float]] = {
-    "Myeongdong / Euljiro": (37.565, 126.987),
-    "Gangnam Station": (37.500, 127.032),
-    "Hongdae / Hapjeong": (37.555, 126.923),
-    "Itaewon": (37.535, 126.998),
-    "Jamsil": (37.515, 127.083),
-    "Konkuk Univ. Station (Kondae)": (37.543, 127.070),
-    "Sinchon / Yonsei Univ.": (37.558, 126.940),
-    "Jongno / Insadong": (37.575, 126.988),
-    "Yeouido": (37.525, 126.928),
-    "Seongsu-dong": (37.547, 127.060),
-    "Mangwon / Yeonnam-dong": (37.563, 126.912),
-    "Euljiro 3-ga / Chungmuro": (37.566, 126.995),
-    "Apgujeong / Cheongdam": (37.527, 127.047),
-    "Garosu-gil (Sinsa)": (37.521, 127.025),
-    "Bukchon / Samcheong-dong": (37.582, 126.984),
-    "Gwangjang Market / Dongdaemun": (37.572, 127.004),
-    "Yongsan / Haebangchon (HBC)": (37.544, 126.987),
-    "Hannam-dong": (37.536, 127.004),
-    "Mullae-dong": (37.516, 126.900),
-    "Songridan-gil (Songpa)": (37.507, 127.113),
-    "Seoul Forest / Ttukseom": (37.547, 127.048),
-    "Mapo / Gongdeok": (37.546, 126.953),
-    "Nakseongdae / Sharosu-gil": (37.479, 126.955),
-    "Hyehwa / Daehangno": (37.584, 127.004),
-    "Hoegi / Kyung Hee Univ.": (37.590, 127.054),
-    "Noryangjin / Dongjak": (37.513, 126.945),
-    "Wangsimni / Sangwangsimni": (37.563, 127.039),
-    "Dosan Park / Hak-dong": (37.524, 127.035),
-    "Samseong / COEX": (37.512, 127.060),
-    "Bangbae / Seorae Village": (37.482, 126.993),
-    "Sangsu-dong": (37.550, 126.924),
-    "Ikseon-dong": (37.575, 126.991),
-    "Banpo Hangang Park": (37.509, 126.998),
-    "N Seoul Tower Area (Namsan)": (37.552, 126.989),
-    "DDP / Dongdaemun": (37.569, 127.011),
-    "Seongbuk-dong": (37.597, 126.995),
-    "Yeonhui-dong": (37.573, 126.932),
-    "Ssangmun / Suyu": (37.650, 127.024),
-}
 
 
 class TourPlannerPromptManager:

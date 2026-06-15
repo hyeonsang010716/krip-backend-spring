@@ -22,10 +22,7 @@ from app.core.metric import (
 # AI 서비스 식별자 (도메인 측).
 AI_MODEL_NAMES = ("menu_ocr", "papago", "tour_planner")
 
-AI_RESULTS = ("ok", "error", "other")
-
 _KNOWN_AI_PROVIDERS = frozenset({"gemini", "papago"})
-AI_PROVIDERS = ("gemini", "papago")
 
 
 def _normalize_ai_provider(provider) -> str:

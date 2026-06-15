@@ -14,7 +14,6 @@ import site.krip.global.config.ChatProperties;
 import site.krip.global.support.IdGenerator;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -61,8 +60,6 @@ public class SessionService {
         return nowMs() + ChatRedisKeys.SESSION_TTL * 1000;
     }
 
-    private static final Duration TTL = Duration.ofSeconds(ChatRedisKeys.SESSION_TTL);
-
     /** WS 연결 시 — 새 session_id 발급 후 Redis 3키 세팅 + 한도 체크. */
     public String createSession(String userId, String tokenJti) {
         String sessionId = IdGenerator.sessionId();
@@ -76,19 +73,6 @@ public class SessionService {
 
         enforceSessionLimit(userId, sessionId);
         return sessionId;
-    }
-
-    /** 단일 세션 TTL 연장(세 키). sessions ZSET 은 이미 있는 멤버만 갱신(죽은 세션 부활 방지). batch 형은 {@link #heartbeatBatch}. */
-    public void heartbeat(String sessionId, String userId) {
-        redis.expire(ChatRedisKeys.sess(sessionId), TTL);
-        redis.expire(ChatRedisKeys.wsRoute(sessionId), TTL);
-        // ZADD ... XX — 이미 있는 멤버의 score 만 원자적으로 갱신. ZSCORE→ZADD 의 TOCTOU 레이스(동시 ZREM 후
-        // 부활)를 차단한다. 고수준 opsForZSet().add 에 XX 가 없어 저수준 호출(NodeRegistry.heartbeatSelf 와 동일).
-        byte[] key = ChatRedisKeys.sessions(userId).getBytes(StandardCharsets.UTF_8);
-        byte[] member = sessionId.getBytes(StandardCharsets.UTF_8);
-        double score = expiresMs();
-        redis.execute((RedisCallback<Boolean>) connection ->
-                connection.zSetCommands().zAdd(key, score, member, ZAddArgs.ifExists()));
     }
 
     /**

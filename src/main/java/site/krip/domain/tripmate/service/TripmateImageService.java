@@ -5,8 +5,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.domain.tripmate.document.TripmatePostDraft;
-import site.krip.domain.tripmate.exception.PostAccessDeniedException;
-import site.krip.domain.tripmate.exception.PostNotFoundException;
 import site.krip.domain.tripmate.repository.TripmateImageRepository;
 import site.krip.domain.tripmate.repository.TripmatePostDraftRepository;
 import site.krip.domain.tripmate.repository.TripmatePostImageRepository;
@@ -101,23 +99,6 @@ public class TripmateImageService {
             safeDeleteStorage(imageUrl);
             throw e;
         }
-    }
-
-    public List<TripmateImage> getImages(String userId) {
-        return imageRepository.findByUserId(userId);
-    }
-
-    public void deleteImage(String userId, String imageId) {
-        TripmateImage image = imageRepository.findByImageId(imageId)
-                .orElseThrow(PostNotFoundException::new);
-        if (!image.getUserId().equals(userId)) {
-            throw new PostAccessDeniedException("이미지 삭제 권한이 없습니다.");
-        }
-        // DB-우선(진실) → best-effort 스토리지 정리(feed deletePost 와 동일). 순서를 바꾸면 Mongo 삭제 실패 시
-        // dangling URL(깨진 이미지)이 남는다. 반대로 스토리지 삭제 실패는 드문 orphan 으로 남기고 로깅한다.
-        imageRepository.deleteByImageId(imageId);
-        safeDeleteStorage(image.getImageUrl());
-        log.info("이미지 삭제 완료 (user_id={}, image_id={})", userId, imageId);
     }
 
     /** 스토리지 단건 삭제 — best-effort. 실패는 orphan 으로 남기고 로깅(ops 알림 대상). */
