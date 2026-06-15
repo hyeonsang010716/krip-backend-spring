@@ -1,7 +1,6 @@
 """Tour Planner v2 데이터 단일 진입점.
 
 - 사용자 입력 / 최종 출력 Pydantic 모델
-- LangGraph 상태 TypedDict
 
 서비스가 외국인 한국 여행자 대상이라 모든 사용자 노출 텍스트(LLM 출력 포함)는
 영어로 통일한다. Pydantic Field의 description과 class docstring은
@@ -9,7 +8,7 @@
 디버깅 가독성을 위해 옆에 한국어 inline 주석을 둔다.
 """
 
-from typing import List, Literal, Optional, TypedDict
+from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
@@ -64,14 +63,6 @@ class TourDayInput(BaseModel):
     budget_per_person_krw: int = Field(description="Per-person budget in KRW.")  # 1인 예산 (원)
     styles: List[TravelStyle] = Field(description="Travel styles (multi-select).")  # 여행 스타일
     schedule_density: ScheduleDensity = Field(description="Schedule density.")  # 일정 밀도
-
-
-class TourPlannerInput(BaseModel):
-    """Full planner input."""  # 전체 입력
-
-    travel_days: int = Field(ge=1, le=3, description="Number of travel days (1-3).")  # 여행 일수
-    food_preference: FoodPreference = Field(description="Food preference option.")  # 음식 옵션
-    days: List[TourDayInput] = Field(description="Per-day inputs. len(days) MUST equal travel_days.")  # 일자별 입력
 
 
 # ──────────────────── 최종 출력 모델 ────────────────────
@@ -139,24 +130,3 @@ class TourPlanResult(BaseModel):
     """Final tour plan covering all days."""  # 전체 여행 플랜
 
     tour_plan: List[TourDayPlan] = Field(description="One plan per day.")  # 일자별 플랜 목록
-
-
-# ──────────────────── LangGraph State ────────────────────
-
-
-class TourPlannerGraphState(TypedDict):
-    """Tour Planner v2 LangGraph 상태"""
-
-    # 사용자 입력 (정규화)
-    travel_days: int
-    food_preference: FoodPreference
-    days_input: List[TourDayInput]
-
-    # 추가 장소 DB 조회 결과 (없으면 None)
-    fixed_places: List[Optional[dict]]
-
-    # 후보 장소 풀 (일자별, 그룹 균형 분배 후)
-    candidate_places: List[List[dict]]
-
-    # 최종
-    tour_plan: TourPlanResult

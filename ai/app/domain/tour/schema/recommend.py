@@ -1,85 +1,8 @@
 from typing import List, Optional
-import re
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-from app.core.ai.tour_planner.v2.prompt_manager import CLUSTER_COORDINATES
-from app.core.ai.tour_planner.v2.data_state import (
-    Companion,
-    FoodPreference,
-    ScheduleDensity,
-    Transport,
-    TravelStyle,
-)
+from pydantic import BaseModel, Field
 
 
-# HH:MM (24h) 정규식 — 00:00 ~ 23:59
-_TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
-
-
-def _to_minutes(hhmm: str) -> int:
-    """HH:MM → 분 단위 정수. 형식이 깨지면 -1."""
-    h, m = hhmm.split(":")
-    return int(h) * 60 + int(m)
-
-
-# ──────────────────── Request ────────────────────
-
-
-class TourDayRequest(BaseModel):
-    """Per-day tour recommendation request."""  # 일자별 추천 요청
-
-    departure_cluster: str = Field(..., description="Departure cluster name (must be a key of CLUSTER_COORDINATES).")  # 출발 권역
-    arrival_cluster: str = Field(..., description="Arrival cluster name.")  # 도착 권역
-    additional_place_id: Optional[str] = Field(None, description="place_id of a required must-visit place. Up to 1.")  # 필수 포함 장소 place_id
-    transport: Transport = Field(..., description="Transportation mode.")  # 이동 수단
-    start_time: str = Field(..., description="Start time in HH:MM (24h).")  # 시작 시각
-    end_time: str = Field(..., description="End time in HH:MM (24h).")  # 종료 시각
-    companion: Companion = Field(..., description="Companion type.")  # 동행 유형
-    budget_per_person_krw: int = Field(..., ge=0, description="Per-person budget in KRW.")  # 1인 예산 (원)
-    styles: List[TravelStyle] = Field(..., min_length=1, description="Travel styles (multi-select, at least one).")  # 여행 스타일
-    schedule_density: ScheduleDensity = Field(..., description="Schedule density.")  # 일정 밀도
-
-    @field_validator("departure_cluster", "arrival_cluster")
-    @classmethod
-    def _validate_cluster(cls, v: str) -> str:
-        if v not in CLUSTER_COORDINATES:
-            raise ValueError(f"Unknown cluster name: {v}")
-        return v
-
-
-    @field_validator("start_time", "end_time")
-    @classmethod
-    def _validate_time_format(cls, v: str) -> str:
-        if not _TIME_PATTERN.match(v):
-            raise ValueError(f"Invalid time format (expected HH:MM 24h): {v}")
-        return v
-
-
-    @model_validator(mode="after")
-    def _validate_time_range(self) -> "TourDayRequest":
-        if _to_minutes(self.start_time) >= _to_minutes(self.end_time):
-            raise ValueError(
-                f"start_time ({self.start_time}) must be earlier than end_time ({self.end_time})"
-            )
-        return self
-
-
-class TourRecommendRequest(BaseModel):
-    """Tour recommendation request (full)."""  # 전체 추천 요청
-
-    travel_days: int = Field(..., ge=1, le=3, description="Number of travel days (1-3).")  # 여행 일수
-    food_preference: FoodPreference = Field(..., description="Food preference (halal / vegetarian / any).")  # 음식 옵션
-    days: List[TourDayRequest] = Field(..., description="Per-day inputs. len(days) MUST equal travel_days.")  # 일자별 입력
-
-    @model_validator(mode="after")
-    def _validate_days_length(self) -> "TourRecommendRequest":
-        if len(self.days) != self.travel_days:
-            raise ValueError(
-                f"len(days)={len(self.days)} does not match travel_days={self.travel_days}"
-            )
-        return self
-
-
+# 요청 모델/입력 검증은 Spring(AiTourService)로 이관됨 — 응답 스키마만 유지(/build-plan 재사용).
 # ──────────────────── Response ────────────────────
 
 
