@@ -30,7 +30,8 @@ async def build_plan(
     try:
         return await recommend_service.build_plan(body)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("build-plan 입력/제약 검증 실패: {}", e)
+        raise HTTPException(status_code=400, detail="여행 추천 요청이 올바르지 않습니다.")
     except TourRecommendCredentialExpiredError as e:
         logger.critical("Gemini 인증 만료 / 권한 거부: {}", e)
         raise HTTPException(status_code=503, detail="여행 추천 서비스가 일시 중단되었습니다.")

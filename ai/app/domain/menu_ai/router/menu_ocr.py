@@ -40,7 +40,8 @@ async def ocr_menu(
     try:
         result = await ocr_service.ocr_single(image_bytes, file.content_type)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("메뉴 OCR 입력 검증 실패: {}", e)
+        raise HTTPException(status_code=400, detail="메뉴 이미지 요청이 올바르지 않습니다.")
     except MenuOcrCredentialExpiredError as e:
         logger.critical("Gemini 인증 만료 / 권한 거부: {}", e)
         raise HTTPException(status_code=503, detail="메뉴 인식 서비스가 일시 중단되었습니다.")
@@ -80,7 +81,8 @@ async def ocr_menu_batch(
     try:
         result = await ocr_service.ocr_batch(images)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.warning("메뉴 OCR 입력 검증 실패 (batch): {}", e)
+        raise HTTPException(status_code=400, detail="메뉴 이미지 요청이 올바르지 않습니다.")
     except MenuOcrCredentialExpiredError as e:
         logger.critical("Gemini 인증 만료 / 권한 거부 (batch): {}", e)
         raise HTTPException(status_code=503, detail="메뉴 인식 서비스가 일시 중단되었습니다.")
