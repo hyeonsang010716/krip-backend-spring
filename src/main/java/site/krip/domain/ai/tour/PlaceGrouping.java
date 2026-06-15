@@ -128,6 +128,13 @@ public final class PlaceGrouping {
         if (total > HARD_CAP) {
             double scale = (double) HARD_CAP / total;
             caps.replaceAll((g, n) -> Math.max(1, (int) Math.round(n * scale)));
+            // round 올림 보정 — 큰 그룹부터 1씩 깎아 합 ≤ HARD_CAP 보장(min-1 유지).
+            int over = caps.values().stream().mapToInt(Integer::intValue).sum() - HARD_CAP;
+            while (over-- > 0) {
+                String g = caps.entrySet().stream().max(Map.Entry.comparingByValue())
+                        .map(Map.Entry::getKey).orElseThrow();
+                caps.merge(g, -1, Integer::sum);
+            }
         }
         return caps;
     }
