@@ -382,6 +382,7 @@ class TourPlannerGraphOrchestrator:
         dp = math.radians(lat2 - lat1)
         dl = math.radians(lng2 - lng1)
         a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+        a = min(1.0, max(0.0, a))  # 부동소수/비정상 LLM 좌표 방어 — sqrt/asin domain error 차단
         return 2 * R * math.asin(math.sqrt(a))
 
 
