@@ -34,6 +34,7 @@ import site.krip.domain.tripmate.service.TripmatePostService;
 import site.krip.domain.tripmate.service.TripmateSearchHistoryService;
 import site.krip.global.auth.CurrentUserId;
 import site.krip.global.common.dto.MessageResponse;
+import site.krip.global.support.LogSafe;
 
 import java.util.Optional;
 
@@ -89,7 +90,7 @@ public class TripmatePostController {
             try {
                 searchHistoryService.saveSearch(userId, keyword);
             } catch (Exception e) {
-                log.warn("검색 기록 저장 실패: user_id={}, keyword={}", userId, keyword);
+                log.warn("검색 기록 저장 실패: user_id={}, keyword={}", userId, LogSafe.clean(keyword));
             }
         }
         return postService.searchPosts(keyword, cursor, userId);

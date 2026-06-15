@@ -57,6 +57,10 @@ public class InboxRepository {
                 new IndexOptions().name("uq_inbox_dedup").unique(true)
                         .partialFilterExpression(new Document("display", true)));
         coll.createIndex(Indexes.ascending("actor_id"), new IndexOptions().name("ix_inbox_actor"));
+        // 게시글 삭제 cascade(hideByTarget) — target 기준 조회 인덱스(없으면 COLLSCAN).
+        coll.createIndex(
+                Indexes.compoundIndex(Indexes.ascending("target_type"), Indexes.ascending("target_id")),
+                new IndexOptions().name("ix_inbox_target"));
         coll.createIndex(Indexes.ascending("created_at"),
                 new IndexOptions().name("ttl_inbox_created").expireAfter(TTL_SECONDS, TimeUnit.SECONDS));
     }

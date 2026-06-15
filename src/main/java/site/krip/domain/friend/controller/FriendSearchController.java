@@ -13,6 +13,7 @@ import site.krip.domain.friend.dto.response.FriendSearchListResponse;
 import site.krip.domain.friend.service.FriendSearchHistoryService;
 import site.krip.domain.friend.service.FriendSearchService;
 import site.krip.global.auth.CurrentUserId;
+import site.krip.global.support.LogSafe;
 
 /**
  * 친구 추가 화면 유저 검색.
@@ -47,7 +48,7 @@ public class FriendSearchController {
             try {
                 searchHistoryService.saveSearch(viewerId, normalized);
             } catch (Exception e) {
-                log.warn("검색 기록 저장 실패: user_id={}, keyword={}", viewerId, normalized);
+                log.warn("검색 기록 저장 실패: user_id={}, keyword={}", viewerId, LogSafe.clean(normalized));
             }
         }
 
