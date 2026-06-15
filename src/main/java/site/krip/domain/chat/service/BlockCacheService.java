@@ -4,7 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.chat.entity.ChatRoom;
 import site.krip.domain.chat.repository.ChatRoomRepository;
 import site.krip.domain.friend.port.BlockCachePort;
@@ -30,8 +29,9 @@ public class BlockCacheService implements BlockCachePort {
     }
 
     @Override
-    @Transactional(readOnly = true)
     public void invalidateBlockCache(String userA, String userB) {
+        // 트랜잭션 어노테이션 없음 — read 1건은 리포지토리 자체 readOnly tx(또는 호출자 tx)에서 돌고,
+        // Redis DEL(캐시 무효화)은 tx 밖에서 도는 게 맞다. 여기에 RDB 쓰기를 추가하면 안 된다(이 메서드는 무효화 전용).
         String a = userA.compareTo(userB) < 0 ? userA : userB;
         String b = userA.compareTo(userB) < 0 ? userB : userA;
         ChatRoom room = roomRepo.findDirectByPair(a, b).orElse(null);
