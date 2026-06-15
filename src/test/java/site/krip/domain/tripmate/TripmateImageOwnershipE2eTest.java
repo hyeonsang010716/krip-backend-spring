@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -89,6 +90,18 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
                   "image_urls": %s
                 }
                 """.formatted(imageUrlsJson);
+    }
+
+    /** 게시글 생성 후 post_id 반환. */
+    private String createPost(String userId, String imageUrlsJson) throws Exception {
+        MvcResult res = mockMvc.perform(post(POSTS)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody(imageUrlsJson)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return objectMapper.readTree(res.getResponse().getContentAsString()).get("post_id").asText();
     }
 
     @Test
@@ -194,5 +207,66 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isForbidden());
 
         assertThat(imageRepository.findOwnedUrls(victim, Set.of(victimUrl))).contains(victimUrl);
+    }
+
+    @Test
+    @DisplayName("게시글 삭제: 같은 이미지를 쓰는 다른 글이 있으면 공유 이미지는 보존된다")
+    void deletePreservesImageSharedByAnotherPost() throws Exception {
+        String owner = fixtures.createActiveUser("공유삭제");
+        String sharedUrl = uploadImage(owner, "shared.jpg");
+        String p1 = createPost(owner, "[\"" + sharedUrl + "\"]");
+        createPost(owner, "[\"" + sharedUrl + "\"]"); // P2 도 같은 이미지 사용
+
+        mockMvc.perform(delete(POSTS + "/" + p1)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk());
+
+        // P2 가 아직 참조 → 스토리지/Mongo 보존
+        assertThat(storage.stored).contains(sharedUrl);
+        assertThat(imageRepository.findOwnedUrls(owner, List.of(sharedUrl))).contains(sharedUrl);
+    }
+
+    @Test
+    @DisplayName("게시글 수정: 제거한 이미지가 드래프트에 남아있으면 보존된다")
+    void updatePreservesImageStillInDraft() throws Exception {
+        String owner = fixtures.createActiveUser("공유수정");
+        String sharedUrl = uploadImage(owner, "shared2.jpg");
+        String postId = createPost(owner, "[\"" + sharedUrl + "\"]");
+
+        mockMvc.perform(put(POSTS + "/draft") // 같은 이미지를 드래프트에도 저장
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(draftBody("[\"" + sharedUrl + "\"]")))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(put(POSTS + "/" + postId) // 게시글에서 이미지 제거(빈 배열)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createBody("[]")))
+                .andExpect(status().isOk());
+
+        // 드래프트가 아직 참조 → 보존
+        assertThat(storage.stored).contains(sharedUrl);
+        assertThat(imageRepository.findOwnedUrls(owner, List.of(sharedUrl))).contains(sharedUrl);
+    }
+
+    @Test
+    @DisplayName("게시글 삭제: 공유 없는 이미지는 정상 정리된다 (과교정 방지)")
+    void deleteCleansUpUnsharedImage() throws Exception {
+        String owner = fixtures.createActiveUser("단독삭제");
+        String soloUrl = uploadImage(owner, "solo.jpg");
+        String postId = createPost(owner, "[\"" + soloUrl + "\"]");
+
+        mockMvc.perform(delete(POSTS + "/" + postId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(owner)))
+                .andExpect(status().isOk());
+
+        // 어디에도 참조 없음 → 즉시 정리
+        assertThat(storage.stored).doesNotContain(soloUrl);
+        assertThat(imageRepository.findOwnedUrls(owner, List.of(soloUrl))).isEmpty();
     }
 }

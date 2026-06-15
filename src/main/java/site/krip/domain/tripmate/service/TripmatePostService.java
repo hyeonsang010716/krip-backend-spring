@@ -200,12 +200,15 @@ public class TripmatePostService {
                 List<String> removedList = new ArrayList<>(removed);
                 AfterCommit.run(() -> {
                     try {
-                        // S3 삭제 실패분은 메타데이터를 남겨 cleanup 이 재시도(영구 누수 방지).
-                        List<String> failed = storage.deleteMany(removedList);
-                        List<String> deletable = removedList.stream()
-                                .filter(u -> !failed.contains(u))
-                                .toList();
-                        mongoImageRepository.deleteByUserIdAndUrls(userId, deletable);
+                        // 다른 게시글/드래프트가 아직 쓰는 URL 은 보존. S3 삭제 실패분은 메타데이터 남겨 cleanup 재시도.
+                        List<String> toDelete = unreferencedUrls(userId, removedList);
+                        if (!toDelete.isEmpty()) {
+                            List<String> failed = storage.deleteMany(toDelete);
+                            List<String> deletable = toDelete.stream()
+                                    .filter(u -> !failed.contains(u))
+                                    .toList();
+                            mongoImageRepository.deleteByUserIdAndUrls(userId, deletable);
+                        }
                     } catch (Exception e) {
                         log.warn("수정 시 이미지 정리 실패 (post_id={})", postId, e);
                     }
@@ -247,20 +250,28 @@ public class TripmatePostService {
         postRepository.delete(post); // DB CASCADE → 이미지·좋아요 자동 삭제
 
         AfterCommit.run(() -> {
-            if (!imageUrls.isEmpty()) {
-                try {
-                    // S3 삭제 실패분은 메타데이터를 남겨 cleanup 이 재시도(영구 누수 방지).
-                    List<String> failed = storage.deleteMany(imageUrls);
-                    List<String> deletable = imageUrls.stream()
+            try {
+                // 다른 게시글/드래프트가 아직 쓰는 URL 은 보존. S3 삭제 실패분은 메타데이터 남겨 cleanup 재시도.
+                List<String> toDelete = imageUrls.isEmpty() ? List.of() : unreferencedUrls(userId, imageUrls);
+                if (!toDelete.isEmpty()) {
+                    List<String> failed = storage.deleteMany(toDelete);
+                    List<String> deletable = toDelete.stream()
                             .filter(u -> !failed.contains(u))
                             .toList();
                     mongoImageRepository.deleteByUserIdAndUrls(userId, deletable);
-                } catch (Exception e) {
-                    log.warn("삭제 시 이미지 정리 실패 (post_id={})", postId, e);
                 }
+            } catch (Exception e) {
+                log.warn("삭제 시 이미지 정리 실패 (post_id={})", postId, e);
             }
             notificationPort.cascadePostDeleted(postId);
         });
+    }
+
+    /** 다른 게시글/드래프트가 아직 참조하는 URL 은 제외 — 공유 이미지 보존(cleanupOrphanedImages 와 동일 기준). */
+    private List<String> unreferencedUrls(String userId, Collection<String> candidates) {
+        Set<String> referenced = new HashSet<>(postImageRepository.findUrlsByUserId(userId));
+        draftService.getDraft(userId).ifPresent(d -> referenced.addAll(d.getImageUrls()));
+        return candidates.stream().filter(u -> !referenced.contains(u)).toList();
     }
 
     // ──────────────────── Display 토글 ────────────────────
