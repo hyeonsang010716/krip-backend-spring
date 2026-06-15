@@ -26,8 +26,12 @@ public class ChatSetCache {
         this.saddWithTtl = saddWithTtl;
     }
 
-    /** members(≥1) 를 key 에 SADD 하고 ttl 초로 EXPIRE — 원자적. */
+    /** members 를 key 에 SADD 하고 ttl 초로 EXPIRE — 원자적. 빈 리스트는 no-op(올릴 게 없음). */
     public void saddWithTtl(String key, long ttlSeconds, List<String> members) {
+        if (members.isEmpty()) {
+            // 추가할 멤버 없음 → no-op. 빈 채로 넘기면 스크립트의 SADD 가 0-인자 에러로 abort 된다.
+            return;
+        }
         List<String> args = new ArrayList<>(members.size() + 1);
         args.add(String.valueOf(ttlSeconds));
         args.addAll(members);
