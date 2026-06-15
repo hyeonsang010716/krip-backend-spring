@@ -1,74 +1,128 @@
 package site.krip.domain.notification.fcm;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 
 /**
  * FCM 전송 전용 경량 서킷 브레이커.
  *
- * <p>배치 연속 실패가 임계치에 도달하면 cooldown 동안 open 되어 후속 발송을 즉시 단락(fast-fail)한다 —
- * FCM 장애 시 push 워커가 타임아웃마다 묶여 풀이 고갈되는 것을 막는다. cooldown 경과 후에는 단 1건만
- * probe(half-open)로 통과시켜 복구를 확인하고, 성공하면 close·실패하면 재open 한다.
- * nanoTime 기반이라 wall-clock 점프에 영향받지 않는다.
+ * <p>배치 연속 실패가 임계치에 도달하면 cooldown 동안 open 되어 발송을 단락(fast-fail)한다 — FCM 장애가
+ * 타임아웃으로 push 워커 풀을 고갈시키는 것을 막는다. cooldown 후엔 probe 1건만 통과시켜 복구를 확인한다.
+ *
+ * <p>상태(실패수·open 만료·probe)를 불변 {@link State} 로 묶어 CAS 로만 전이한다 — stale 성공이 방금
+ * 설정된 open 을 덮어쓰지 못하게(latch). open 중 성공은 무시, half-open probe 성공만 close.
+ * 전송 timeout(5s) < cooldown(30s)이라 in-flight 발송은 cooldown 종료 전에 끝나 stale 엣지가 없다.
  */
 final class FcmCircuitBreaker {
+
+    /** open 만료 sentinel(=closed). nanoTime 이 0 일 확률은 무시. */
+    private static final long NOT_OPEN = 0L;
 
     private final int failureThreshold;
     private final long openCooldownNanos;
     private final LongSupplier nanoClock;
 
-    private final AtomicInteger consecutiveFailures = new AtomicInteger();
-    private final AtomicLong openUntilNanos = new AtomicLong(0);
-    private final AtomicBoolean probeInFlight = new AtomicBoolean(false);
+    private final AtomicReference<State> state = new AtomicReference<>(State.CLOSED);
 
     FcmCircuitBreaker(int failureThreshold, long openCooldownMillis) {
         this(failureThreshold, openCooldownMillis, System::nanoTime);
     }
 
-    // 테스트용 — nanoClock 주입으로 open/half-open 전이를 결정적으로 검증한다.
+    // 테스트용 — nanoClock 주입으로 전이를 결정적으로 검증.
     FcmCircuitBreaker(int failureThreshold, long openCooldownMillis, LongSupplier nanoClock) {
         this.failureThreshold = Math.max(1, failureThreshold);
         this.openCooldownNanos = Math.max(0, openCooldownMillis) * 1_000_000L;
         this.nanoClock = nanoClock;
     }
 
-    /**
-     * 통과 가능하면 true. closed 면 항상 통과, open(cooldown 중)이면 차단,
-     * cooldown 경과 후에는 단 한 호출만 probe 로 통과시킨다(half-open single-flight).
-     * 통과한 호출은 반드시 {@link #recordSuccess()}/{@link #recordFailure()} 로 결과를 보고해야 한다.
-     */
+    /** closed=항상 통과, open(cooldown)=차단, cooldown 후=probe 1건만. 통과 시 success/failure/release 보고 필수. */
     boolean tryAcquire() {
-        long until = openUntilNanos.get();
-        if (until == 0) {
-            return true; // closed
+        while (true) {
+            State s = state.get();
+            if (s.openUntilNanos == NOT_OPEN) {
+                return true; // closed
+            }
+            if (nanoClock.getAsLong() - s.openUntilNanos < 0) {
+                return false; // open — cooldown 중 (wrap-safe)
+            }
+            if (s.probeInFlight) {
+                return false; // half-open — probe 이미 점유
+            }
+            if (state.compareAndSet(s, s.withProbe())) {
+                return true; // half-open — probe 선점
+            }
         }
-        if (nanoClock.getAsLong() - until < 0) {
-            return false; // open — cooldown 중 (nanoTime wrap-safe 비교)
-        }
-        return probeInFlight.compareAndSet(false, true); // half-open — 1건만 선점 통과
     }
 
     void recordSuccess() {
-        consecutiveFailures.set(0);
-        openUntilNanos.set(0);
-        probeInFlight.set(false);
+        while (true) {
+            State s = state.get();
+            if (s.openUntilNanos == NOT_OPEN) {
+                if (s.failures == 0) {
+                    return; // 이미 깨끗한 closed
+                }
+                if (state.compareAndSet(s, State.CLOSED)) {
+                    return; // closed 성공 — 카운터 리셋
+                }
+            } else if (s.probeInFlight) {
+                if (state.compareAndSet(s, State.CLOSED)) {
+                    return; // probe 성공 — close
+                }
+            } else {
+                return; // open 중 도착 성공 — 무시(latch 보존)
+            }
+        }
     }
 
-    /**
-     * probe 를 결과 기록 없이 해제 — 빌드 실패 등 FCM 건강과 무관한 중단 시.
-     * 카운터·open 상태는 불변이라 cooldown 후 다시 probe 된다. closed 상태에선 no-op.
-     */
+    /** 결과 미기록으로 probe 만 해제 — FCM 무관 중단(빌드 실패 등). closed/probe 미점유면 no-op. */
     void release() {
-        probeInFlight.set(false);
+        while (true) {
+            State s = state.get();
+            if (!s.probeInFlight) {
+                return;
+            }
+            // open 만료는 유지(이미 과거)라 다음 호출이 즉시 재probe.
+            if (state.compareAndSet(s, s.withoutProbe())) {
+                return;
+            }
+        }
     }
 
     void recordFailure() {
-        // openUntil 갱신을 먼저 해야 재open 직후 probe 가 새지 않는다 — 그 후 probe 해제.
-        if (consecutiveFailures.incrementAndGet() >= failureThreshold) {
-            openUntilNanos.set(nanoClock.getAsLong() + openCooldownNanos);
+        while (true) {
+            State s = state.get();
+            if (s.openUntilNanos != NOT_OPEN) {
+                if (s.probeInFlight) {
+                    if (state.compareAndSet(s, openState())) {
+                        return; // probe 실패 → 재open
+                    }
+                } else {
+                    return; // 이미 open — stale 실패 무시
+                }
+            } else {
+                int f = s.failures + 1;
+                State next = f >= failureThreshold ? openState() : new State(f, NOT_OPEN, false);
+                if (state.compareAndSet(s, next)) {
+                    return;
+                }
+            }
         }
-        probeInFlight.set(false);
+    }
+
+    private State openState() {
+        return new State(failureThreshold, nanoClock.getAsLong() + openCooldownNanos, false);
+    }
+
+    /** 불변 상태 — 실패수 / open 만료(nanoTime, 0=closed) / probe 점유. */
+    private record State(int failures, long openUntilNanos, boolean probeInFlight) {
+        static final State CLOSED = new State(0, NOT_OPEN, false);
+
+        State withProbe() {
+            return new State(failures, openUntilNanos, true);
+        }
+
+        State withoutProbe() {
+            return new State(failures, openUntilNanos, false);
+        }
     }
 }

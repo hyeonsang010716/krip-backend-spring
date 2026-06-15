@@ -60,16 +60,18 @@ class AiCircuitBreakerTest {
     }
 
     @Test
-    @DisplayName("성공 기록 시 즉시 close + 실패 카운트 리셋")
-    void successClosesAndResets() {
+    @DisplayName("half-open probe 성공 시 close + 실패 카운트 리셋")
+    void probeSuccessClosesAndResets() {
         AiCircuitBreaker cb = breaker(3, 1000);
         cb.recordFailure();
         cb.recordFailure();
         cb.recordFailure();
-        assertThat(cb.tryAcquire()).isFalse();
+        assertThat(cb.tryAcquire()).isFalse(); // open
 
-        cb.recordSuccess();
-        assertThat(cb.tryAcquire()).isTrue();
+        now.addAndGet(1_000_000_000L);          // cooldown 경과 — half-open
+        assertThat(cb.tryAcquire()).isTrue();   // probe 획득
+        cb.recordSuccess();                     // probe 성공 → close
+        assertThat(cb.tryAcquire()).isTrue();   // closed
 
         // 리셋되었으므로 다시 임계치만큼 실패해야 재open
         cb.recordFailure();
@@ -77,6 +79,55 @@ class AiCircuitBreakerTest {
         assertThat(cb.tryAcquire()).isTrue();
         cb.recordFailure();
         assertThat(cb.tryAcquire()).isFalse();
+    }
+
+    @Test
+    @DisplayName("open(cooldown 중) 도착한 성공은 open 을 풀지 않는다 — latch 경합 회귀(#3)")
+    void successDuringOpenDoesNotClobberOpen() {
+        AiCircuitBreaker cb = breaker(3, 1000);
+        cb.recordFailure();
+        cb.recordFailure();
+        cb.recordFailure();
+        assertThat(cb.tryAcquire()).isFalse();  // open, cooldown 중
+
+        // stale 성공 모사 — 옛 구현이면 여기서 open 이 풀렸다.
+        cb.recordSuccess();
+        assertThat(cb.tryAcquire()).isFalse();  // 여전히 open (latch 보존)
+
+        now.addAndGet(1_000_000_000L);          // 정상 cooldown 경과 후에만 probe 허용
+        assertThat(cb.tryAcquire()).isTrue();
+    }
+
+    @Test
+    @DisplayName("동시: 임계치 도달 실패와 stale 성공이 경쟁해도 open 이 풀리지 않는다(latch 경합)")
+    void concurrentStaleSuccessNeverClobbersOpen() throws Exception {
+        int rounds = 2000;
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            for (int i = 0; i < rounds; i++) {
+                AiCircuitBreaker cb = breaker(1, 1000); // 실패 1건이면 즉시 open
+                CountDownLatch start = new CountDownLatch(1);
+                Runnable fail = () -> { await(start); cb.recordFailure(); };
+                Runnable ok = () -> { await(start); cb.recordSuccess(); };
+                var f1 = pool.submit(fail);
+                var f2 = pool.submit(ok);
+                start.countDown();
+                f1.get(5, TimeUnit.SECONDS);
+                f2.get(5, TimeUnit.SECONDS);
+                // 임계치=1 → 어떤 인터리빙이든 최종은 open.
+                assertThat(cb.tryAcquire()).as("round %d", i).isFalse();
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            latch.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     @Test
