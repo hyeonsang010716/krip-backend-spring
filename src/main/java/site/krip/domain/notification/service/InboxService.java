@@ -12,6 +12,7 @@ import site.krip.domain.notification.exception.InboxItemNotFoundException;
 import site.krip.domain.notification.repository.InboxRepository;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.IsoTimestamp;
+import site.krip.global.support.TextPreview;
 
 import java.time.Instant;
 import java.util.List;
@@ -175,9 +176,6 @@ public class InboxService {
     }
 
     private static String truncateComment(String content) {
-        if (content.length() <= COMMENT_PREVIEW_MAX_LENGTH) {
-            return content;
-        }
-        return content.substring(0, COMMENT_PREVIEW_MAX_LENGTH) + "…";
+        return TextPreview.truncate(content, COMMENT_PREVIEW_MAX_LENGTH, "…");
     }
 }

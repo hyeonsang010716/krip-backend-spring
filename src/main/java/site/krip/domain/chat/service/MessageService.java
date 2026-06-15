@@ -21,6 +21,7 @@ import site.krip.global.chat.ChatRedisKeys;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.IdGenerator;
 import site.krip.global.support.IsoTimestamp;
+import site.krip.global.support.TextPreview;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -404,8 +405,7 @@ public class MessageService {
         if (recipients.isEmpty()) {
             return;
         }
-        String body = content.length() > PUSH_BODY_PREVIEW_LIMIT
-                ? content.substring(0, PUSH_BODY_PREVIEW_LIMIT) + "..." : content;
+        String body = TextPreview.truncate(content, PUSH_BODY_PREVIEW_LIMIT, "...");
         pushExecutor.execute(() -> {
             try {
                 push.sendChatPush(recipients, roomId, senderUserId, body);
