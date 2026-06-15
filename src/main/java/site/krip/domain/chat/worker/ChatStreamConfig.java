@@ -48,6 +48,8 @@ public class ChatStreamConfig {
     private static final int BATCH_SIZE = 50;
     // 연속 N틱(≈ N×heartbeat) 부재일 때만 group 제거 — 합류 직후 스냅샷 경합/짧은 heartbeat 누락 방어.
     private static final int REAP_ABSENCE_TICKS = 2;
+    // node-id 미설정 시 application.yml 폴백 기본값 — 다중 노드에서 그대로 쓰면 그룹 공유 → fan-out 붕괴.
+    private static final String DEFAULT_NODE_ID = "node-local";
 
     private final StringRedisTemplate redis;
     private final NodeRegistry nodeRegistry;
@@ -61,11 +63,29 @@ public class ChatStreamConfig {
 
     public ChatStreamConfig(StringRedisTemplate redis, NodeRegistry nodeRegistry, FanoutService fanout,
                             ChatProperties props, ObjectMapper mapper) {
+        requireStableNodeId(props);
         this.redis = redis;
         this.nodeRegistry = nodeRegistry;
         this.fanout = fanout;
         this.props = props;
         this.mapper = mapper;
+    }
+
+    /**
+     * 다중 노드(redis_stream)에서 node-id 가 미설정 기본값('node-local')/공란이면 모든 노드가 같은 consumer
+     * group 을 공유해 fan-out 이 조용히 붕괴한다(메시지가 노드 간 분배돼 한 노드에만 도달). 노드별 고유·안정
+     * NODE_ID 를 fail-fast 로 강제한다 — yml 주석대로 재시작에도 안정적이어야 커서 연속성도 유지된다.
+     */
+    private static void requireStableNodeId(ChatProperties props) {
+        if (!props.isMultiNode()) {
+            return; // 이 빈은 redis_stream 에서만 생성되지만 의도를 명시.
+        }
+        String nodeId = props.nodeId();
+        if (nodeId == null || nodeId.isBlank() || DEFAULT_NODE_ID.equals(nodeId)) {
+            throw new IllegalStateException(
+                    "fanout-mode=redis_stream 에서는 노드별 고유·안정 NODE_ID 가 필요합니다 (현재 '"
+                            + nodeId + "'). NODE_ID 환경변수를 설정하세요.");
+        }
     }
 
     @Bean
