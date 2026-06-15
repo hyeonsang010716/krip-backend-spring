@@ -51,18 +51,22 @@ public class PlaceService {
         return PlaceResponse.of(place, 0.0, isFavorite(favorited, place.getPlaceId()));
     }
 
-    private PlaceListResponse toListResponse(List<NearbyPlace> nearby, String userId) {
-        List<String> placeIds = nearby.stream().map(n -> n.place().getPlaceId()).toList();
+    private PlaceListResponse toListResponse(List<NearbyPlace> fetched, String userId) {
+        // PAGE_SIZE+1 조회 → 초과분으로 hasMore 판정(마지막 꽉 찬 페이지의 phantom 커서 방지).
+        boolean hasMore = fetched.size() > PlaceRepository.PAGE_SIZE;
+        List<NearbyPlace> page = hasMore ? fetched.subList(0, PlaceRepository.PAGE_SIZE) : fetched;
+
+        List<String> placeIds = page.stream().map(n -> n.place().getPlaceId()).toList();
         Set<String> favorited = favoritedSet(placeIds, userId);
 
-        List<PlaceResponse> places = nearby.stream()
+        List<PlaceResponse> places = page.stream()
                 .map(n -> PlaceResponse.of(n.place(), n.distance(),
                         isFavorite(favorited, n.place().getPlaceId())))
                 .toList();
 
         String nextCursor = null;
-        if (nearby.size() == PlaceRepository.PAGE_SIZE) {
-            NearbyPlace last = nearby.get(nearby.size() - 1);
+        if (hasMore) {
+            NearbyPlace last = page.get(page.size() - 1);
             nextCursor = PlaceRepository.buildCursor(last.distance(), last.place().getPlaceId());
         }
         return new PlaceListResponse(places, nextCursor);

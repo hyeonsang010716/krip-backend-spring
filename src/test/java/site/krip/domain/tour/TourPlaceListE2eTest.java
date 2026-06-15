@@ -116,6 +116,23 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("마지막 페이지가 정확히 30개면 next_cursor 없음 (phantom 커서 회귀)")
+    void exactlyFullLastPageHasNoCursor() throws Exception {
+        String userId = fixtures.createActiveUser("place딱30");
+        for (int i = 0; i < 30; i++) { // 정확히 30개
+            seedPlace(String.format("ZZEXACT%02d", i), "ZZEXACT place " + i, i);
+        }
+
+        mockMvc.perform(get(PLACES).param("keyword", "ZZEXACT")
+                        .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(userId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(30))
+                .andExpect(jsonPath("$.next_cursor").isEmpty());
+    }
+
+    @Test
     @DisplayName("100자 초과 keyword → 400 (Mongo $regex+geoNear 직행 방지 바운드)")
     void overLongKeywordRejected() throws Exception {
         String userId = fixtures.createActiveUser("place길이");

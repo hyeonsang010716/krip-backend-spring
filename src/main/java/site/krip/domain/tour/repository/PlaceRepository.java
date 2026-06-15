@@ -159,7 +159,7 @@ public class PlaceRepository {
             ));
             ops.add(ctx -> new Document("$match", match));
         }
-        ops.add(ctx -> new Document("$limit", PAGE_SIZE));
+        ops.add(ctx -> new Document("$limit", PAGE_SIZE + 1)); // +1: hasMore 판정(phantom 커서 방지)
 
         List<Document> raw = mongo.aggregate(
                 Aggregation.newAggregation(ops), "place", Document.class).getMappedResults();
