@@ -75,17 +75,22 @@ public class TourPlanItem {
         this.dayNumber = dayNumber;
         this.position = position;
         this.placeId = placeId;
-        this.displayName = displayName;
-        this.address = address;
+        this.displayName = orEmpty(displayName);
+        this.address = orEmpty(address);
         this.visitTime = visitTime;
     }
 
     /** 카드 교체 (PUT) — place 스냅샷 + visit_time 일괄 갱신. day/position 은 move 로만 변경. */
     public void replace(String placeId, String displayName, String address, String visitTime) {
         this.placeId = placeId;
-        this.displayName = displayName;
-        this.address = address;
+        this.displayName = orEmpty(displayName);
+        this.address = orEmpty(address);
         this.visitTime = visitTime;
+    }
+
+    // Place(외부 Google 데이터)의 display_name/address 가 없을 수 있어 NOT NULL 스냅샷을 빈 문자열로 보호.
+    private static String orEmpty(String snapshot) {
+        return snapshot != null ? snapshot : "";
     }
 
     /** 카드 이동 — 대상 day/position 으로 재배치. */
