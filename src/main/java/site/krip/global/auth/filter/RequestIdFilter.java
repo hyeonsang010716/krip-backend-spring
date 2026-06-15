@@ -6,7 +6,6 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.MDC;
 import org.springframework.web.filter.OncePerRequestFilter;
-import site.krip.global.auth.RequestAttributes;
 import site.krip.global.support.MdcTaskDecorator;
 
 import java.io.IOException;
@@ -30,7 +29,6 @@ public class RequestIdFilter extends OncePerRequestFilter {
         if (requestId == null || !SAFE_ID.matcher(requestId).matches()) {
             requestId = UUID.randomUUID().toString();
         }
-        request.setAttribute(RequestAttributes.REQUEST_ID, requestId);
         response.setHeader(HEADER, requestId);
         MDC.put(MdcTaskDecorator.REQUEST_ID, requestId);
         try {

@@ -16,7 +16,7 @@ import java.util.List;
 /**
  * 피드 팝업 — 프로필 정보 + 최근 9개 피드 합성.
  *
- * <p>user 미존재/회원가입 미완료 → 404 일원화(enumeration 차단), 차단 → 403. next_cursor 미제공.
+ * <p>user 미존재/회원가입 미완료/차단 모두 → 404 일원화(enumeration 차단). next_cursor 미제공.
  */
 @Service
 public class FeedPopupService {

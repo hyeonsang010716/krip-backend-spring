@@ -1,6 +1,5 @@
 from typing import Dict, List
 from langchain_google_genai import ChatGoogleGenerativeAI
-import httpx
 from functools import lru_cache
 from enum import Enum
 
@@ -60,25 +59,6 @@ class LLMManager:
             )
 
         return self._models[model_name]
-
-
-    async def check_connection(self) -> bool:
-        """Google Gemini API 연결 상태를 확인합니다."""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"https://generativelanguage.googleapis.com/v1beta/models"
-                    f"?key={settings.GOOGLE_GEMINI_API_KEY}",
-                    timeout=5.0,
-                )
-                return response.status_code == 200
-        except Exception:
-            return False
-
-
-    def is_initialized(self) -> bool:
-        """초기화 상태를 반환합니다."""
-        return self._initialized
 
 
 @lru_cache(maxsize=1)

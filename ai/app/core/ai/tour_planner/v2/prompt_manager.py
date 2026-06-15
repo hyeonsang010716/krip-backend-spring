@@ -193,10 +193,6 @@ Output strictly the JSON below — no commentary.
         return self._prompts[prompt_key]
 
 
-    def list_prompt_keys(self) -> list:
-        return list(self._prompts.keys())
-
-
 @lru_cache(maxsize=1)
 def get_tour_planner_prompt_manager() -> TourPlannerPromptManager:
     """TourPlannerPromptManager 싱글톤"""

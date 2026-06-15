@@ -83,7 +83,7 @@ public class WithdrawPurgeScheduler {
         purgeDueWithdrawalsOnce();
     }
 
-    /** 한 사이클 — 처리 대상 수 반환 (성공/실패 모두 포함). */
+    /** 한 사이클 — 실제 처리한 수(성공+실패) 반환. 조기 중단 시 전체 대상보다 적을 수 있다. */
     public int purgeDueWithdrawalsOnce() {
         Instant now = clock.instant();
         List<WithdrawalRequest> due = requestRepository.findDue(now);
@@ -131,7 +131,7 @@ public class WithdrawPurgeScheduler {
         }
 
         log.info("withdraw purge: 사이클 완료 — 성공 {} / 실패 {} / 전체 {}", succeeded, failed, due.size());
-        return due.size();
+        return succeeded + failed;
     }
 
     /** 앱 종료 시 실행자를 graceful 종료 — 유예 초과 시 강제(shutdownNow). */
