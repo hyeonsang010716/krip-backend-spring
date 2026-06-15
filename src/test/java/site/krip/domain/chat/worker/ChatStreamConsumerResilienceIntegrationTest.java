@@ -30,7 +30,10 @@ import static org.mockito.Mockito.when;
  * <p>{@code cancelOnError(false)} + heartbeat 의 group 재확인이 함께 동작함을 증명한다. 기본값
  * ({@code cancelOnError=true})이면 group 파괴 직후 폴링 오류로 구독이 죽어 이 테스트는 실패한다.
  */
-@TestPropertySource(properties = "krip.chat.fanout-mode=redis_stream")
+@TestPropertySource(properties = {
+        "krip.chat.fanout-mode=redis_stream",
+        "krip.chat.node-id=test-node-1" // redis_stream 부팅 가드 충족 — 기본 'node-local' 은 fail-fast 거부됨
+})
 class ChatStreamConsumerResilienceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

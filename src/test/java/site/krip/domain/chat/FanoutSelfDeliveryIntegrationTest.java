@@ -29,7 +29,10 @@ import static org.mockito.Mockito.when;
  * dispatch → localDeliver 로 로컬 구독 세션에 도달한다. 활성 노드 ZSET 과 무관하게 전달돼야 하므로
  * 명단을 비운 상태에서 검증한다(전달은 Stream 소비 경로에만 의존).
  */
-@TestPropertySource(properties = "krip.chat.fanout-mode=redis_stream")
+@TestPropertySource(properties = {
+        "krip.chat.fanout-mode=redis_stream",
+        "krip.chat.node-id=test-node-1" // redis_stream 부팅 가드 충족 — 기본 'node-local' 은 fail-fast 거부됨
+})
 class FanoutSelfDeliveryIntegrationTest extends IntegrationTestSupport {
 
     @Autowired
