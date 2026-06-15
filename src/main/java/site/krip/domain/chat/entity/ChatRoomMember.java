@@ -56,11 +56,6 @@ public class ChatRoomMember {
         this.left = false;
     }
 
-    /** 퇴장/강퇴 — soft delete. */
-    public void markLeft() {
-        this.left = true;
-    }
-
     /** 방별 알림 차단 토글 — True 만 저장, 해제는 NULL. */
     public void applyNotificationMute(boolean muted) {
         this.notificationMuted = muted ? Boolean.TRUE : null;

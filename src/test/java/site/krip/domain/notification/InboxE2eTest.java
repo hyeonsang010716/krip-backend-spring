@@ -32,12 +32,16 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Autowired
     private InboxService inboxService;
 
-    /** recipient 인박스에 actor 의 feed_like 항목을 직접 insert (dedup 회피용 distinct postId). */
+    /** recipient 인박스에 actor 의 feed_like 항목을 직접 seed (dedup 회피용 distinct postId → upsert 는 항상 insert). */
     private InboxItem seedFeedLike(String recipientId, String actorId, String postId) {
         InboxItem item = InboxItem.feedLike(
                 recipientId, actorId, "행위자", null, postId, "게시글 미리보기");
-        inboxRepo.insert(item);
-        return item;
+        inboxRepo.upsert(item);
+        // upsert 는 전달 객체에 생성 _id 를 역기입하지 않으므로, DB 에서 distinct postId 로 재조회해 id 확보.
+        return inboxRepo.findByRecipient(recipientId, null, null, 100).stream()
+                .filter(i -> postId.equals(i.getTargetId()))
+                .findFirst()
+                .orElseThrow();
     }
 
     // ──────────────────── 목록 / 카운트 ────────────────────

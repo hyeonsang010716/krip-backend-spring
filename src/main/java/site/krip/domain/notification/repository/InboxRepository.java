@@ -65,11 +65,6 @@ public class InboxRepository {
                 new IndexOptions().name("ttl_inbox_created").expireAfter(TTL_SECONDS, TimeUnit.SECONDS));
     }
 
-    /** uq_inbox_dedup 충돌 시 DuplicateKeyException propagate — service 가 멱등 skip. */
-    public void insert(InboxItem item) {
-        mongo.insert(item);
-    }
-
     /**
      * dedup 키((recipient, actor, type, target, comment))로 upsert — 신규는 insert, 기존(숨김 포함)은
      * display=true·미읽음·최신순으로 되살린다(재좋아요 중복 누적 방지). 동시 fan-out 경합은 DuplicateKeyException propagate.

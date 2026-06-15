@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.transaction.support.TransactionTemplate;
 import site.krip.domain.chat.entity.ChatRoom;
 import site.krip.domain.chat.entity.ChatRoomMember;
 import site.krip.domain.chat.repository.ChatRoomMemberRepository;
@@ -27,6 +28,9 @@ class MuteLeftMemberE2eTest extends IntegrationTestSupport {
     @Autowired
     private ChatRoomMemberRepository memberRepo;
 
+    @Autowired
+    private TransactionTemplate txTemplate;
+
     @Test
     @DisplayName("이미 퇴장한 멤버가 방 mute 시도 → 400 (활성 멤버 아님)")
     void leftMemberRoomMuteRejected() throws Exception {
@@ -35,9 +39,9 @@ class MuteLeftMemberE2eTest extends IntegrationTestSupport {
 
         ChatRoom room = roomRepo.saveAndFlush(ChatRoom.group(userId, "퇴장테스트 방"));
         String roomId = room.getChatRoomId();
-        ChatRoomMember member = new ChatRoomMember(roomId, userId, 0L);
-        member.markLeft();
-        memberRepo.saveAndFlush(member);
+        memberRepo.saveAndFlush(new ChatRoomMember(roomId, userId, 0L));
+        // @Modifying 쿼리라 tx 필요 — 생산(RoomService.leave/kick)과 동일하게 txTemplate 로 감싼다.
+        txTemplate.execute(s -> memberRepo.markLeftIfActive(roomId, userId));
         memberRepo.saveAndFlush(new ChatRoomMember(roomId, peerId, 0L));
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
