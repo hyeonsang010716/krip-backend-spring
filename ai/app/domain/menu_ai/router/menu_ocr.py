@@ -20,6 +20,7 @@ logger = get_logger("menu_ai.ocr")
 
 _ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/png", "image/gif", "image/bmp", "image/webp", "image/tiff"}
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+_READ_CHUNK_SIZE = 1024 * 1024  # 1MB — 청크 읽기 단위
 _MAX_FILE_COUNT = 5
 
 
@@ -34,8 +35,7 @@ async def ocr_menu(
 ) -> MenuOcrResponse:
     """메뉴 이미지 1장에서 메뉴 정보를 추출합니다."""
     _validate_file(file)
-    image_bytes = await file.read()
-    _validate_file_size(image_bytes, file.filename)
+    image_bytes = await _read_within_limit(file)
 
     try:
         result = await ocr_service.ocr_single(image_bytes, file.content_type)
@@ -65,6 +65,9 @@ async def ocr_menu_batch(
     ocr_service: MenuOcrService = Depends(Provide[Container.menu_ocr_service]),
 ) -> MenuOcrBatchResponse:
     """여러 메뉴 이미지에서 메뉴 정보를 병렬 추출합니다. (최대 5장)"""
+    # 빈 입력은 명시적 400 — Spring 게이트웨이와 계약 일치 + 빈 배치 호출 차단.
+    if not files:
+        raise HTTPException(status_code=400, detail="이미지를 최소 1개 업로드해야 합니다.")
     if len(files) > _MAX_FILE_COUNT:
         raise HTTPException(
             status_code=400,
@@ -74,8 +77,7 @@ async def ocr_menu_batch(
     images = []
     for f in files:
         _validate_file(f)
-        image_bytes = await f.read()
-        _validate_file_size(image_bytes, f.filename)
+        image_bytes = await _read_within_limit(f)
         images.append((image_bytes, f.content_type))
 
     try:
@@ -109,12 +111,19 @@ def _validate_file(file: UploadFile) -> None:
         )
 
 
-def _validate_file_size(image_bytes: bytes, filename: str | None) -> None:
-    if len(image_bytes) > _MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"파일 크기가 10MB를 초과합니다: {filename}",
-        )
+async def _read_within_limit(file: UploadFile) -> bytes:
+    """10MB 한도까지만 청크로 읽어 메모리 상한 — 초과 시 즉시 400(전체 버퍼링 차단)."""
+    chunks: list[bytes] = []
+    total = 0
+    while chunk := await file.read(_READ_CHUNK_SIZE):
+        total += len(chunk)
+        if total > _MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"파일 크기가 10MB를 초과합니다: {file.filename}",
+            )
+        chunks.append(chunk)
+    return b"".join(chunks)
 
 
 def _to_ocr_response(dto) -> MenuOcrResponse:
