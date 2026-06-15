@@ -41,6 +41,9 @@ public class AiOcrService {
     }
 
     public OcrBatchResponse ocrBatch(List<MultipartFile> files) {
+        if (files.isEmpty()) {
+            throw ApiException.badRequest("이미지를 최소 1개 업로드해야 합니다.");
+        }
         if (files.size() > MAX_FILE_COUNT) {
             throw ApiException.badRequest("이미지는 최대 " + MAX_FILE_COUNT + "개까지 업로드할 수 있습니다.");
         }
