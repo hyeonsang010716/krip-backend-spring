@@ -193,7 +193,7 @@ public class FeedPostService {
         }
         // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
         PageRequest page = PageRequest.of(0, FeedPostRepository.PAGE_SIZE + 1);
-        if (cursor == null) {
+        if (cursor == null || cursor.isBlank()) {
             return feedPostRepo.findByOwnerFirstPage(ownerId, visibilities, viewerId, page);
         }
         KeysetCursor.Decoded c = KeysetCursor.decode(cursor);

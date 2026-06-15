@@ -144,9 +144,9 @@ public class InboxService {
         return IsoTimestamp.format(last.getCreatedAt()) + "_" + last.getId();
     }
 
-    /** null=첫 페이지. '_' 없으면 timestamp-only 구 커서로 하위호환(created_at &lt; ts). 손상 시 400. */
+    /** null/blank=첫 페이지. '_' 없으면 timestamp-only 구 커서로 하위호환(created_at &lt; ts). 손상 시 400. */
     private static InboxCursor parseCursor(String cursor) {
-        if (cursor == null) {
+        if (cursor == null || cursor.isBlank()) {
             return new InboxCursor(null, null);
         }
         int sep = cursor.indexOf('_');

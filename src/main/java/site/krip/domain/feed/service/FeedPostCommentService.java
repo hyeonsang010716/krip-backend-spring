@@ -82,7 +82,7 @@ public class FeedPostCommentService {
         // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
         PageRequest page = PageRequest.of(0, FeedPostCommentRepository.PAGE_SIZE + 1);
         List<FeedPostComment> fetched;
-        if (cursor == null) {
+        if (cursor == null || cursor.isBlank()) {
             fetched = commentRepo.findByPostFirstPage(post.getPostId(), page);
         } else {
             KeysetCursor.Decoded c = KeysetCursor.decode(cursor);

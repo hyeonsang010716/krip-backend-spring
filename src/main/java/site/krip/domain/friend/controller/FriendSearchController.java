@@ -44,7 +44,7 @@ public class FriendSearchController {
         String normalized = keyword.strip();
 
         // 검색 기록 저장은 첫 페이지에서만 — 페이지네이션 중복 upsert 방지 (best-effort)
-        if (cursor == null) {
+        if (cursor == null || cursor.isBlank()) {
             try {
                 searchHistoryService.saveSearch(viewerId, normalized);
             } catch (Exception e) {
