@@ -74,9 +74,8 @@ public class FcmService {
 
     private FcmTokenResponse doRegisterToken(String userId, String token) {
         FcmToken existing = tokenRepo.findByToken(token).orElse(null);
-        if (existing != null) {
-            existing.reassign(userId);
-            tokenRepo.save(existing);
+        // 0행 = 그새 동시 삭제됨 → insert 로 폴백(무음 유실 방지). id/created_at 은 불변이라 기존 값 반환.
+        if (existing != null && tokenRepo.reassignOwner(token, userId, clock.instant()) == 1) {
             return new FcmTokenResponse(existing.getFcmTokenId(), existing.getCreatedAt());
         }
         FcmToken saved = tokenRepo.saveAndFlush(new FcmToken(userId, token));

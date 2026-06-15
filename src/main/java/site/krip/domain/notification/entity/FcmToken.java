@@ -51,17 +51,6 @@ public class FcmToken {
         this.token = token;
     }
 
-    /**
-     * 토큰 재등록 — owner 교체(동일해도 무방) + updated_at 갱신.
-     *
-     * <p>updated_at 을 명시적으로 바꿔 owner 가 동일한 재등록에서도 dirty 로 감지되게 한다
-     * (그래야 UPDATE 가 나가 "마지막 등록" 시각이 갱신된다).
-     */
-    public void reassign(String userId) {
-        this.userId = userId;
-        this.updatedAt = Instant.now();
-    }
-
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
