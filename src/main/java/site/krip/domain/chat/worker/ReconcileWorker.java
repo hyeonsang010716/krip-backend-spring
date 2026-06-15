@@ -53,13 +53,17 @@ public class ReconcileWorker {
         try {
             long deadline = System.nanoTime() + MAX_RUN_NANOS;
             int batches = 0;
-            int processed;
+            // 계속 조건: full 배치를 읽었고(=백로그가 더 있음) **진전이 있었을** 때만.
+            // read 만 보면 전건 실패 (DB 다운) 시 죽은 DB 를 예산까지 두들기고,
+            // resolved 만 보면 일부 실패로 백로그가 남아도 조기 종료한다.
+            BatchResult r;
             do {
-                processed = reconcileOnce();
+                r = reconcileOnce();
                 batches++;
-            } while (processed >= BATCH_SIZE && batches < MAX_BATCHES_PER_TICK
+            } while (r.read() >= BATCH_SIZE && r.resolved() > 0
+                    && batches < MAX_BATCHES_PER_TICK
                     && System.nanoTime() - deadline < 0);
-            if (processed >= BATCH_SIZE) {
+            if (r.read() >= BATCH_SIZE && r.resolved() > 0) {
                 log.info("reconcile: tick 예산 소진 (batches={}) — 잔여 백로그는 다음 tick 으로 이월", batches);
             }
         } catch (Exception e) {
@@ -74,12 +78,14 @@ public class ReconcileWorker {
      * <p>at-least-once: SPOP(선제거) 대신 SRANDMEMBER(읽기) → 성공분만 SREM 한다. 크래시/재시작이 read 와
      * SREM 사이에 끼어도 방이 set 에 남아 다음 tick 에 재처리된다({@code updateLastMessageIfGreater} 가 멱등·단조라
      * 재처리 무해). {@code @SchedulerLock}+{@code @Scheduled}(non-overlapping) 로 소비자는 단일이라 경합 없음.
+     *
+     * @return 읽은(read)·해소(resolved) 방 개수 — tick 의 계속/백오프 판정에 쓰인다.
      */
-    int reconcileOnce() {
+    BatchResult reconcileOnce() {
         Set<String> sampled = redis.opsForSet()
                 .distinctRandomMembers(ChatRedisKeys.DIRTY_CHAT_ROOM_KEY, BATCH_SIZE);
         if (sampled == null || sampled.isEmpty()) {
-            return 0;
+            return BatchResult.EMPTY;
         }
         List<String> roomIds = new ArrayList<>(sampled);
 
@@ -87,9 +93,9 @@ public class ReconcileWorker {
         try {
             lastByRoom = messageRepo.findLastByRooms(roomIds);
         } catch (Exception e) {
-            // 읽기만 했으므로 방은 set 에 그대로 — 다음 tick 재시도(at-least-once).
+            // 읽기만 했으므로 방은 set 에 그대로 — 다음 tick 재시도(at-least-once). 진전 0 → tick 백오프.
             log.warn("reconcile: Mongo aggregate 실패 → {}개 방 다음 tick 재시도", roomIds.size(), e);
-            return 0;
+            return new BatchResult(roomIds.size(), 0);
         }
 
         // 해소된 방만 제거: 갱신 성공 + Mongo 데이터 없음(수렴할 것 없음) = 해소. UPDATE 실패는 남겨 재시도.
@@ -115,6 +121,11 @@ public class ReconcileWorker {
         }
         log.info("reconcile: read={}, mongo_hit={}, updated={}, resolved={}",
                 roomIds.size(), lastByRoom.size(), updated, resolved.size());
-        return resolved.size();
+        return new BatchResult(roomIds.size(), resolved.size());
+    }
+
+    /** 한 배치 결과 — 샘플로 읽은 방 수(read)와 해소(SREM)한 방 수(resolved). */
+    record BatchResult(int read, int resolved) {
+        static final BatchResult EMPTY = new BatchResult(0, 0);
     }
 }
