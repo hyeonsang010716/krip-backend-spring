@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.friend.service.UserBlockService;
 import site.krip.support.IntegrationTestSupport;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -100,6 +101,28 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.user_id").value(requester))
                 .andExpect(jsonPath("$.friendship_status").value("pending"))
                 .andExpect(jsonPath("$.is_requester").value(false));
+    }
+
+    @Test
+    @DisplayName("상세: 거절(REJECTED) 관계 → 관계 없음으로 마스킹(status/id/is_requester=null)")
+    void detailRejectedRelationMasked() throws Exception {
+        String viewer = fixtures.createActiveUser("상세거절뷰어");
+        String target = fixtures.createActiveUser("상세거절타겟");
+        String friendshipId = sendRequest(viewer, target);
+        // addressee(target) 가 거절 → REJECTED 는 재요청으로 되살아나는 상태라 노출하면 안 됨
+        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(target)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/friend/detail/{userId}", target)
+                        .header("Authorization", bearer())
+                        .header("X-Auth-Token", userToken(viewer)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.user_id").value(target))
+                .andExpect(jsonPath("$.friendship_status").value(nullValue()))
+                .andExpect(jsonPath("$.friendship_id").value(nullValue()))
+                .andExpect(jsonPath("$.is_requester").value(nullValue()));
     }
 
     @Test

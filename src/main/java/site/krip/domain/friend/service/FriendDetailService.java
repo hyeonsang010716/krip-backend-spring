@@ -51,7 +51,10 @@ public class FriendDetailService {
             }
         }
 
-        Friendship friendship = friendshipRepository.findBetween(viewerId, peerId).orElse(null);
+        // REJECTED 는 재요청으로 되살아나는(reopenAsPending) 상태라 "관계 없음"으로 마스킹 — 거절 사실 누설·무효 id 노출 방지(search 와 일관).
+        Friendship friendship = friendshipRepository.findBetween(viewerId, peerId)
+                .filter(f -> f.getStatus() != FriendshipStatus.REJECTED)
+                .orElse(null);
 
         String friendshipId = friendship != null ? friendship.getFriendshipId() : null;
         FriendshipStatus status = friendship != null ? friendship.getStatus() : null;
