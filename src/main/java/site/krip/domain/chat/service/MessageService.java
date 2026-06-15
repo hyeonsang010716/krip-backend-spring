@@ -146,8 +146,7 @@ public class MessageService {
     // ──────────────────── 시스템 메시지 ────────────────────
 
     /** 방 관리 액션(created/join/leave/kick) 타임라인 기록 — 멤버십/rate/dedupe/unread/push skip. */
-    public void sendSystemMessage(String roomId, String action, String actorId,
-                                  List<String> targetIds, String actorSessionId) {
+    public void sendSystemMessage(String roomId, String action, String actorId, List<String> targetIds) {
         Instant now = Instant.now();
         String messageId = IdGenerator.messageId();
         Map<String, Object> content = new HashMap<>();
@@ -163,7 +162,8 @@ public class MessageService {
 
         updateLastMessageBestEffort(roomId, messageId, serverSeq, now);
 
-        fanout.fanOutToRoom(roomId, messageNewPayload(actorSessionId, messageId, roomId, serverSeq,
+        // 발신 세션 null — 시스템 메시지는 echo skip 없이 전원 수신.
+        fanout.fanOutToRoom(roomId, messageNewPayload(null, messageId, roomId, serverSeq,
                 null, MessageType.SYSTEM, content, now));
 
         log.info("시스템 메시지: room_id={}, action={}, actor={}, seq={}, target_ids={}",
@@ -171,11 +171,7 @@ public class MessageService {
     }
 
     public void sendSystemMessage(String roomId, String action, String actorId) {
-        sendSystemMessage(roomId, action, actorId, null, null);
-    }
-
-    public void sendSystemMessage(String roomId, String action, String actorId, List<String> targetIds) {
-        sendSystemMessage(roomId, action, actorId, targetIds, null);
+        sendSystemMessage(roomId, action, actorId, null);
     }
 
     // ──────────────────── 편집 ────────────────────

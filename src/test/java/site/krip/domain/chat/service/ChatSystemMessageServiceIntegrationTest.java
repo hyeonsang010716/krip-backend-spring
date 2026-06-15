@@ -39,7 +39,7 @@ class ChatSystemMessageServiceIntegrationTest extends IntegrationTestSupport {
         String b = fixtures.createActiveUser("sysB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
 
-        messageService.sendSystemMessage(room, "join", a, List.of(b), null);
+        messageService.sendSystemMessage(room, "join", a, List.of(b));
 
         List<Document> docs = messageRepo.findAfter(room, 0, 100);
         Document sys = docs.stream()
@@ -62,7 +62,7 @@ class ChatSystemMessageServiceIntegrationTest extends IntegrationTestSupport {
         String room = roomService.createDirectRoom(a, b).chatRoomId();
 
         // 시스템 메시지 → b 의 unread 변동 없음
-        messageService.sendSystemMessage(room, "join", a, List.of(b), null);
+        messageService.sendSystemMessage(room, "join", a, List.of(b));
         assertThat(historyService.unreadCounts(b).getOrDefault(room, 0)).isZero();
 
         // 일반 텍스트 → b 의 unread 1 증가

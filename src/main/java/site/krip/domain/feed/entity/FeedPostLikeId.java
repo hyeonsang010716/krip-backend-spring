@@ -12,11 +12,6 @@ public class FeedPostLikeId implements Serializable {
     public FeedPostLikeId() {
     }
 
-    public FeedPostLikeId(String userId, String postId) {
-        this.userId = userId;
-        this.postId = postId;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
