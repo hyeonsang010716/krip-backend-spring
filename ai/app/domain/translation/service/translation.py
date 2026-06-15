@@ -29,6 +29,9 @@ class TranslationService:
             raise TranslationVendorError(e.response.status_code, e.response.text) from e
         except RequestError as e:
             raise TranslationUnreachableError(str(e)) from e
+        except (KeyError, TypeError, ValueError) as e:
+            # 200 인데 본문이 예상 밖(비JSON/스키마 드리프트) — 벤더 비정상 응답으로 502 매핑.
+            raise TranslationVendorError(200, str(e)) from e
         return DetectData(lang_code=result.lang_code)
 
     # ──────────────────── 번역 ────────────────────
@@ -46,4 +49,7 @@ class TranslationService:
             raise TranslationVendorError(e.response.status_code, e.response.text) from e
         except RequestError as e:
             raise TranslationUnreachableError(str(e)) from e
+        except (KeyError, TypeError, ValueError) as e:
+            # 200 인데 본문이 예상 밖(비JSON/스키마 드리프트) — 벤더 비정상 응답으로 502 매핑.
+            raise TranslationVendorError(200, str(e)) from e
         return TranslateData(translated_text=result.translated_text)
