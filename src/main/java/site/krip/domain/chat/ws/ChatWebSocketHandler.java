@@ -296,6 +296,10 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             throw ApiException.badRequest("invalid op: content 는 2000자 이하");
         }
         MessageType type = req.get("type") != null ? MessageType.from(str(req.get("type"))) : MessageType.TEXT;
+        if (type == MessageType.SYSTEM) {
+            // SYSTEM 은 서버만 발행 — 클라이언트 위조 차단.
+            throw ApiException.badRequest("invalid op: type=system 불가");
+        }
 
         MessageSentAck ack = messageService.sendMessage(userId, sessionId, roomId, clientMsgId, type, content);
         Map<String, Object> p = new HashMap<>();

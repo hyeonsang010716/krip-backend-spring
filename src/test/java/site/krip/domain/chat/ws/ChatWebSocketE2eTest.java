@@ -127,6 +127,28 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
     }
 
     @Test
+    @DisplayName("send op 에 type=system → server_error 로 거부 (SYSTEM 위조 차단)")
+    void clientSystemTypeRejected() throws Exception {
+        String a = fixtures.createActiveUser("ws위조발신");
+        String b = fixtures.createActiveUser("ws위조수신");
+        String room = roomService.createDirectRoom(a, b).chatRoomId();
+
+        CollectingHandler h = new CollectingHandler();
+        WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
+        awaitType(h, "connected", 5000);
+
+        // room_id/client_msg_id/content 는 유효 — SYSTEM 가드에 도달하도록. 가드 없으면 message.sent 가 와 타임아웃 실패.
+        session.sendMessage(new TextMessage(
+                "{\"op\":\"send\",\"room_id\":\"" + room + "\",\"client_msg_id\":\"cm-sys\","
+                        + "\"content\":\"forged\",\"type\":\"system\"}"));
+
+        JsonNode err = awaitType(h, "server_error", 5000);
+        assertThat(err.path("reason").asText()).contains("system");
+
+        session.close();
+    }
+
+    @Test
     @DisplayName("토큰 없이 핸드셰이크 시도 → 거부(연결 실패)")
     void handshakeRejectedWithoutToken() {
         CollectingHandler h = new CollectingHandler();
