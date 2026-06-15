@@ -68,8 +68,14 @@ public class ImageUploadExecutor implements DisposableBean {
             }
         }
         List<T> results = new ArrayList<>(tasks.size());
-        for (Future<T> future : futures) {
-            results.add(await(future));
+        try {
+            for (Future<T> future : futures) {
+                results.add(await(future));
+            }
+        } catch (RuntimeException e) {
+            // 한 작업이 실패하면 같은 배치의 나머지(특히 미시작 대기분)를 취소 — submit 거절 경로와 대칭.
+            futures.forEach(f -> f.cancel(true));
+            throw e;
         }
         return results;
     }

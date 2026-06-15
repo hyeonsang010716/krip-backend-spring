@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * process()→uploadInParallel 합성이 업로드 작업을 풀 워커에서 실행하는지 검증(회귀).
@@ -36,6 +37,37 @@ class ImageUploadExecutorIsolationTest {
             assertThat(uploadThread.get())
                     .isNotEqualTo(callerThread)
                     .startsWith("img-");
+        } finally {
+            executor.destroy();
+        }
+    }
+
+    @Test
+    @DisplayName("processAll 은 입력 순서대로 결과를 반환한다")
+    void processAllReturnsInInputOrder() {
+        ImageUploadExecutor executor = new ImageUploadExecutor(3, 8, 2, 4);
+        try {
+            List<Supplier<Integer>> tasks = List.of(() -> 1, () -> 2, () -> 3, () -> 4);
+            assertThat(executor.processAll(tasks)).containsExactly(1, 2, 3, 4);
+        } finally {
+            executor.destroy();
+        }
+    }
+
+    @Test
+    @DisplayName("processAll 은 한 작업이 실패하면 그 예외를 전파한다(나머지 형제는 취소)")
+    void processAllPropagatesTaskFailure() {
+        ImageUploadExecutor executor = new ImageUploadExecutor(2, 8, 2, 4);
+        try {
+            List<Supplier<Integer>> tasks = List.of(
+                    () -> 1,
+                    () -> {
+                        throw new IllegalStateException("boom");
+                    },
+                    () -> 3);
+            assertThatThrownBy(() -> executor.processAll(tasks))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("boom");
         } finally {
             executor.destroy();
         }
