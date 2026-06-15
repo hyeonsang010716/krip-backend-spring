@@ -163,7 +163,7 @@ public class FanoutService {
             localDeliverToRoom(roomId, payload);
             return;
         }
-        publishToStream(Map.of("op", "room", "room_id", roomId, "payload", payload));
+        publishDeliveryBestEffort(Map.of("op", "room", "room_id", roomId, "payload", payload));
     }
 
     public void fanOutToUser(String userId, Map<String, Object> payload) {
@@ -171,7 +171,7 @@ public class FanoutService {
             localDeliverToUser(userId, payload);
             return;
         }
-        publishToStream(Map.of("op", "user", "user_id", userId, "payload", payload));
+        publishDeliveryBestEffort(Map.of("op", "user", "user_id", userId, "payload", payload));
     }
 
     public void fanOutToSession(String sessionId, Map<String, Object> payload) {
@@ -179,7 +179,7 @@ public class FanoutService {
             localDeliverToSession(sessionId, payload);
             return;
         }
-        publishToStream(Map.of("op", "session", "session_id", sessionId, "payload", payload));
+        publishDeliveryBestEffort(Map.of("op", "session", "session_id", sessionId, "payload", payload));
     }
 
     // ──────────────────── 디스패처 진입점 (redis_stream) ────────────────────
@@ -256,6 +256,15 @@ public class FanoutService {
     }
 
     // ──────────────────── publish 헬퍼 (redis_stream) ────────────────────
+
+    /** 전달 op publish — best-effort. 실시간 전용이라 publish 실패로 호출측을 막지 않는다(히스토리로 복구). */
+    private void publishDeliveryBestEffort(Map<String, Object> envelope) {
+        try {
+            publishToStream(envelope);
+        } catch (Exception e) {
+            log.warn("fan-out publish 실패 (best-effort): op={}, err={}", envelope.get("op"), e.toString());
+        }
+    }
 
     /** 공유 Stream 에 envelope 한 건 XADD — 모든 노드가 자기 group 으로 읽어 dispatch 한다. */
     private void publishToStream(Map<String, Object> envelope) {
