@@ -27,7 +27,7 @@ import java.util.Set;
  * 이미지 전처리 — 도메인 공용.
  *
  * <p>{@link #process}: 1:1 center crop → small(240)/medium(720) JPEG q80, original 은 한 변 ≤ 2048 +
- * EXIF 회전 없으면 raw bytes 보존(피드 게시물용). {@link #sanitize}: 변형 없이 단일 이미지를 항상 재인코딩해
+ * 회전·축소 불필요 시 픽셀 무손실로 메타데이터(EXIF/GPS)만 제거(피드 게시물용). {@link #sanitize}: 변형 없이 단일 이미지를 항상 재인코딩해
  * EXIF/메타데이터 제거 + 폴리글랏 무력화(단건 업로드용). 공통 방어선: 포맷 화이트리스트(JPEG/PNG/WEBP),
  * 애니메이션 거절, 디코드 픽셀 cap(25MP). 모든 실패는 400(ApiException).
  */
@@ -49,6 +49,8 @@ public class ImageProcessor {
             "JPEG", new String[]{"image/jpeg", "jpg"},
             "PNG", new String[]{"image/png", "png"},
             "WEBP", new String[]{"image/webp", "webp"});
+    // 무손실 스트립 대상 PNG 보조 청크 — EXIF/텍스트/타임스탬프. 색상·IDAT 등은 보존.
+    private static final Set<String> PNG_METADATA_CHUNKS = Set.of("eXIf", "tEXt", "zTXt", "iTXt", "tIME");
 
     /** 원본 bytes → (원본 + small + medium) 3종. 디코딩 1회 공유. */
     public ProcessedImageSet process(byte[] src) {
@@ -146,10 +148,116 @@ public class ImageProcessor {
     private ProcessedVariant shrinkOriginal(BufferedImage img, byte[] src, String format, boolean wasRotated) {
         boolean needsShrink = Math.max(img.getWidth(), img.getHeight()) > ORIGINAL_MAX;
         if (!needsShrink && !wasRotated) {
-            String[] meta = FORMAT_META.get(format);
-            return new ProcessedVariant(src, meta[0], meta[1]);
+            byte[] stripped = stripMetadata(src, format);
+            if (stripped != null) {
+                String[] meta = FORMAT_META.get(format);
+                return new ProcessedVariant(stripped, meta[0], meta[1]);
+            }
+            // 무손실 스트립 불가(WEBP·비정상 구조) → 재인코딩으로 메타데이터 제거
         }
         return reencodeShrunk(img, format);
+    }
+
+    /**
+     * 픽셀 재인코딩 없이 메타데이터만 제거한 bytes. 무손실 스트립이 불가하면(WEBP·비정상 구조) null
+     * → 호출측이 재인코딩으로 폴백. JPEG/PNG 의 EXIF/GPS·텍스트와 EOI/IEND 뒤 트레일링을 제거한다.
+     */
+    private static byte[] stripMetadata(byte[] src, String format) {
+        if ("JPEG".equals(format)) {
+            return stripJpegMetadata(src);
+        }
+        if ("PNG".equals(format)) {
+            return stripPngMetadata(src);
+        }
+        return null;
+    }
+
+    // SOI 부터 마커를 순회하며 APPn(0xE0~0xEF)·COM(0xFE) 세그먼트를 제거. SOS 엔트로피는 0xFF00/RSTn
+    // 스터핑을 데이터로 보고 다음 마커까지 복사하고, EOI 에서 종료해 트레일링도 버린다. 구조 이상 시 null.
+    private static byte[] stripJpegMetadata(byte[] b) {
+        if (b.length < 2 || (b[0] & 0xFF) != 0xFF || (b[1] & 0xFF) != 0xD8) {
+            return null;
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream(b.length);
+        out.write(0xFF);
+        out.write(0xD8);
+        int pos = 2;
+        while (pos + 1 < b.length) {
+            if ((b[pos] & 0xFF) != 0xFF) {
+                return null;
+            }
+            int marker = b[pos + 1] & 0xFF;
+            if (marker == 0xFF) {
+                pos++; // fill bytes
+                continue;
+            }
+            if (marker == 0xD9) {
+                out.write(0xFF);
+                out.write(0xD9);
+                return out.toByteArray();
+            }
+            if ((marker >= 0xD0 && marker <= 0xD7) || marker == 0x01) {
+                out.write(0xFF);
+                out.write(marker); // 길이 없는 마커
+                pos += 2;
+                continue;
+            }
+            if (pos + 3 >= b.length) {
+                return null;
+            }
+            int len = ((b[pos + 2] & 0xFF) << 8) | (b[pos + 3] & 0xFF);
+            if (len < 2 || (long) pos + 2 + len > b.length) {
+                return null;
+            }
+            boolean meta = (marker >= 0xE0 && marker <= 0xEF) || marker == 0xFE;
+            if (!meta) {
+                out.write(b, pos, 2 + len);
+            }
+            pos += 2 + len;
+            if (marker == 0xDA) {
+                int scanStart = pos;
+                while (pos + 1 < b.length) {
+                    if ((b[pos] & 0xFF) == 0xFF) {
+                        int next = b[pos + 1] & 0xFF;
+                        if (next != 0x00 && !(next >= 0xD0 && next <= 0xD7)) {
+                            break; // 진짜 마커
+                        }
+                    }
+                    pos++;
+                }
+                out.write(b, scanStart, pos - scanStart);
+            }
+        }
+        return null;
+    }
+
+    // 8바이트 시그니처 뒤 청크를 순회하며 메타데이터 청크만 제거(색상·IDAT 보존, CRC 재계산 불필요).
+    // IEND 에서 종료해 트레일링도 버린다. 구조 이상 시 null.
+    private static byte[] stripPngMetadata(byte[] b) {
+        if (b.length < 8) {
+            return null;
+        }
+        ByteArrayOutputStream out = new ByteArrayOutputStream(b.length);
+        out.write(b, 0, 8);
+        int pos = 8;
+        while (pos + 8 <= b.length) {
+            long len = ((b[pos] & 0xFFL) << 24) | ((b[pos + 1] & 0xFFL) << 16)
+                    | ((b[pos + 2] & 0xFFL) << 8) | (b[pos + 3] & 0xFFL);
+            if ((long) pos + 12 + len > b.length) {
+                return null;
+            }
+            String type = "" + (char) (b[pos + 4] & 0xFF) + (char) (b[pos + 5] & 0xFF)
+                    + (char) (b[pos + 6] & 0xFF) + (char) (b[pos + 7] & 0xFF);
+            int chunk = (int) (12 + len);
+            if (!PNG_METADATA_CHUNKS.contains(type)) {
+                out.write(b, pos, chunk);
+            }
+            pos += chunk;
+            if ("IEND".equals(type)) {
+                return out.toByteArray();
+            }
+        }
+        return null;
     }
 
     /** 한 변 ≤ 2048 로 축소 후 포맷별 재인코딩 — 항상 새 bytes 를 만들어 EXIF/메타데이터를 제거한다. */

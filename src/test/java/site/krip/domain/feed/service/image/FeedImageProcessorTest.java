@@ -13,6 +13,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 는 컨테이너 헤더(VP8X ANIM 플래그)를 손으로 만들어 거절만 검증한다.
  */
 class FeedImageProcessorTest {
+
+    private static final byte[] MARKER = "__METADATA_MARKER__".getBytes(StandardCharsets.US_ASCII);
 
     private final ImageProcessor processor = new ImageProcessor();
 
@@ -108,24 +111,31 @@ class FeedImageProcessorTest {
     }
 
     @Test
-    @DisplayName("작은 JPEG(2048 이하, 미회전)의 원본은 입력 bytes 를 그대로 보존한다")
-    void smallJpegOriginalPreservesBytes() throws Exception {
-        byte[] src = jpeg(800, 600);
-        ProcessedImageSet result = processor.process(src);
-        // 한 변 <= 2048 이고 EXIF 회전 없음 -> 원본 raw bytes 보존.
-        assertThat(result.original().data()).isSameAs(src);
-        assertThat(result.original().contentType()).isEqualTo("image/jpeg");
-        assertThat(result.original().fileExt()).isEqualTo("jpg");
+    @DisplayName("작은 JPEG(2048 이하, 미회전) 원본 — EXIF 메타데이터를 무손실 제거하고 픽셀은 보존한다")
+    void smallJpegOriginalStripsMetadata() throws Exception {
+        byte[] src = jpegWithExif(800, 600, MARKER);
+        assertThat(indexOf(src, MARKER)).as("입력 EXIF 에 마커 존재").isGreaterThan(0);
+
+        byte[] original = processor.process(src).original().data();
+
+        assertThat(indexOf(original, MARKER)).as("EXIF 메타데이터가 제거돼야").isEqualTo(-1);
+        assertThat(original).isNotSameAs(src);
+        assertThat(dims(original)).containsExactly(800, 600); // 픽셀 무손실
+        assertThat(processor.process(src).original().contentType()).isEqualTo("image/jpeg");
     }
 
     @Test
-    @DisplayName("작은 PNG(미회전)의 원본은 image/png 으로 raw bytes 보존")
-    void smallPngOriginalPreservesBytes() throws Exception {
-        byte[] src = png(500, 500);
-        ProcessedImageSet result = processor.process(src);
-        assertThat(result.original().data()).isSameAs(src);
-        assertThat(result.original().contentType()).isEqualTo("image/png");
-        assertThat(result.original().fileExt()).isEqualTo("png");
+    @DisplayName("작은 PNG(미회전) 원본 — tEXt 메타데이터 청크를 제거하고 픽셀은 보존한다")
+    void smallPngOriginalStripsMetadata() throws Exception {
+        byte[] src = pngWithTextChunk(500, 500, MARKER);
+        assertThat(indexOf(src, MARKER)).as("입력 tEXt 에 마커 존재").isGreaterThan(0);
+
+        byte[] original = processor.process(src).original().data();
+
+        assertThat(indexOf(original, MARKER)).as("텍스트 청크가 제거돼야").isEqualTo(-1);
+        assertThat(original).isNotSameAs(src);
+        assertThat(dims(original)).containsExactly(500, 500);
+        assertThat(processor.process(src).original().contentType()).isEqualTo("image/png");
     }
 
     @Test
@@ -254,6 +264,64 @@ class FeedImageProcessorTest {
         b[off + 1] = (byte) (v >>> 16);
         b[off + 2] = (byte) (v >>> 8);
         b[off + 3] = (byte) v;
+    }
+
+    /** SOI 직후 APP1(EXIF) 세그먼트를 삽입한 JPEG — payload 가 그대로 남는지 스트립 검증용. */
+    private static byte[] jpegWithExif(int w, int h, byte[] payload) throws Exception {
+        byte[] jpeg = jpeg(w, h);
+        byte[] exifHeader = {'E', 'x', 'i', 'f', 0, 0};
+        int segLen = 2 + exifHeader.length + payload.length; // length 바이트(2) 포함
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(jpeg, 0, 2); // SOI
+        out.write(0xFF);
+        out.write(0xE1); // APP1
+        out.write((segLen >> 8) & 0xFF);
+        out.write(segLen & 0xFF);
+        out.write(exifHeader);
+        out.write(payload);
+        out.write(jpeg, 2, jpeg.length - 2);
+        return out.toByteArray();
+    }
+
+    /** IHDR 직후 tEXt 청크를 삽입한 PNG(CRC 포함) — 텍스트 메타데이터 스트립 검증용. */
+    private static byte[] pngWithTextChunk(int w, int h, byte[] payload) throws Exception {
+        byte[] png = png(w, h);
+        int insertAt = 8 + 4 + 4 + 13 + 4; // sig + IHDR(len+type+13data+crc)
+        byte[] type = {'t', 'E', 'X', 't'};
+        ByteArrayOutputStream data = new ByteArrayOutputStream();
+        data.write(new byte[]{'C', 'o', 'm', 'm', 'e', 'n', 't', 0}); // keyword + NUL
+        data.write(payload);
+        byte[] dataBytes = data.toByteArray();
+
+        ByteArrayOutputStream chunk = new ByteArrayOutputStream();
+        chunk.write(new byte[]{(byte) (dataBytes.length >>> 24), (byte) (dataBytes.length >>> 16),
+                (byte) (dataBytes.length >>> 8), (byte) dataBytes.length});
+        chunk.write(type);
+        chunk.write(dataBytes);
+        CRC32 crc = new CRC32();
+        crc.update(type);
+        crc.update(dataBytes);
+        long c = crc.getValue();
+        chunk.write(new byte[]{(byte) (c >>> 24), (byte) (c >>> 16), (byte) (c >>> 8), (byte) c});
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        out.write(png, 0, insertAt);
+        out.write(chunk.toByteArray());
+        out.write(png, insertAt, png.length - insertAt);
+        return out.toByteArray();
+    }
+
+    private static int indexOf(byte[] haystack, byte[] needle) {
+        outer:
+        for (int i = 0; i <= haystack.length - needle.length; i++) {
+            for (int j = 0; j < needle.length; j++) {
+                if (haystack[i + j] != needle[j]) {
+                    continue outer;
+                }
+            }
+            return i;
+        }
+        return -1;
     }
 
     /** 정상 PNG 에 IHDR 직후 acTL 청크를 삽입해 APNG 로 만든다(첫 프레임 디코드는 정상). */
