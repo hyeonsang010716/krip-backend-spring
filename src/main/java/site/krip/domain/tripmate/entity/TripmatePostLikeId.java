@@ -14,11 +14,6 @@ public class TripmatePostLikeId implements Serializable {
     public TripmatePostLikeId() {
     }
 
-    public TripmatePostLikeId(String userId, String postId) {
-        this.userId = userId;
-        this.postId = postId;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {

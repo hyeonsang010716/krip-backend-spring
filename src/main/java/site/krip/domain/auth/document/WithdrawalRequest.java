@@ -40,12 +40,4 @@ public class WithdrawalRequest {
     public String getUserId() {
         return userId;
     }
-
-    public Instant getRequestedAt() {
-        return requestedAt;
-    }
-
-    public Instant getScheduledPurgeAt() {
-        return scheduledPurgeAt;
-    }
 }

@@ -36,10 +36,6 @@ public class TripmateSearchHistory {
         return id;
     }
 
-    public String getUserId() {
-        return userId;
-    }
-
     public String getSearchName() {
         return searchName;
     }
