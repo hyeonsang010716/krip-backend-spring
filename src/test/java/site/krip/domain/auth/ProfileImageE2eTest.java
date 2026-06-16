@@ -11,6 +11,10 @@ import site.krip.support.FakeObjectStorage;
 import site.krip.support.FakeStorageConfig;
 import site.krip.support.IntegrationTestSupport;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -34,8 +38,11 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
     @Autowired
     private ObjectMapper objectMapper;
 
-    private MockMultipartFile jpeg() {
-        return new MockMultipartFile("file", "p.jpg", "image/jpeg", new byte[]{1, 2, 3, 4});
+    private MockMultipartFile jpeg() throws Exception {
+        // 업로드 경로가 ImageProcessor.sanitize 로 실제 디코딩하므로 유효한 JPEG 를 만든다.
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB), "jpg", buf);
+        return new MockMultipartFile("file", "p.jpg", "image/jpeg", buf.toByteArray());
     }
 
     private String addImage(String userId) throws Exception {
