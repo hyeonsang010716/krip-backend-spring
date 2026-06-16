@@ -150,10 +150,15 @@ public class S3ObjectStorage implements ObjectStorage {
                     .toList();
 
             if (!ids.isEmpty()) {
-                s3.deleteObjects(DeleteObjectsRequest.builder()
+                DeleteObjectsResponse resp = s3.deleteObjects(DeleteObjectsRequest.builder()
                         .bucket(bucket)
                         .delete(Delete.builder().objects(ids).build())
                         .build());
+                // deleteObjects 는 일부 키 실패를 예외 없이 errors() 로 돌려준다 → purge 잔존 신호를 로깅.
+                for (S3Error err : resp.errors()) {
+                    log.warn("S3 deleteByPathPrefix 부분 실패 (prefix={}, key={}, code={}, msg={})",
+                            prefix, err.key(), err.code(), err.message());
+                }
             }
             continuationToken = Boolean.TRUE.equals(listing.isTruncated())
                     ? listing.nextContinuationToken() : null;
