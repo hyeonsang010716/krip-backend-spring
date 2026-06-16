@@ -11,7 +11,7 @@ import java.time.Duration;
 /**
  * {@code REGISTERED:{user_id}} 판정 캐시.
  *
- * <p>회원가입/상태 검증 결과(REGISTERED / UNREGISTERED / INACTIVE)를 캐싱해 인증 핫패스의 DB 조회를 생략한다.
+ * <p>회원가입/상태 검증 결과(REGISTERED / UNREGISTERED / INACTIVE / SUSPENDED)를 캐싱해 인증 핫패스의 DB 조회를 생략한다.
  * 양성뿐 아니라 음성 결과도 캐싱해 미가입(403)·탈퇴유예(419) 유저가 요청마다 DB 를 때리지 않게 한다.
  * 상태 전이(가입완료/탈퇴/취소/삭제) 시 무효화되며, 음성 결과는 무효화 누락 대비 짧은 TTL 로 자연 회복한다.
  */
@@ -27,7 +27,8 @@ public class RegisteredCacheManager {
     public enum Outcome {
         REGISTERED,   // ACTIVE + 2차 가입 완료 → 통과
         UNREGISTERED, // 2차 가입 미완료 → 403
-        INACTIVE      // 탈퇴 유예 → 419
+        INACTIVE,     // 탈퇴 유예 → 419
+        SUSPENDED     // 정지 → 403
     }
 
     private final StringRedisTemplate redis;
@@ -88,6 +89,7 @@ public class RegisteredCacheManager {
             case REGISTERED -> "R";
             case UNREGISTERED -> "U";
             case INACTIVE -> "I";
+            case SUSPENDED -> "S";
         };
     }
 
@@ -96,6 +98,7 @@ public class RegisteredCacheManager {
             case "R" -> Outcome.REGISTERED;
             case "U" -> Outcome.UNREGISTERED;
             case "I" -> Outcome.INACTIVE;
+            case "S" -> Outcome.SUSPENDED;
             default -> null; // 구버전/미상 값 → 미스로 간주해 DB 재검증
         };
     }

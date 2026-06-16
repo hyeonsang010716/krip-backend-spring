@@ -28,6 +28,7 @@ import java.util.Optional;
  * <pre>
  *   유저 없음            → 401
  *   status == INACTIVE   → 419 (탈퇴 유예, 커스텀 코드)
+ *   status == SUSPENDED  → 403 (정지)
  *   2차 회원가입 미완료    → 403
  *   정상                 → REGISTERED 캐싱 후 통과
  * </pre>
@@ -99,10 +100,13 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
         }
     }
 
-    /** status == INACTIVE → INACTIVE, detail 없음 → UNREGISTERED, 그 외 → REGISTERED(SUSPENDED 포함, 기존 동작 유지). */
+    /** INACTIVE/SUSPENDED 는 상태로 차단, detail 없음 → UNREGISTERED, 그 외 → REGISTERED. */
     private static RegisteredCacheManager.Outcome classify(User user) {
         if (user.getStatus() == UserStatus.INACTIVE) {
             return RegisteredCacheManager.Outcome.INACTIVE;
+        }
+        if (user.getStatus() == UserStatus.SUSPENDED) {
+            return RegisteredCacheManager.Outcome.SUSPENDED;
         }
         if (user.getDetail() == null) {
             return RegisteredCacheManager.Outcome.UNREGISTERED;
@@ -117,6 +121,8 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
                     ErrorResponse.of(
                             "회원 탈퇴가 진행 중입니다. 30일 유예 기간 종료 후 영구 삭제됩니다.",
                             ApiException.WITHDRAWAL_PENDING_FIELD));
+            case SUSPENDED -> FilterSupport.writeError(response, mapper, 403,
+                    ErrorResponse.of("정지된 계정입니다."));
             case UNREGISTERED -> FilterSupport.writeError(response, mapper, 403,
                     ErrorResponse.of("2차 회원가입이 필요합니다."));
             case REGISTERED -> {
