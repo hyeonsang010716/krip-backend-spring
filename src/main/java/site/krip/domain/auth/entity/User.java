@@ -7,7 +7,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
@@ -30,14 +29,11 @@ import java.util.List;
 @Entity
 @Table(
         name = "users",
+        // 인덱스는 Flyway(V1)에서 관리. provider 조회는 uq_provider_account 의 unique 인덱스로 충분하고,
+        // 탐색용 partial index(WHERE status='ACTIVE')는 JPA 로 표현 불가. validate 는 인덱스를 검증하지 않음.
         uniqueConstraints = @UniqueConstraint(
                 name = "uq_provider_account",
-                columnNames = {"auth_provider", "auth_provider_id"}),
-        // 탐색용 partial index(ix_users_active_created, WHERE status='ACTIVE')는 JPA 로 표현
-        // 불가하여 Flyway(V1__init_auth_schema.sql)에서 관리. validate 는 인덱스를 검증하지 않음.
-        indexes = {
-                @Index(name = "ix_provider_lookup", columnList = "auth_provider, auth_provider_id")
-        })
+                columnNames = {"auth_provider", "auth_provider_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User {
