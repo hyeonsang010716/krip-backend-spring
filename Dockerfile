@@ -1,14 +1,15 @@
 # ──────────────────── build stage ────────────────────
 # 개발은 맥북(M4, arm64) Docker, 배포는 Ubuntu(Intel, amd64). 멀티아키 호환 base 사용.
-FROM maven:3.9-eclipse-temurin-17 AS build
+FROM eclipse-temurin:17-jdk-jammy AS build
 WORKDIR /build
 
-# 의존성 레이어 캐시 — pom 만 먼저 복사해 오프라인 resolve.
-COPY pom.xml .
-RUN mvn -B -q dependency:go-offline
+# 의존성·Gradle 배포 레이어 캐시 — 빌드 스크립트만 먼저 복사해 resolve.
+COPY gradlew settings.gradle build.gradle lombok.config ./
+COPY gradle ./gradle
+RUN ./gradlew --no-daemon dependencies --configuration compileClasspath --configuration runtimeClasspath > /dev/null 2>&1 || true
 
 COPY src ./src
-RUN mvn -B -q clean package -DskipTests
+RUN ./gradlew --no-daemon clean bootJar -x test
 
 # ──────────────────── runtime stage ────────────────────
 FROM eclipse-temurin:17-jre-jammy
@@ -19,7 +20,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --user-group --no-create-home krip
 
-COPY --from=build /build/target/backend-0.3.0.jar app.jar
+COPY --from=build /build/build/libs/backend-0.3.0.jar app.jar
 
 # 비특권 유저로 구동 — RCE/컨테이너 탈출 시 권한 축소. (마운트된 secrets 가 이 유저에게 읽혀야 함)
 USER krip
