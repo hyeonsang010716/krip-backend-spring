@@ -1,5 +1,6 @@
 package site.krip.domain.chat.worker;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import site.krip.global.chat.ChatRedisKeys;
@@ -19,15 +20,11 @@ import java.util.Set;
  * 주기 작업으로 분리한다.
  */
 @Component
+@RequiredArgsConstructor
 public class NodeRegistry {
 
     private final StringRedisTemplate redis;
     private final ChatProperties props;
-
-    public NodeRegistry(StringRedisTemplate redis, ChatProperties props) {
-        this.redis = redis;
-        this.props = props;
-    }
 
     private long nowMs() {
         return System.currentTimeMillis();

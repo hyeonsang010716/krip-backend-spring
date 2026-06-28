@@ -1,5 +1,6 @@
 package site.krip.domain.friend.adapter;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.friend.port.FriendQueryPort;
@@ -11,16 +12,11 @@ import java.util.List;
 
 /** {@link FriendQueryPort} 구현 — friend repository 를 도메인 경계 밖 표현으로 변환. */
 @Component
+@RequiredArgsConstructor
 public class FriendQueryAdapter implements FriendQueryPort {
 
     private final UserBlockRepository blockRepository;
     private final FriendshipRepository friendshipRepository;
-
-    public FriendQueryAdapter(UserBlockRepository blockRepository,
-                              FriendshipRepository friendshipRepository) {
-        this.blockRepository = blockRepository;
-        this.friendshipRepository = friendshipRepository;
-    }
 
     @Override
     @Transactional(readOnly = true)

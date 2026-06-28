@@ -1,5 +1,6 @@
 package site.krip.domain.ai.service;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import site.krip.domain.ai.client.AiServiceClient;
@@ -29,6 +30,7 @@ import java.util.regex.Pattern;
  * FastAPI 는 후보/추가 장소를 받아 추론만 하므로 DB 를 모른다.
  */
 @Service
+@RequiredArgsConstructor
 public class AiTourService {
 
     /** 검색점당 반경(m)과 raw 후보 수 — 그룹 분류·필터·중복 제거 후에도 cap 을 채울 만큼 넉넉히. */
@@ -53,11 +55,6 @@ public class AiTourService {
 
     private final PlaceRepository placeRepo;
     private final AiServiceClient ai;
-
-    public AiTourService(PlaceRepository placeRepo, AiServiceClient ai) {
-        this.placeRepo = placeRepo;
-        this.ai = ai;
-    }
 
     public TourRecommendResponse recommend(TourRecommendRequest body) {
         validate(body);

@@ -1,6 +1,7 @@
 package site.krip.domain.chat.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import site.krip.domain.chat.entity.ChatRoom;
@@ -16,15 +17,11 @@ import site.krip.global.chat.ChatRedisKeys;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class BlockCacheService implements BlockCachePort {
 
     private final ChatRoomRepository roomRepo;
     private final StringRedisTemplate redis;
-
-    public BlockCacheService(ChatRoomRepository roomRepo, StringRedisTemplate redis) {
-        this.roomRepo = roomRepo;
-        this.redis = redis;
-    }
 
     @Override
     public void invalidateBlockCache(String userA, String userB) {

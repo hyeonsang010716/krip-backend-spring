@@ -2,6 +2,7 @@ package site.krip.domain.auth.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -27,6 +28,7 @@ import java.net.URI;
 @RestController
 @RequestMapping("/api/auth/login")
 @Slf4j
+@RequiredArgsConstructor
 public class LoginController {
 
     private final OAuthConfigs oauthConfigs;
@@ -34,16 +36,6 @@ public class LoginController {
     private final LoginCookieFactory cookieFactory;
     private final OAuthStateService stateService;
     private final OAuthProperties oauthProperties;
-
-    public LoginController(OAuthConfigs oauthConfigs, OAuthCallbackService callbackService,
-                           LoginCookieFactory cookieFactory, OAuthStateService stateService,
-                           OAuthProperties oauthProperties) {
-        this.oauthConfigs = oauthConfigs;
-        this.callbackService = callbackService;
-        this.cookieFactory = cookieFactory;
-        this.stateService = stateService;
-        this.oauthProperties = oauthProperties;
-    }
 
     /** OAuth 로그인 — state nonce 쿠키 발급 후 제공자 인증 페이지로 리다이렉트. */
     @GetMapping

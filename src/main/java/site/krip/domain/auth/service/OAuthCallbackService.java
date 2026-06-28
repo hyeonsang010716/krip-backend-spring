@@ -1,5 +1,6 @@
 package site.krip.domain.auth.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.krip.domain.auth.dto.OAuthCallbackResult;
 import site.krip.domain.auth.dto.SignupResult;
@@ -16,18 +17,12 @@ import site.krip.global.common.exception.ApiException;
  * 컨트롤러는 state 파싱·config 선택·리다이렉트 구성만 담당한다.
  */
 @Service
+@RequiredArgsConstructor
 public class OAuthCallbackService {
 
     private final OAuthConfigs oauthConfigs;
     private final SignupService signupService;
     private final JwtProvider jwtProvider;
-
-    public OAuthCallbackService(OAuthConfigs oauthConfigs, SignupService signupService,
-                                JwtProvider jwtProvider) {
-        this.oauthConfigs = oauthConfigs;
-        this.signupService = signupService;
-        this.jwtProvider = jwtProvider;
-    }
 
     /** state 의 provider value(google 등) → {@link OAuthProvider}. */
     public OAuthProvider parseProvider(String providerValue) {

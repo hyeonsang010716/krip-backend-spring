@@ -1,6 +1,7 @@
 package site.krip.domain.feed.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ import java.util.Map;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FeedPostCommentService {
 
     private final FeedAccessService access;
@@ -36,16 +38,6 @@ public class FeedPostCommentService {
     private final UserQueryPort userQuery;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
-
-    public FeedPostCommentService(FeedAccessService access, FeedPostCommentRepository commentRepo,
-                                  UserQueryPort userQuery, FeedInboxPort inboxPort,
-                                  TransactionTemplate txTemplate) {
-        this.access = access;
-        this.commentRepo = commentRepo;
-        this.userQuery = userQuery;
-        this.inboxPort = inboxPort;
-        this.txTemplate = txTemplate;
-    }
 
     public CommentResponse createComment(String userId, String postId, String content) {
         return txTemplate.execute(s -> doCreateComment(userId, postId, content));

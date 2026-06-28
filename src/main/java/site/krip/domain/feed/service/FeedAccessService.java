@@ -1,5 +1,6 @@
 package site.krip.domain.feed.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.krip.domain.feed.entity.FeedPost;
 import site.krip.domain.feed.entity.FeedVisibility;
@@ -20,18 +21,12 @@ import java.util.List;
  * viewer==owner fast-path 는 차단/친구 조회 skip.
  */
 @Component
+@RequiredArgsConstructor
 public class FeedAccessService {
 
     private final UserBlockRepository blockRepo;
     private final FriendshipRepository friendshipRepo;
     private final FeedPostRepository feedPostRepo;
-
-    public FeedAccessService(UserBlockRepository blockRepo, FriendshipRepository friendshipRepo,
-                             FeedPostRepository feedPostRepo) {
-        this.blockRepo = blockRepo;
-        this.friendshipRepo = friendshipRepo;
-        this.feedPostRepo = feedPostRepo;
-    }
 
     /** viewer 가 owner 피드에서 볼 수 있는 visibility 부분집합. 차단 시 {@link FeedNotFoundException}(404 일원화). */
     public List<FeedVisibility> resolveViewerVisibilities(String viewerId, String ownerId) {

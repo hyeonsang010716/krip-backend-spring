@@ -1,5 +1,6 @@
 package site.krip.domain.notification.adapter;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import site.krip.domain.feed.port.FeedInboxPort;
@@ -10,13 +11,10 @@ import site.krip.domain.notification.service.InboxService;
  * feed 의 {@link FeedInboxPort} 실제 구현 — 좋아요/댓글 알림 fan-out + 게시글 삭제 cascade.
  */
 @Component
+@RequiredArgsConstructor
 public class FeedInboxAdapter implements FeedInboxPort {
 
     private final InboxService inboxService;
-
-    public FeedInboxAdapter(InboxService inboxService) {
-        this.inboxService = inboxService;
-    }
 
     @Override
     public void notifyFeedLike(String recipientId, String actorId, String actorName,

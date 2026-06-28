@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -44,22 +45,13 @@ import java.util.Optional;
 @RequestMapping("/api/tripmate/posts")
 @Validated
 @Slf4j
+@RequiredArgsConstructor
 public class TripmatePostController {
 
     private final TripmatePostService postService;
     private final TripmatePostLikeService likeService;
     private final TripmatePostDraftService draftService;
     private final TripmateSearchHistoryService searchHistoryService;
-
-    public TripmatePostController(TripmatePostService postService,
-                                  TripmatePostLikeService likeService,
-                                  TripmatePostDraftService draftService,
-                                  TripmateSearchHistoryService searchHistoryService) {
-        this.postService = postService;
-        this.likeService = likeService;
-        this.draftService = draftService;
-        this.searchHistoryService = searchHistoryService;
-    }
 
     // ──────────────────── 게시글 CRUD ────────────────────
 

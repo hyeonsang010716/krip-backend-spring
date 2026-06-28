@@ -1,6 +1,7 @@
 package site.krip.domain.notification.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DuplicateKeyException;
@@ -26,15 +27,12 @@ import java.util.Objects;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class InboxService {
 
     private static final int COMMENT_PREVIEW_MAX_LENGTH = 100;
 
     private final InboxRepository repo;
-
-    public InboxService(InboxRepository repo) {
-        this.repo = repo;
-    }
 
     // ──────────────────── fan-out ────────────────────
 

@@ -1,5 +1,6 @@
 package site.krip.domain.friend.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,13 +20,10 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/friend/search/history")
+@RequiredArgsConstructor
 public class FriendSearchHistoryController {
 
     private final FriendSearchHistoryService searchService;
-
-    public FriendSearchHistoryController(FriendSearchHistoryService searchService) {
-        this.searchService = searchService;
-    }
 
     @GetMapping
     public FriendSearchHistoryListResponse getSearchHistories(@CurrentUserId String userId) {

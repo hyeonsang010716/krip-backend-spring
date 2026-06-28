@@ -1,5 +1,6 @@
 package site.krip.domain.publicshare.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,13 +16,10 @@ import site.krip.domain.publicshare.service.SharePlanService;
  */
 @RestController
 @RequestMapping("/api/public/share")
+@RequiredArgsConstructor
 public class ShareController {
 
     private final SharePlanService sharePlanService;
-
-    public ShareController(SharePlanService sharePlanService) {
-        this.sharePlanService = sharePlanService;
-    }
 
     /**
      * 공유 토큰으로 플랜 단건 조회 (공개).

@@ -1,5 +1,6 @@
 package site.krip.domain.friend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -32,6 +33,7 @@ import java.util.Map;
  * LIMIT 충돌을 피해 별도 IN 쿼리로 배치 로드. 차단 유저는 검색 단계에서 이미 제외됨.
  */
 @Service
+@RequiredArgsConstructor
 public class FriendSearchService {
 
     private static final int PAGE_SIZE = 30;
@@ -45,14 +47,6 @@ public class FriendSearchService {
     private final FriendUserSearchRepository searchRepository;
     private final FriendshipRepository friendshipRepository;
     private final UserTravelStyleRepository travelStyleRepository;
-
-    public FriendSearchService(FriendUserSearchRepository searchRepository,
-                               FriendshipRepository friendshipRepository,
-                               UserTravelStyleRepository travelStyleRepository) {
-        this.searchRepository = searchRepository;
-        this.friendshipRepository = friendshipRepository;
-        this.travelStyleRepository = travelStyleRepository;
-    }
 
     @Transactional(readOnly = true)
     public FriendSearchListResponse search(String viewerId, String keyword, String cursor) {

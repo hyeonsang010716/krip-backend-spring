@@ -1,5 +1,6 @@
 package site.krip.domain.tour.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,15 +18,12 @@ import java.util.List;
  * 동일 검색어는 시간만 갱신, 10개 초과 시 가장 오래된 것 자동 삭제.
  */
 @Repository
+@RequiredArgsConstructor
 public class TourSearchHistoryRepository {
 
     private static final int MAX_SEARCH_HISTORY = 10;
 
     private final MongoTemplate mongo;
-
-    public TourSearchHistoryRepository(MongoTemplate mongo) {
-        this.mongo = mongo;
-    }
 
     /** 검색어 저장 — 동일 검색어는 시각만 갱신(upsert), 10개 초과 시 가장 오래된 것 삭제. */
     public TourSearchHistory save(String userId, String searchName) {

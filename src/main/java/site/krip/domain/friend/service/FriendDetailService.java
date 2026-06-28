@@ -1,5 +1,6 @@
 package site.krip.domain.friend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.auth.entity.User;
@@ -18,19 +19,12 @@ import site.krip.global.common.exception.ApiException;
  * 유저 미존재 → 404, 2차 미완료 → 400.
  */
 @Service
+@RequiredArgsConstructor
 public class FriendDetailService {
 
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
     private final UserBlockRepository userBlockRepository;
-
-    public FriendDetailService(UserRepository userRepository,
-                               FriendshipRepository friendshipRepository,
-                               UserBlockRepository userBlockRepository) {
-        this.userRepository = userRepository;
-        this.friendshipRepository = friendshipRepository;
-        this.userBlockRepository = userBlockRepository;
-    }
 
     @Transactional(readOnly = true)
     public FriendDetailResponse getFriendDetail(String viewerId, String peerId) {

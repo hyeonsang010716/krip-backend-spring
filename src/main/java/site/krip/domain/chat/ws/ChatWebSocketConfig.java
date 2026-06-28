@@ -1,5 +1,6 @@
 package site.krip.domain.chat.ws;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
@@ -14,16 +15,11 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
  */
 @Configuration
 @EnableWebSocket
+@RequiredArgsConstructor
 public class ChatWebSocketConfig implements WebSocketConfigurer {
 
     private final ChatWebSocketHandler handler;
     private final ChatHandshakeInterceptor handshakeInterceptor;
-
-    public ChatWebSocketConfig(ChatWebSocketHandler handler,
-                               ChatHandshakeInterceptor handshakeInterceptor) {
-        this.handler = handler;
-        this.handshakeInterceptor = handshakeInterceptor;
-    }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {

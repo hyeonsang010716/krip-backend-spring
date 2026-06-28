@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,6 +27,7 @@ import java.util.List;
  * 본인→본인 좋아요는 fan-out skip. 게시글 미존재/중복/미좋아요는 모두 400.
  */
 @Service
+@RequiredArgsConstructor
 public class TripmatePostLikeService {
 
     private static final int PAGE_SIZE = 30;
@@ -35,18 +37,6 @@ public class TripmatePostLikeService {
     private final UserQueryPort userQuery;
     private final TripmateNotificationPort notificationPort;
     private final TransactionTemplate txTemplate;
-
-    public TripmatePostLikeService(TripmatePostAccessGuard accessGuard,
-                                   TripmatePostLikeRepository likeRepository,
-                                   UserQueryPort userQuery,
-                                   TripmateNotificationPort notificationPort,
-                                   TransactionTemplate txTemplate) {
-        this.accessGuard = accessGuard;
-        this.likeRepository = likeRepository;
-        this.userQuery = userQuery;
-        this.notificationPort = notificationPort;
-        this.txTemplate = txTemplate;
-    }
 
     @Transactional(readOnly = true)
     public LikedUsersResponse getLikedUsers(String viewerId, String postId, String cursor) {

@@ -1,5 +1,6 @@
 package site.krip.domain.ai.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,13 +17,10 @@ import java.util.List;
 /** 메뉴 OCR API — 추론은 FastAPI(Gemini)에 위임. */
 @RestController
 @RequestMapping("/api/menu-ai/ocr")
+@RequiredArgsConstructor
 public class AiOcrController {
 
     private final AiOcrService ocrService;
-
-    public AiOcrController(AiOcrService ocrService) {
-        this.ocrService = ocrService;
-    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.OK)

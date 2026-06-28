@@ -1,5 +1,6 @@
 package site.krip.domain.friend.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -17,15 +18,12 @@ import java.util.List;
  * 동일 검색어는 시간만 갱신, 10개 초과 시 가장 오래된 것 자동 삭제.
  */
 @Repository
+@RequiredArgsConstructor
 public class FriendSearchHistoryRepository {
 
     private static final int MAX_SEARCH_HISTORY = 10;
 
     private final MongoTemplate mongo;
-
-    public FriendSearchHistoryRepository(MongoTemplate mongo) {
-        this.mongo = mongo;
-    }
 
     public FriendSearchHistory save(String userId, String searchName) {
         Update update = new Update()

@@ -1,6 +1,7 @@
 package site.krip.domain.tour.adapter;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.port.ExternalUserDataPurgePort;
 import site.krip.domain.tour.repository.TourSearchHistoryRepository;
@@ -15,13 +16,10 @@ import site.krip.domain.tour.repository.TourSearchHistoryRepository;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class TourUserDataPurgeAdapter implements ExternalUserDataPurgePort {
 
     private final TourSearchHistoryRepository searchHistoryRepository;
-
-    public TourUserDataPurgeAdapter(TourSearchHistoryRepository searchHistoryRepository) {
-        this.searchHistoryRepository = searchHistoryRepository;
-    }
 
     @Override
     public void purgeUserMongoData(String userId) {

@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.domain.tripmate.entity.TripmatePost;
@@ -12,15 +13,11 @@ import site.krip.domain.tripmate.repository.TripmatePostRepository;
  * <p>비-작성자에게 숨김(displayed=false)·차단 관계 글은 미노출. 존재 은닉을 위해 미존재·숨김·차단을 모두 404 로 일원화한다.
  */
 @Component
+@RequiredArgsConstructor
 public class TripmatePostAccessGuard {
 
     private final TripmatePostRepository postRepository;
     private final UserBlockRepository blockRepository;
-
-    public TripmatePostAccessGuard(TripmatePostRepository postRepository, UserBlockRepository blockRepository) {
-        this.postRepository = postRepository;
-        this.blockRepository = blockRepository;
-    }
 
     /** 조회 가능한 게시글을 로드하거나 404. */
     public TripmatePost loadViewablePost(String viewerId, String postId) {

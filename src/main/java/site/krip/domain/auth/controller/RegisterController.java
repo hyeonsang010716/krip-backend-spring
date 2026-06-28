@@ -1,6 +1,7 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,15 +15,11 @@ import site.krip.global.common.dto.MessageResponse;
 /** 2차 회원가입. */
 @RestController
 @RequestMapping("/api/auth/register")
+@RequiredArgsConstructor
 public class RegisterController {
 
     private final RegisterService registerService;
     private final RegisteredCacheManager registeredCache;
-
-    public RegisterController(RegisterService registerService, RegisteredCacheManager registeredCache) {
-        this.registerService = registerService;
-        this.registeredCache = registeredCache;
-    }
 
     @PostMapping
     public MessageResponse register(@CurrentUserId String userId,

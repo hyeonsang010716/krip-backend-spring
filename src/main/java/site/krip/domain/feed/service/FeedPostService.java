@@ -1,6 +1,7 @@
 package site.krip.domain.feed.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ import java.util.List;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FeedPostService {
 
     private final FeedPostRepository feedPostRepo;
@@ -43,18 +45,6 @@ public class FeedPostService {
     private final ObjectStorage storage;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
-
-    public FeedPostService(FeedPostRepository feedPostRepo, FeedAccessService access,
-                           ImageProcessor imageProcessor, ImageUploadExecutor imageUploadExecutor,
-                           ObjectStorage storage, FeedInboxPort inboxPort, TransactionTemplate txTemplate) {
-        this.feedPostRepo = feedPostRepo;
-        this.access = access;
-        this.imageProcessor = imageProcessor;
-        this.imageUploadExecutor = imageUploadExecutor;
-        this.storage = storage;
-        this.inboxPort = inboxPort;
-        this.txTemplate = txTemplate;
-    }
 
     // ──────────────────── 업로드 ────────────────────
 

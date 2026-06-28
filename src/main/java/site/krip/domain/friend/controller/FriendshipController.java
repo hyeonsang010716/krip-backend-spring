@@ -1,6 +1,7 @@
 package site.krip.domain.friend.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,13 +26,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/friend/friendships")
+@RequiredArgsConstructor
 public class FriendshipController {
 
     private final FriendshipService friendshipService;
-
-    public FriendshipController(FriendshipService friendshipService) {
-        this.friendshipService = friendshipService;
-    }
 
     @PostMapping("/requests")
     @ResponseStatus(HttpStatus.CREATED)

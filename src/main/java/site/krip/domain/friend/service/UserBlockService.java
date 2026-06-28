@@ -1,5 +1,6 @@
 package site.krip.domain.friend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +30,7 @@ import java.util.List;
  * 경합 가능 → 충돌 시 재조회. chat 차단 캐시 무효화는 포트로 위임.
  */
 @Service
+@RequiredArgsConstructor
 public class UserBlockService {
 
     private static final int PAGE_SIZE = 30;
@@ -40,18 +42,6 @@ public class UserBlockService {
     private final UserRepository userRepository;
     private final BlockCachePort blockCachePort;
     private final TransactionTemplate txTemplate;
-
-    public UserBlockService(UserBlockRepository userBlockRepository,
-                            FriendshipRepository friendshipRepository,
-                            UserRepository userRepository,
-                            BlockCachePort blockCachePort,
-                            TransactionTemplate txTemplate) {
-        this.userBlockRepository = userBlockRepository;
-        this.friendshipRepository = friendshipRepository;
-        this.userRepository = userRepository;
-        this.blockCachePort = blockCachePort;
-        this.txTemplate = txTemplate;
-    }
 
     public UserBlockResponse blockUser(String userId, String targetUserId) {
         if (userId.equals(targetUserId)) {

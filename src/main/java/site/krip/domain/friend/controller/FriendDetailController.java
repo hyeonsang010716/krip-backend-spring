@@ -1,5 +1,6 @@
 package site.krip.domain.friend.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,13 +15,10 @@ import site.krip.global.auth.CurrentUserId;
  */
 @RestController
 @RequestMapping("/api/friend/detail")
+@RequiredArgsConstructor
 public class FriendDetailController {
 
     private final FriendDetailService friendDetailService;
-
-    public FriendDetailController(FriendDetailService friendDetailService) {
-        this.friendDetailService = friendDetailService;
-    }
 
     @GetMapping("/{user_id}")
     public FriendDetailResponse getFriendDetail(@CurrentUserId String viewerId, @PathVariable("user_id") String userId) {

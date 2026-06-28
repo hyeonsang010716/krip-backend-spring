@@ -1,6 +1,7 @@
 package site.krip.domain.tripmate.adapter;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.port.ExternalUserDataPurgePort;
 import site.krip.domain.tripmate.repository.TripmateImageRepository;
@@ -16,19 +17,12 @@ import site.krip.domain.tripmate.repository.TripmateSearchHistoryRepository;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class TripmateUserDataPurgeAdapter implements ExternalUserDataPurgePort {
 
     private final TripmateImageRepository imageRepository;
     private final TripmatePostDraftRepository draftRepository;
     private final TripmateSearchHistoryRepository searchHistoryRepository;
-
-    public TripmateUserDataPurgeAdapter(TripmateImageRepository imageRepository,
-                                        TripmatePostDraftRepository draftRepository,
-                                        TripmateSearchHistoryRepository searchHistoryRepository) {
-        this.imageRepository = imageRepository;
-        this.draftRepository = draftRepository;
-        this.searchHistoryRepository = searchHistoryRepository;
-    }
 
     @Override
     public void purgeUserMongoData(String userId) {

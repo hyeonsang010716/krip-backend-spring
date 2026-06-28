@@ -1,5 +1,6 @@
 package site.krip.domain.friend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,7 @@ import java.util.List;
  * 재조회해 정확한 메시지를 돌려준다.
  */
 @Service
+@RequiredArgsConstructor
 public class FriendshipService {
 
     private static final int PAGE_SIZE = 30;
@@ -43,16 +45,6 @@ public class FriendshipService {
     private final UserBlockRepository userBlockRepository;
     private final UserRepository userRepository;
     private final TransactionTemplate txTemplate;
-
-    public FriendshipService(FriendshipRepository friendshipRepository,
-                             UserBlockRepository userBlockRepository,
-                             UserRepository userRepository,
-                             TransactionTemplate txTemplate) {
-        this.friendshipRepository = friendshipRepository;
-        this.userBlockRepository = userBlockRepository;
-        this.userRepository = userRepository;
-        this.txTemplate = txTemplate;
-    }
 
     // ──────────────────── 친구 요청 ────────────────────
 

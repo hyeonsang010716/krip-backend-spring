@@ -1,6 +1,7 @@
 package site.krip.domain.tripmate.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -45,6 +46,7 @@ import java.util.Set;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class TripmatePostService {
 
     private static final int PAGE_SIZE = 30;
@@ -68,30 +70,6 @@ public class TripmatePostService {
     private final ObjectStorage storage;
     private final TripmateNotificationPort notificationPort;
     private final TransactionTemplate txTemplate;
-
-    public TripmatePostService(TripmatePostRepository postRepository,
-                               TripmatePostImageRepository postImageRepository,
-                               TripmatePostLikeRepository likeRepository,
-                               UserQueryPort userQuery,
-                               TripmatePostDraftService draftService,
-                               TripmateImageRepository mongoImageRepository,
-                               TripmateImageOwnershipValidator imageOwnershipValidator,
-                               TripmatePostAccessGuard accessGuard,
-                               ObjectStorage storage,
-                               TripmateNotificationPort notificationPort,
-                               TransactionTemplate txTemplate) {
-        this.postRepository = postRepository;
-        this.postImageRepository = postImageRepository;
-        this.likeRepository = likeRepository;
-        this.userQuery = userQuery;
-        this.draftService = draftService;
-        this.mongoImageRepository = mongoImageRepository;
-        this.imageOwnershipValidator = imageOwnershipValidator;
-        this.accessGuard = accessGuard;
-        this.storage = storage;
-        this.notificationPort = notificationPort;
-        this.txTemplate = txTemplate;
-    }
 
     // ──────────────────── 생성 ────────────────────
 

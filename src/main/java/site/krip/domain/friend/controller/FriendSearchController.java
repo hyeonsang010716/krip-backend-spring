@@ -3,6 +3,7 @@ package site.krip.domain.friend.controller;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,16 +23,11 @@ import site.krip.global.support.LogSafe;
 @RequestMapping("/api/friend/search")
 @Validated
 @Slf4j
+@RequiredArgsConstructor
 public class FriendSearchController {
 
     private final FriendSearchService searchService;
     private final FriendSearchHistoryService searchHistoryService;
-
-    public FriendSearchController(FriendSearchService searchService,
-                                  FriendSearchHistoryService searchHistoryService) {
-        this.searchService = searchService;
-        this.searchHistoryService = searchHistoryService;
-    }
 
     @GetMapping
     public FriendSearchListResponse searchUsers(@CurrentUserId String viewerId,

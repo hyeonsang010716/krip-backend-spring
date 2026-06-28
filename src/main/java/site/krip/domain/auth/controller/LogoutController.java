@@ -1,6 +1,7 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -18,18 +19,12 @@ import java.time.Instant;
 /** 로그아웃 — 로그인 쿠키 만료 + 현재 토큰 jti 폐기. */
 @RestController
 @RequestMapping("/api/auth/logout")
+@RequiredArgsConstructor
 public class LogoutController {
 
     private final LoginCookieFactory cookieFactory;
     private final TokenRevocationService revocation;
     private final UserPurgeCachePort chatSessions;
-
-    public LogoutController(LoginCookieFactory cookieFactory, TokenRevocationService revocation,
-                            UserPurgeCachePort chatSessions) {
-        this.cookieFactory = cookieFactory;
-        this.revocation = revocation;
-        this.chatSessions = chatSessions;
-    }
 
     @PostMapping
     public ResponseEntity<MessageResponse> logout(@CurrentUserId String userId, HttpServletRequest request) {

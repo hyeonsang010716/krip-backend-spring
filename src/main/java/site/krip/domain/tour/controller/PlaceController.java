@@ -6,6 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,6 +35,7 @@ import site.krip.global.common.dto.MessageResponse;
 @RequestMapping("/api/tour/places")
 @Validated
 @Slf4j
+@RequiredArgsConstructor
 public class PlaceController {
 
     // 기본 좌표 (서울 광화문)
@@ -47,13 +49,6 @@ public class PlaceController {
     private final PlaceService placeService;
     private final FavoritePlaceService favoritePlaceService;
     private final TourSearchHistoryService searchHistoryService;
-
-    public PlaceController(PlaceService placeService, FavoritePlaceService favoritePlaceService,
-                          TourSearchHistoryService searchHistoryService) {
-        this.placeService = placeService;
-        this.favoritePlaceService = favoritePlaceService;
-        this.searchHistoryService = searchHistoryService;
-    }
 
     // ──────────────────── 장소 조회 ────────────────────
 

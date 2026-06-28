@@ -1,6 +1,7 @@
 package site.krip.domain.feed.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import java.util.Map;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class FeedPostLikeService {
 
     private static final int PAGE_SIZE = 30;
@@ -39,16 +41,6 @@ public class FeedPostLikeService {
     private final UserQueryPort userQuery;
     private final FeedInboxPort inboxPort;
     private final TransactionTemplate txTemplate;
-
-    public FeedPostLikeService(FeedAccessService access, FeedPostLikeRepository likeRepo,
-                               UserQueryPort userQuery, FeedInboxPort inboxPort,
-                               TransactionTemplate txTemplate) {
-        this.access = access;
-        this.likeRepo = likeRepo;
-        this.userQuery = userQuery;
-        this.inboxPort = inboxPort;
-        this.txTemplate = txTemplate;
-    }
 
     public long addLike(String userId, String postId) {
         return txTemplate.execute(s -> doAddLike(userId, postId));

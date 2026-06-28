@@ -1,6 +1,7 @@
 package site.krip.domain.chat.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import site.krip.domain.auth.port.UserPurgeCachePort;
@@ -14,15 +15,11 @@ import site.krip.global.chat.ChatRedisKeys;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class UserPurgeCacheService implements UserPurgeCachePort {
 
     private final SessionService sessionService;
     private final StringRedisTemplate redis;
-
-    public UserPurgeCacheService(SessionService sessionService, StringRedisTemplate redis) {
-        this.sessionService = sessionService;
-        this.redis = redis;
-    }
 
     @Override
     public void revokeSessionsForToken(String userId, String tokenJti) {

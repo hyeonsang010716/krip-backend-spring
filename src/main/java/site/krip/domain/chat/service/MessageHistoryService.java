@@ -1,5 +1,6 @@
 package site.krip.domain.chat.service;
 
+import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +39,7 @@ import java.util.TreeSet;
  * 채팅 읽기 전용 — 방 리스트 / 방 상세 / 참여자 / 초대 가능 친구 / 메시지 히스토리.
  */
 @Service
+@RequiredArgsConstructor
 public class MessageHistoryService {
 
     private final ChatRoomRepository roomRepo;
@@ -46,17 +48,6 @@ public class MessageHistoryService {
     private final UserQueryPort userQuery;
     private final FriendQueryPort friendQuery;
     private final UnreadService unreadService;
-
-    public MessageHistoryService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
-                                 ChatMessageRepository messageRepo, UserQueryPort userQuery,
-                                 FriendQueryPort friendQuery, UnreadService unreadService) {
-        this.roomRepo = roomRepo;
-        this.memberRepo = memberRepo;
-        this.messageRepo = messageRepo;
-        this.userQuery = userQuery;
-        this.friendQuery = friendQuery;
-        this.unreadService = unreadService;
-    }
 
     @Transactional(readOnly = true)
     public ChatRoomListResponse listRooms(String meId) {

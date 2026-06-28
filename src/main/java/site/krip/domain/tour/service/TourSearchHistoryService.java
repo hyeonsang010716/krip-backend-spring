@@ -1,5 +1,6 @@
 package site.krip.domain.tour.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.krip.domain.tour.document.TourSearchHistory;
 import site.krip.domain.tour.dto.response.TourSearchHistoryListResponse;
@@ -13,13 +14,10 @@ import java.util.List;
  * 관광 장소 검색 기록 (MongoDB).
  */
 @Service
+@RequiredArgsConstructor
 public class TourSearchHistoryService {
 
     private final TourSearchHistoryRepository searchRepo;
-
-    public TourSearchHistoryService(TourSearchHistoryRepository searchRepo) {
-        this.searchRepo = searchRepo;
-    }
 
     /** 검색어 저장 — 동일 검색어는 시각만 갱신, 10개 초과 시 가장 오래된 것 삭제. */
     public void saveSearch(String userId, String searchName) {

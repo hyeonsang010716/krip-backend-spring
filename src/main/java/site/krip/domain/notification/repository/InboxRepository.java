@@ -5,6 +5,7 @@ import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.IndexOptions;
 import com.mongodb.client.model.Indexes;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
@@ -29,6 +30,7 @@ import java.util.concurrent.TimeUnit;
  * TTL 30일, 페이지네이션, actor)는 startup 에 생성. fan-out insert 의 dedup 충돌은 service 가 멱등 skip.
  */
 @Repository
+@RequiredArgsConstructor
 public class InboxRepository {
 
     public static final int PAGE_SIZE = 20;
@@ -37,11 +39,6 @@ public class InboxRepository {
 
     private final MongoTemplate mongo;
     private final Clock clock;
-
-    public InboxRepository(MongoTemplate mongo, Clock clock) {
-        this.mongo = mongo;
-        this.clock = clock;
-    }
 
     @PostConstruct
     void createIndexes() {

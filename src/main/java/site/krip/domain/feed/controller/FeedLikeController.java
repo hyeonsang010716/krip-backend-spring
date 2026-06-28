@@ -1,5 +1,6 @@
 package site.krip.domain.feed.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,13 +21,10 @@ import site.krip.global.auth.CurrentUserId;
  */
 @RestController
 @RequestMapping("/api/feed/posts")
+@RequiredArgsConstructor
 public class FeedLikeController {
 
     private final FeedPostLikeService likeService;
-
-    public FeedLikeController(FeedPostLikeService likeService) {
-        this.likeService = likeService;
-    }
 
     @PostMapping("/{post_id}/like")
     @ResponseStatus(HttpStatus.CREATED)

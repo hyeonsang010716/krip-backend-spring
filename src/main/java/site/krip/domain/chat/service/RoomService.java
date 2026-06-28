@@ -1,6 +1,7 @@
 package site.krip.domain.chat.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -36,6 +37,7 @@ import java.util.TreeSet;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class RoomService {
 
     private final ChatRoomRepository roomRepo;
@@ -49,25 +51,6 @@ public class RoomService {
     private final StringRedisTemplate redis;
     private final ChatSetCache setCache;
     private final TransactionTemplate txTemplate;
-
-    public RoomService(ChatRoomRepository roomRepo, ChatRoomMemberRepository memberRepo,
-                       FriendQueryPort friendQuery,
-                       UserQueryPort userQuery, FanoutService fanout, MessageService messageService,
-                       UnreadService unreadService,
-                       site.krip.domain.chat.repository.ChatMessageRepository messageRepo,
-                       StringRedisTemplate redis, ChatSetCache setCache, TransactionTemplate txTemplate) {
-        this.roomRepo = roomRepo;
-        this.memberRepo = memberRepo;
-        this.friendQuery = friendQuery;
-        this.userQuery = userQuery;
-        this.fanout = fanout;
-        this.messageService = messageService;
-        this.unreadService = unreadService;
-        this.messageRepo = messageRepo;
-        this.redis = redis;
-        this.setCache = setCache;
-        this.txTemplate = txTemplate;
-    }
 
     // ──────────────────── 1:1 방 ────────────────────
 

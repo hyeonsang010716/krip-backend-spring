@@ -1,6 +1,7 @@
 package site.krip.domain.friend.adapter;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.port.ExternalUserDataPurgePort;
 import site.krip.domain.friend.repository.FriendSearchHistoryRepository;
@@ -14,13 +15,10 @@ import site.krip.domain.friend.repository.FriendSearchHistoryRepository;
  */
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class FriendUserDataPurgeAdapter implements ExternalUserDataPurgePort {
 
     private final FriendSearchHistoryRepository searchHistoryRepository;
-
-    public FriendUserDataPurgeAdapter(FriendSearchHistoryRepository searchHistoryRepository) {
-        this.searchHistoryRepository = searchHistoryRepository;
-    }
 
     @Override
     public void purgeUserMongoData(String userId) {

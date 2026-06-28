@@ -1,5 +1,6 @@
 package site.krip.domain.auth.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -12,13 +13,10 @@ import java.util.List;
 
 /** 탈퇴 요청 MongoDB 접근 — 유저당 1건, 적재는 항상 upsert(재요청 가드는 RDB status). */
 @Repository
+@RequiredArgsConstructor
 public class WithdrawalRequestRepository {
 
     private final MongoTemplate mongo;
-
-    public WithdrawalRequestRepository(MongoTemplate mongo) {
-        this.mongo = mongo;
-    }
 
     /** 동일 user_id doc 가 있으면 시각만 갱신, 없으면 삽입 (round-trip 1회, race-safe). */
     public void upsert(String userId, Instant requestedAt, Instant scheduledPurgeAt) {

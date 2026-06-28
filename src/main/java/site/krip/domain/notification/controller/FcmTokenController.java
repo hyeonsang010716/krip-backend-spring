@@ -1,6 +1,7 @@
 package site.krip.domain.notification.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,13 +21,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/notification/fcm-token")
+@RequiredArgsConstructor
 public class FcmTokenController {
 
     private final FcmService fcmService;
-
-    public FcmTokenController(FcmService fcmService) {
-        this.fcmService = fcmService;
-    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

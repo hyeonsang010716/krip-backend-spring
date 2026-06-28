@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -17,13 +18,10 @@ import java.util.Optional;
  * 게시글 임시저장 MongoDB 접근. 유저당 1개 upsert.
  */
 @Repository
+@RequiredArgsConstructor
 public class TripmatePostDraftRepository {
 
     private final MongoTemplate mongo;
-
-    public TripmatePostDraftRepository(MongoTemplate mongo) {
-        this.mongo = mongo;
-    }
 
     /** 임시저장 upsert (단일 atomic). 갱신 후 문서 반환. */
     public TripmatePostDraft upsert(String userId, String title, String content,

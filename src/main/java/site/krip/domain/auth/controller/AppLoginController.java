@@ -2,6 +2,7 @@ package site.krip.domain.auth.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,20 +30,13 @@ import java.net.URI;
 @RestController
 @RequestMapping("/api/auth/login/app")
 @Slf4j
+@RequiredArgsConstructor
 public class AppLoginController {
 
     private final OAuthConfigs oauthConfigs;
     private final OAuthCallbackService callbackService;
     private final OAuthStateService stateService;
     private final OAuthProperties oauthProperties;
-
-    public AppLoginController(OAuthConfigs oauthConfigs, OAuthCallbackService callbackService,
-                             OAuthStateService stateService, OAuthProperties oauthProperties) {
-        this.oauthConfigs = oauthConfigs;
-        this.callbackService = callbackService;
-        this.stateService = stateService;
-        this.oauthProperties = oauthProperties;
-    }
 
     @GetMapping
     public ResponseEntity<Void> appLogin(@RequestParam("type") OAuthProvider type) {

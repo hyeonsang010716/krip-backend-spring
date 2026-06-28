@@ -1,6 +1,7 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +30,7 @@ import java.util.List;
 /** 프로필 조회/수정 + 이미지 CRUD. */
 @RestController
 @RequestMapping("/api/auth/profile")
+@RequiredArgsConstructor
 public class ProfileController {
 
     private static final List<String> ALLOWED_CONTENT_TYPES =
@@ -37,11 +39,6 @@ public class ProfileController {
 
     private final ProfileService profileService;
     private final ImageUploadValidator imageValidator;
-
-    public ProfileController(ProfileService profileService, ImageUploadValidator imageValidator) {
-        this.profileService = profileService;
-        this.imageValidator = imageValidator;
-    }
 
     @GetMapping("/me")
     public ProfileResponse getMyProfile(@CurrentUserId String userId) {

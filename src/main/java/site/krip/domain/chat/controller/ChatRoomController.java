@@ -1,6 +1,7 @@
 package site.krip.domain.chat.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -27,15 +28,11 @@ import site.krip.global.common.exception.ApiException;
 /** 채팅 방/메시지 REST — {@code /api/chat/rooms}. */
 @RestController
 @RequestMapping("/api/chat/rooms")
+@RequiredArgsConstructor
 public class ChatRoomController {
 
     private final RoomService roomService;
     private final MessageHistoryService historyService;
-
-    public ChatRoomController(RoomService roomService, MessageHistoryService historyService) {
-        this.roomService = roomService;
-        this.historyService = historyService;
-    }
 
     @PostMapping("/direct")
     @ResponseStatus(HttpStatus.CREATED)

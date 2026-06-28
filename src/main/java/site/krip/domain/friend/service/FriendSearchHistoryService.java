@@ -1,5 +1,6 @@
 package site.krip.domain.friend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.krip.domain.friend.document.FriendSearchHistory;
 import site.krip.domain.friend.repository.FriendSearchHistoryRepository;
@@ -11,13 +12,10 @@ import java.util.List;
  * 친구 추가 화면 검색 기록.
  */
 @Service
+@RequiredArgsConstructor
 public class FriendSearchHistoryService {
 
     private final FriendSearchHistoryRepository searchRepository;
-
-    public FriendSearchHistoryService(FriendSearchHistoryRepository searchRepository) {
-        this.searchRepository = searchRepository;
-    }
 
     public FriendSearchHistory saveSearch(String userId, String searchName) {
         return searchRepository.save(userId, searchName);

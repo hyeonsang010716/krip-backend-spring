@@ -1,5 +1,6 @@
 package site.krip.domain.chat.adapter;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.chat.entity.ChatRoomMember;
@@ -12,13 +13,10 @@ import site.krip.global.common.exception.ApiException;
  * notification 의 {@link RoomMutePort} 구현 — chat 도메인이 멤버 방별 알림 차단을 적용. 활성 멤버만 허용.
  */
 @Component
+@RequiredArgsConstructor
 public class RoomMuteAdapter implements RoomMutePort {
 
     private final ChatRoomMemberRepository memberRepo;
-
-    public RoomMuteAdapter(ChatRoomMemberRepository memberRepo) {
-        this.memberRepo = memberRepo;
-    }
 
     @Override
     @Transactional

@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +26,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/tripmate/images")
+@RequiredArgsConstructor
 public class TripmateImageController {
 
     private static final List<String> ALLOWED_CONTENT_TYPES =
@@ -34,11 +36,6 @@ public class TripmateImageController {
 
     private final TripmateImageService imageService;
     private final ImageUploadValidator imageValidator;
-
-    public TripmateImageController(TripmateImageService imageService, ImageUploadValidator imageValidator) {
-        this.imageService = imageService;
-        this.imageValidator = imageValidator;
-    }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)

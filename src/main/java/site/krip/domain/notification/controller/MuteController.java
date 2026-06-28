@@ -1,6 +1,7 @@
 package site.krip.domain.notification.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,13 +17,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/notification/mute")
+@RequiredArgsConstructor
 public class MuteController {
 
     private final MuteService muteService;
-
-    public MuteController(MuteService muteService) {
-        this.muteService = muteService;
-    }
 
     @PutMapping("/global")
     public MessageResponse setGlobalMute(@CurrentUserId String userId, @Valid @RequestBody MuteToggleBody body) {

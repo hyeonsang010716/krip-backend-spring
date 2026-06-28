@@ -1,5 +1,6 @@
 package site.krip.domain.tour.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.bson.Document;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -24,6 +25,7 @@ import java.util.Optional;
  * {@code "distance:place_id"} 형식이며, 동일 거리 문서가 잘리지 않도록 minDistance epsilon 을 둔다.
  */
 @Repository
+@RequiredArgsConstructor
 public class PlaceRepository {
 
     /** 장소 조회 페이지 크기. */
@@ -32,10 +34,6 @@ public class PlaceRepository {
     private static final double CURSOR_EPSILON = 1e-2;
 
     private final MongoTemplate mongo;
-
-    public PlaceRepository(MongoTemplate mongo) {
-        this.mongo = mongo;
-    }
 
     // ──────────────────── place_id 배치/단건 조회 ────────────────────
 

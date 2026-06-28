@@ -1,6 +1,7 @@
 package site.krip.domain.auth.service;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +40,7 @@ import java.util.List;
  */
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class ProfileService {
 
     private final UserRepository userRepository;
@@ -49,24 +51,6 @@ public class ProfileService {
     private final TransactionTemplate txTemplate;
     private final ImageProcessor imageProcessor;
     private final ImageUploadExecutor imageUploadExecutor;
-
-    public ProfileService(UserRepository userRepository,
-                          UserDetailInformRepository detailRepository,
-                          ObjectStorage storage,
-                          FeedLikeCountPort feedLikeCountPort,
-                          FriendCountPort friendCountPort,
-                          TransactionTemplate txTemplate,
-                          ImageProcessor imageProcessor,
-                          ImageUploadExecutor imageUploadExecutor) {
-        this.userRepository = userRepository;
-        this.detailRepository = detailRepository;
-        this.storage = storage;
-        this.feedLikeCountPort = feedLikeCountPort;
-        this.friendCountPort = friendCountPort;
-        this.txTemplate = txTemplate;
-        this.imageProcessor = imageProcessor;
-        this.imageUploadExecutor = imageUploadExecutor;
-    }
 
     // TODO 운영 전환 시 — 무한정 전체 조회(대규모 시 메모리/지연 위험). 커서 페이지네이션 +
     //  travelStyles 별도 IN 배치 로드로 전환 필요. 현재는 DEV 전용 API 라 단순 전체 반환.

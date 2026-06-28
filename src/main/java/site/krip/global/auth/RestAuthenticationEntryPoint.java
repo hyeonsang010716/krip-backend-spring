@@ -3,6 +3,7 @@ package site.krip.global.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
@@ -16,13 +17,10 @@ import java.io.IOException;
  * 미인증 요청(로그인 토큰 부재) → {@code 401 {"detail": ...}}.
  */
 @Component
+@RequiredArgsConstructor
 public class RestAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper mapper;
-
-    public RestAuthenticationEntryPoint(ObjectMapper mapper) {
-        this.mapper = mapper;
-    }
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,

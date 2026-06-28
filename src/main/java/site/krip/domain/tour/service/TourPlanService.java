@@ -1,5 +1,6 @@
 package site.krip.domain.tour.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
  * 카드 변경은 plan row 를 안 건드리므로 {@code plan.touch()} 로 updated_at 을 명시적으로 올린다.
  */
 @Service
+@RequiredArgsConstructor
 public class TourPlanService {
 
     /** 카드 position 기본 간격 — 클수록 같은 자리 반복 삽입 시 float 정밀도 여유 ↑. */
@@ -53,16 +55,6 @@ public class TourPlanService {
     private final PlaceRepository placeRepo;
     private final ShareTokenProvider shareTokenProvider;
     private final TransactionTemplate txTemplate;
-
-    public TourPlanService(TourPlanRepository planRepo, TourPlanItemRepository itemRepo,
-                           PlaceRepository placeRepo, ShareTokenProvider shareTokenProvider,
-                           TransactionTemplate txTemplate) {
-        this.planRepo = planRepo;
-        this.itemRepo = itemRepo;
-        this.placeRepo = placeRepo;
-        this.shareTokenProvider = shareTokenProvider;
-        this.txTemplate = txTemplate;
-    }
 
     // ──────────────────── 플랜 생성 ────────────────────
 

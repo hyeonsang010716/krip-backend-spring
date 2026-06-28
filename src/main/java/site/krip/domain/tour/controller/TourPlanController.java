@@ -1,6 +1,7 @@
 package site.krip.domain.tour.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,13 +32,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/tour/plans")
+@RequiredArgsConstructor
 public class TourPlanController {
 
     private final TourPlanService tourPlanService;
-
-    public TourPlanController(TourPlanService tourPlanService) {
-        this.tourPlanService = tourPlanService;
-    }
 
     // ──────────────────── 플랜 CRUD ────────────────────
 

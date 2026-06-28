@@ -1,5 +1,6 @@
 package site.krip.domain.publicshare.service;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,19 +30,12 @@ import java.util.stream.Collectors;
  * 응답을 빌드한다. 노출 응답에서 소유자 식별(user_id)은 제외.
  */
 @Service
+@RequiredArgsConstructor
 public class SharePlanService {
 
     private final ShareTokenProvider shareTokenProvider;
     private final TourPlanRepository tourPlanRepository;
     private final PlaceRepository placeRepository;
-
-    public SharePlanService(ShareTokenProvider shareTokenProvider,
-                            TourPlanRepository tourPlanRepository,
-                            PlaceRepository placeRepository) {
-        this.shareTokenProvider = shareTokenProvider;
-        this.tourPlanRepository = tourPlanRepository;
-        this.placeRepository = placeRepository;
-    }
 
     /**
      * 공유 토큰 디코드 → plan 조회 → 공개 응답 빌드.

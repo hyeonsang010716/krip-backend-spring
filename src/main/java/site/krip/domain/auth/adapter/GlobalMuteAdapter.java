@@ -1,5 +1,6 @@
 package site.krip.domain.auth.adapter;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.auth.entity.User;
@@ -11,13 +12,10 @@ import site.krip.global.common.exception.ApiException;
  * notification 의 {@link GlobalMutePort} 구현 — auth 도메인이 User 전역 알림 차단을 적용.
  */
 @Component
+@RequiredArgsConstructor
 public class GlobalMuteAdapter implements GlobalMutePort {
 
     private final UserRepository userRepo;
-
-    public GlobalMuteAdapter(UserRepository userRepo) {
-        this.userRepo = userRepo;
-    }
 
     @Override
     @Transactional

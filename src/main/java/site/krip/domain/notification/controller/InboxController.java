@@ -1,5 +1,6 @@
 package site.krip.domain.notification.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,13 +19,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/notification/inbox")
+@RequiredArgsConstructor
 public class InboxController {
 
     private final InboxService inboxService;
-
-    public InboxController(InboxService inboxService) {
-        this.inboxService = inboxService;
-    }
 
     @GetMapping
     public InboxListResponse list(@CurrentUserId String userId,

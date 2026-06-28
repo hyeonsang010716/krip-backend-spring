@@ -1,5 +1,6 @@
 package site.krip.domain.auth.adapter;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -22,13 +23,10 @@ import java.util.stream.Collectors;
 
 /** {@link UserQueryPort} 어댑터 — auth 영속성으로부터 프로필 투영을 만든다. */
 @Component
+@RequiredArgsConstructor
 public class UserQueryAdapter implements UserQueryPort {
 
     private final UserRepository userRepository;
-
-    public UserQueryAdapter(UserRepository userRepository) {
-        this.userRepository = userRepository;
-    }
 
     @Override
     @Transactional(readOnly = true)

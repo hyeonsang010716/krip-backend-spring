@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,13 +19,10 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/tripmate/search-history")
+@RequiredArgsConstructor
 public class TripmateSearchHistoryController {
 
     private final TripmateSearchHistoryService searchService;
-
-    public TripmateSearchHistoryController(TripmateSearchHistoryService searchService) {
-        this.searchService = searchService;
-    }
 
     @GetMapping
     public SearchHistoryListResponse getSearchHistories(@CurrentUserId String userId) {

@@ -1,5 +1,6 @@
 package site.krip.domain.auth.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.auth.dto.request.RegisterRequest;
@@ -16,19 +17,12 @@ import java.util.List;
 
 /** 2차 회원가입 — 상세 정보 + 여행 스타일 저장. 유저 미존재/중복 가입은 모두 409. */
 @Service
+@RequiredArgsConstructor
 public class RegisterService {
 
     private final UserRepository userRepository;
     private final UserDetailInformRepository detailRepository;
     private final UserTravelStyleRepository styleRepository;
-
-    public RegisterService(UserRepository userRepository,
-                           UserDetailInformRepository detailRepository,
-                           UserTravelStyleRepository styleRepository) {
-        this.userRepository = userRepository;
-        this.detailRepository = detailRepository;
-        this.styleRepository = styleRepository;
-    }
 
     @Transactional
     public void registerDetail(String userId, RegisterRequest request) {

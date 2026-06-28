@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.repository;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -16,13 +17,10 @@ import java.util.stream.Collectors;
  * 업로드 이미지 메타데이터 MongoDB 접근.
  */
 @Repository
+@RequiredArgsConstructor
 public class TripmateImageRepository {
 
     private final MongoTemplate mongo;
-
-    public TripmateImageRepository(MongoTemplate mongo) {
-        this.mongo = mongo;
-    }
 
     public TripmateImage save(TripmateImage image) {
         return mongo.insert(image);

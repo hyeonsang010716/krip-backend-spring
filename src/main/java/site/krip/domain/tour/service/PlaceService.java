@@ -1,5 +1,6 @@
 package site.krip.domain.tour.service;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,15 +22,11 @@ import java.util.Set;
  * is_favorite 는 즐겨찾기 O 면 true, X 면 null.
  */
 @Service
+@RequiredArgsConstructor
 public class PlaceService {
 
     private final PlaceRepository placeRepo;
     private final FavoritePlaceRepository favRepo;
-
-    public PlaceService(PlaceRepository placeRepo, FavoritePlaceRepository favRepo) {
-        this.placeRepo = placeRepo;
-        this.favRepo = favRepo;
-    }
 
     @Transactional(readOnly = true)
     public PlaceListResponse getNearbyPlaces(double lat, double lng, String cursor,

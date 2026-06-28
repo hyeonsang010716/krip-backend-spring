@@ -1,5 +1,6 @@
 package site.krip.domain.auth.service;
 
+import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -20,15 +21,11 @@ import site.krip.domain.auth.repository.UserRepository;
  * </pre>
  */
 @Service
+@RequiredArgsConstructor
 public class SignupService {
 
     private final UserRepository userRepository;
     private final UserDetailInformRepository detailRepository;
-
-    public SignupService(UserRepository userRepository, UserDetailInformRepository detailRepository) {
-        this.userRepository = userRepository;
-        this.detailRepository = detailRepository;
-    }
 
     public SignupResult checkAndRegister(OAuthProvider authProvider, String authProviderId) {
         User user = findUser(authProvider, authProviderId);

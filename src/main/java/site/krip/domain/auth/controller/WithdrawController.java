@@ -1,6 +1,7 @@
 package site.krip.domain.auth.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -22,15 +23,11 @@ import java.time.Instant;
 @RestController
 @RequestMapping("/api/auth/withdraw")
 @Slf4j
+@RequiredArgsConstructor
 public class WithdrawController {
 
     private final WithdrawService withdrawService;
     private final LoginCookieFactory cookieFactory;
-
-    public WithdrawController(WithdrawService withdrawService, LoginCookieFactory cookieFactory) {
-        this.withdrawService = withdrawService;
-        this.cookieFactory = cookieFactory;
-    }
 
     /** 탈퇴 요청 — INACTIVE 전환 + 30일 후 영구 삭제 예약, 쿠키 즉시 만료. */
     @DeleteMapping

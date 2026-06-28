@@ -1,5 +1,6 @@
 package site.krip.domain.tour.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,13 +16,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/tour/search-history")
+@RequiredArgsConstructor
 public class TourSearchHistoryController {
 
     private final TourSearchHistoryService searchService;
-
-    public TourSearchHistoryController(TourSearchHistoryService searchService) {
-        this.searchService = searchService;
-    }
 
     @GetMapping
     public TourSearchHistoryListResponse getSearchHistories(@CurrentUserId String userId) {

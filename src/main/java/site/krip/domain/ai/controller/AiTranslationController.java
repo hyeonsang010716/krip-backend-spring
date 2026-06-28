@@ -1,6 +1,7 @@
 package site.krip.domain.ai.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,13 +17,10 @@ import site.krip.domain.ai.service.AiTranslationService;
 /** 번역/언어감지 API — 추론은 FastAPI(Papago)에 위임. */
 @RestController
 @RequestMapping("/api/translation")
+@RequiredArgsConstructor
 public class AiTranslationController {
 
     private final AiTranslationService translationService;
-
-    public AiTranslationController(AiTranslationService translationService) {
-        this.translationService = translationService;
-    }
 
     @PostMapping("/detect")
     @ResponseStatus(HttpStatus.OK)

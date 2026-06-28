@@ -1,6 +1,7 @@
 package site.krip.domain.chat.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -20,13 +21,10 @@ import site.krip.global.auth.CurrentUserId;
  */
 @RestController
 @RequestMapping("/api/chat/messages")
+@RequiredArgsConstructor
 public class ChatMessageController {
 
     private final MessageService messageService;
-
-    public ChatMessageController(MessageService messageService) {
-        this.messageService = messageService;
-    }
 
     @PatchMapping("/{message_id}")
     public EditMessageResponse edit(@CurrentUserId String userId, @PathVariable("message_id") String messageId,

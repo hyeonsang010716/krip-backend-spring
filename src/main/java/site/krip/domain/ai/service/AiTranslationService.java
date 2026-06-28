@@ -1,5 +1,6 @@
 package site.krip.domain.ai.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import site.krip.domain.ai.client.AiServiceClient;
 import site.krip.domain.ai.dto.request.DetectRequest;
@@ -12,13 +13,10 @@ import site.krip.global.common.exception.ApiException;
  * 번역/언어감지 — 모든 추론은 FastAPI(Papago)에 위임하는 프록시. DB 의존 없음.
  */
 @Service
+@RequiredArgsConstructor
 public class AiTranslationService {
 
     private final AiServiceClient ai;
-
-    public AiTranslationService(AiServiceClient ai) {
-        this.ai = ai;
-    }
 
     public DetectResponse detect(DetectRequest request) {
         return ai.postJson("/api/translation/detect", request, DetectResponse.class);

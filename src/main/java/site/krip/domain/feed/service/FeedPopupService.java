@@ -1,5 +1,6 @@
 package site.krip.domain.feed.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.List;
  * <p>user 미존재/회원가입 미완료/차단 모두 → 404 일원화(enumeration 차단). next_cursor 미제공.
  */
 @Service
+@RequiredArgsConstructor
 public class FeedPopupService {
 
     /** popup 그리드 (3×3). */
@@ -27,13 +29,6 @@ public class FeedPopupService {
     private final UserQueryPort userQuery;
     private final FeedAccessService access;
     private final FeedPostRepository feedPostRepo;
-
-    public FeedPopupService(UserQueryPort userQuery, FeedAccessService access,
-                            FeedPostRepository feedPostRepo) {
-        this.userQuery = userQuery;
-        this.access = access;
-        this.feedPostRepo = feedPostRepo;
-    }
 
     @Transactional(readOnly = true)
     public FeedPopupResponse getPopup(String viewerId, String ownerId) {

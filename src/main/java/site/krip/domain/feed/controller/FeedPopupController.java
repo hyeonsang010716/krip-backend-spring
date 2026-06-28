@@ -1,5 +1,6 @@
 package site.krip.domain.feed.controller;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,13 +15,10 @@ import site.krip.global.auth.CurrentUserId;
  */
 @RestController
 @RequestMapping("/api/feed/popup")
+@RequiredArgsConstructor
 public class FeedPopupController {
 
     private final FeedPopupService popupService;
-
-    public FeedPopupController(FeedPopupService popupService) {
-        this.popupService = popupService;
-    }
 
     @GetMapping("/{user_id}")
     public FeedPopupResponse getPopup(@CurrentUserId String viewerId, @PathVariable("user_id") String userId) {

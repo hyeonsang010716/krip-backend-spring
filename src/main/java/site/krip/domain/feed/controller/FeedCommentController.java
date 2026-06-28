@@ -1,6 +1,7 @@
 package site.krip.domain.feed.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,13 +24,10 @@ import site.krip.global.common.dto.MessageResponse;
  */
 @RestController
 @RequestMapping("/api/feed/posts")
+@RequiredArgsConstructor
 public class FeedCommentController {
 
     private final FeedPostCommentService commentService;
-
-    public FeedCommentController(FeedPostCommentService commentService) {
-        this.commentService = commentService;
-    }
 
     @PostMapping("/{post_id}/comments")
     @ResponseStatus(HttpStatus.CREATED)

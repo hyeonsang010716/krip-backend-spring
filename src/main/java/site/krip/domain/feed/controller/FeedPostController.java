@@ -1,6 +1,7 @@
 package site.krip.domain.feed.controller;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -37,6 +38,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/feed")
 @Validated
+@RequiredArgsConstructor
 public class FeedPostController {
 
     // GIF 제외 (정지 이미지 전용). thumbnail 화이트리스트와 일치 — 라우터 fast-fail.
@@ -45,11 +47,6 @@ public class FeedPostController {
 
     private final FeedPostService feedPostService;
     private final ImageUploadValidator imageValidator;
-
-    public FeedPostController(FeedPostService feedPostService, ImageUploadValidator imageValidator) {
-        this.feedPostService = feedPostService;
-        this.imageValidator = imageValidator;
-    }
 
     @PostMapping(value = "/posts", consumes = "multipart/form-data")
     @ResponseStatus(HttpStatus.CREATED)
