@@ -1,7 +1,6 @@
 package site.krip.domain.friend.adapter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.port.ExternalUserDataPurgePort;
 import site.krip.domain.friend.repository.FriendSearchHistoryRepository;
@@ -14,9 +13,8 @@ import site.krip.domain.friend.repository.FriendSearchHistoryRepository;
  * orphan 로그를 남기도록 예외를 그대로 전파한다.
  */
 @Component
+@Slf4j
 public class FriendUserDataPurgeAdapter implements ExternalUserDataPurgePort {
-
-    private static final Logger log = LoggerFactory.getLogger(FriendUserDataPurgeAdapter.class);
 
     private final FriendSearchHistoryRepository searchHistoryRepository;
 

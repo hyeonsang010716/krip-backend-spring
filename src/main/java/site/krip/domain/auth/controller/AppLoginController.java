@@ -1,8 +1,7 @@
 package site.krip.domain.auth.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -29,9 +28,8 @@ import java.net.URI;
  */
 @RestController
 @RequestMapping("/api/auth/login/app")
+@Slf4j
 public class AppLoginController {
-
-    private static final Logger log = LoggerFactory.getLogger(AppLoginController.class);
 
     private final OAuthConfigs oauthConfigs;
     private final OAuthCallbackService callbackService;

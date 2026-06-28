@@ -1,8 +1,7 @@
 package site.krip.domain.auth.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -39,9 +38,8 @@ import java.util.List;
  * self-invocation 프록시 한계를 피해 {@link TransactionTemplate} 으로 트랜잭션을 연다.
  */
 @Service
+@Slf4j
 public class ProfileService {
-
-    private static final Logger log = LoggerFactory.getLogger(ProfileService.class);
 
     private final UserRepository userRepository;
     private final UserDetailInformRepository detailRepository;

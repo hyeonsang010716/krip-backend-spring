@@ -1,8 +1,7 @@
 package site.krip.domain.notification.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,9 +27,9 @@ import java.util.Map;
  * FCM 비활성(자격증명 미설정) 시 게이팅까지만 수행하고 발송은 skip(반환 0).
  */
 @Service
+@Slf4j
 public class FcmService {
 
-    private static final Logger log = LoggerFactory.getLogger(FcmService.class);
     private static final String DEFAULT_CHAT_PUSH_TITLE = "새 메시지";
     private static final int MAX_REGISTER_RETRY = 3;
 

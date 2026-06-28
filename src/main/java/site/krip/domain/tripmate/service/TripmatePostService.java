@@ -1,7 +1,6 @@
 package site.krip.domain.tripmate.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -45,9 +44,9 @@ import java.util.Set;
  * 페이지 단위로 일괄 집계해 N+1 을 피한다. 스토리지 정리·인박스 cascade 는 커밋 후 수행한다.
  */
 @Service
+@Slf4j
 public class TripmatePostService {
 
-    private static final Logger log = LoggerFactory.getLogger(TripmatePostService.class);
     private static final int PAGE_SIZE = 30;
     // hasMore 판정용 +1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
     private static final int FETCH_SIZE = PAGE_SIZE + 1;

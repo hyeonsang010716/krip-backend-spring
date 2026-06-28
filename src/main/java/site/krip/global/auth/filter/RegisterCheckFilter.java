@@ -1,13 +1,12 @@
 package site.krip.global.auth.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -37,9 +36,8 @@ import java.util.Optional;
  * 판정 결과를 (양성·음성 모두) 캐싱해 캐시 히트 시 DB 조회를 생략한다 — 미가입(403)·탈퇴유예(419)
  * 유저도 캐싱되어 요청마다 DB 를 때리지 않는다. 캐시는 상태 전이 시 무효화된다.
  */
+@Slf4j
 public class RegisterCheckFilter extends OncePerRequestFilter {
-
-    private static final Logger log = LoggerFactory.getLogger(RegisterCheckFilter.class);
 
     private final UserRepository userRepository;
     private final RegisteredCacheManager cache;

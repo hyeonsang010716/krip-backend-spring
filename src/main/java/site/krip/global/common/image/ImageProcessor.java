@@ -4,9 +4,8 @@ import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import net.coobird.thumbnailator.Thumbnails;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import site.krip.global.common.exception.ApiException;
 
@@ -34,9 +33,8 @@ import java.util.Set;
  * 애니메이션 거절, 디코드 픽셀 cap(25MP). 모든 실패는 400(ApiException).
  */
 @Component
+@Slf4j
 public class ImageProcessor {
-
-    private static final Logger log = LoggerFactory.getLogger(ImageProcessor.class);
 
     private static final int THUMBNAIL_SMALL = 240;
     private static final int THUMBNAIL_MEDIUM = 720;

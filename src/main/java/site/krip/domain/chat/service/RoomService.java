@@ -1,7 +1,6 @@
 package site.krip.domain.chat.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -36,9 +35,8 @@ import java.util.TreeSet;
  * 구독 해제는 시스템 메시지 이전에 수행해 leaver 가 자기 에코를 받지 않게 한다.
  */
 @Service
+@Slf4j
 public class RoomService {
-
-    private static final Logger log = LoggerFactory.getLogger(RoomService.class);
 
     private final ChatRoomRepository roomRepo;
     private final ChatRoomMemberRepository memberRepo;

@@ -1,8 +1,7 @@
 package site.krip.domain.feed.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,9 +33,8 @@ import java.util.List;
  * 삭제: DB 먼저 → S3 best-effort → 인박스 cascade(커밋 후, 롤백된 삭제의 알림 선숨김 race 회피).
  */
 @Service
+@Slf4j
 public class FeedPostService {
-
-    private static final Logger log = LoggerFactory.getLogger(FeedPostService.class);
 
     private final FeedPostRepository feedPostRepo;
     private final FeedAccessService access;

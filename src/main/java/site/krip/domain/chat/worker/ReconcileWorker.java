@@ -1,8 +1,7 @@
 package site.krip.domain.chat.worker;
 
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -27,9 +26,9 @@ import java.util.Set;
  * 멀티 노드에선 {@code @SchedulerLock} 으로 한 노드만 실행해 중복 drain 을 막는다.
  */
 @Component
+@Slf4j
 public class ReconcileWorker {
 
-    private static final Logger log = LoggerFactory.getLogger(ReconcileWorker.class);
     private static final int BATCH_SIZE = 500;
     // tick 예산 — lockAtMostFor(9m) 보다 충분히 작게 잡아 락 보유 중 drain 이 끝나도록 보장.
     private static final int MAX_BATCHES_PER_TICK = 50;                          // 하드 상한 25k 방/tick

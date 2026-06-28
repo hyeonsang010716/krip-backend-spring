@@ -1,7 +1,6 @@
 package site.krip.domain.feed.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,9 +28,8 @@ import java.util.Map;
  * create 인박스 fan-out 은 트랜잭션 커밋 후 best-effort(본인→본인 skip). delete 는 cascade 안 함(보존).
  */
 @Service
+@Slf4j
 public class FeedPostCommentService {
-
-    private static final Logger log = LoggerFactory.getLogger(FeedPostCommentService.class);
 
     private final FeedAccessService access;
     private final FeedPostCommentRepository commentRepo;

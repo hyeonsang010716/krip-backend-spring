@@ -1,8 +1,7 @@
 package site.krip.global.storage;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import site.krip.global.config.StorageProperties;
 import site.krip.global.support.IdGenerator;
@@ -29,11 +28,10 @@ import java.util.UUID;
  * S3 호환 Object Storage 구현. 키 스킴: {@code uploads/perm/{prefix}/{uuid}.{ext}}.
  */
 @Component
+@Slf4j
 public class S3ObjectStorage implements ObjectStorage {
 
     private static final String PERM_ROOT = "uploads/perm";
-
-    private static final Logger log = LoggerFactory.getLogger(S3ObjectStorage.class);
 
     private final S3Client s3;
     private final String bucket;

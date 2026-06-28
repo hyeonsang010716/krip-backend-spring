@@ -1,7 +1,6 @@
 package site.krip.domain.feed.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,9 +29,9 @@ import java.util.Map;
  * 중복 add / 미존재 remove 는 400. add 인박스 fan-out 은 트랜잭션 커밋 후 best-effort(본인→본인 skip).
  */
 @Service
+@Slf4j
 public class FeedPostLikeService {
 
-    private static final Logger log = LoggerFactory.getLogger(FeedPostLikeService.class);
     private static final int PAGE_SIZE = 30;
 
     private final FeedAccessService access;

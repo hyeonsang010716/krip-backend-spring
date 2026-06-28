@@ -1,7 +1,6 @@
 package site.krip.domain.auth.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,9 +37,8 @@ import java.util.List;
  * self-invocation 프록시 한계를 피해 {@link TransactionTemplate} 으로 연다.
  */
 @Service
+@Slf4j
 public class WithdrawService {
-
-    private static final Logger log = LoggerFactory.getLogger(WithdrawService.class);
 
     /** {@code _purge_rdb} 결과 — 후속 분기 결정용. */
     public enum PurgeOutcome {

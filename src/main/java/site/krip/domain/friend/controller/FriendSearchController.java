@@ -2,8 +2,7 @@ package site.krip.domain.friend.controller;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,9 +21,8 @@ import site.krip.global.support.LogSafe;
 @RestController
 @RequestMapping("/api/friend/search")
 @Validated
+@Slf4j
 public class FriendSearchController {
-
-    private static final Logger log = LoggerFactory.getLogger(FriendSearchController.class);
 
     private final FriendSearchService searchService;
     private final FriendSearchHistoryService searchHistoryService;

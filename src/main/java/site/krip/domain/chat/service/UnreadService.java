@@ -1,7 +1,6 @@
 package site.krip.domain.chat.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.StringRedisConnection;
 import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -28,9 +27,9 @@ import java.util.Map;
  * 999 캡. 모든 Redis 접근은 best-effort.
  */
 @Service
+@Slf4j
 public class UnreadService {
 
-    private static final Logger log = LoggerFactory.getLogger(UnreadService.class);
     private static final int UNREAD_COUNT_CAP = 999;
     private static final int UNREAD_COUNT_LIMIT = UNREAD_COUNT_CAP + 1;
 

@@ -2,8 +2,7 @@ package site.krip.domain.auth.worker;
 
 import jakarta.annotation.PreDestroy;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.document.WithdrawalRequest;
@@ -41,9 +40,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * cached 풀: 인터럽트 무반응 task 가 스레드를 점유해도 다음 유저는 새 스레드로 진행돼 사이클이 지속된다.
  */
 @Component
+@Slf4j
 public class WithdrawPurgeScheduler {
-
-    private static final Logger log = LoggerFactory.getLogger(WithdrawPurgeScheduler.class);
 
     /** 단일 유저 purge 격리 타임아웃 — 외부 리소스 지연으로 사이클 전체가 무한 대기되는 것을 방지. */
     private static final long PURGE_PER_USER_TIMEOUT_SEC = 30 * 60;

@@ -1,8 +1,7 @@
 package site.krip.global.cache;
 
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 import site.krip.global.config.AuthProperties;
@@ -17,9 +16,9 @@ import java.time.Duration;
  * 상태 전이(가입완료/탈퇴/취소/삭제) 시 무효화되며, 음성 결과는 무효화 누락 대비 짧은 TTL 로 자연 회복한다.
  */
 @Component
+@Slf4j
 public class RegisteredCacheManager {
 
-    private static final Logger log = LoggerFactory.getLogger(RegisteredCacheManager.class);
     private static final String PREFIX = "REGISTERED";
     /** 음성 결과 TTL — 상태 전이 시 무효화하지만, 무효화 실패 대비 짧게 잡아 자연 회복시킨다. */
     private static final Duration NEGATIVE_TTL = Duration.ofSeconds(60);

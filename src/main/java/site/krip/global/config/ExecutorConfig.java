@@ -1,7 +1,6 @@
 package site.krip.global.config;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -20,9 +19,8 @@ import site.krip.global.support.MdcTaskDecorator;
  * 포화 시 AbortPolicy(기본)로 제출이 거부돼 핸들러가 server_busy 로 백프레셔한다(드롭 아님).
  */
 @Configuration
+@Slf4j
 public class ExecutorConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(ExecutorConfig.class);
 
     @Bean
     public ThreadPoolTaskExecutor pushExecutor(ExecutorProperties props) {

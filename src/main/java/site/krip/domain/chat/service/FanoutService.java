@@ -1,9 +1,8 @@
 package site.krip.domain.chat.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -35,9 +34,8 @@ import java.util.concurrent.RejectedExecutionException;
  * <p>WS 세션은 attribute 로 session_id / user_id / subscribed_rooms 를 보관한다(핸들러가 심음).
  */
 @Service
+@Slf4j
 public class FanoutService {
-
-    private static final Logger log = LoggerFactory.getLogger(FanoutService.class);
 
     public static final String ATTR_SESSION_ID = "session_id";
     public static final String ATTR_USER_ID = "user_id";

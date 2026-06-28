@@ -1,7 +1,6 @@
 package site.krip.global.auth.jwt;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
@@ -16,9 +15,9 @@ import java.time.Instant;
  * (짧은 장애 동안 폐기 토큰이 통과할 수 있으나 인증 전체가 막히지 않게).
  */
 @Component
+@Slf4j
 public class TokenRevocationService {
 
-    private static final Logger log = LoggerFactory.getLogger(TokenRevocationService.class);
     private static final String PREFIX = "jwt:revoked:";
 
     private final StringRedisTemplate redis;

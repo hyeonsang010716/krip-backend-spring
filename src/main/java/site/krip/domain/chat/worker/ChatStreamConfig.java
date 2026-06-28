@@ -1,8 +1,7 @@
 package site.krip.domain.chat.worker;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.annotation.Bean;
@@ -42,9 +41,9 @@ import java.util.Set;
  */
 @Configuration
 @ConditionalOnProperty(name = "krip.chat.fanout-mode", havingValue = "redis_stream")
+@Slf4j
 public class ChatStreamConfig {
 
-    private static final Logger log = LoggerFactory.getLogger(ChatStreamConfig.class);
     private static final int BATCH_SIZE = 50;
     // 연속 N틱(≈ N×heartbeat) 부재일 때만 group 제거 — 합류 직후 스냅샷 경합/짧은 heartbeat 누락 방어.
     private static final int REAP_ABSENCE_TICKS = 2;

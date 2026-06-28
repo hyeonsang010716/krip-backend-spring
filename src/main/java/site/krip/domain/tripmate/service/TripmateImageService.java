@@ -1,7 +1,6 @@
 package site.krip.domain.tripmate.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.domain.tripmate.document.TripmatePostDraft;
@@ -31,9 +30,8 @@ import java.util.function.Supplier;
  * 게시글·임시저장 어디에도 참조되지 않는 이미지를 삭제.
  */
 @Service
+@Slf4j
 public class TripmateImageService {
-
-    private static final Logger log = LoggerFactory.getLogger(TripmateImageService.class);
 
     /** 업로드 직후 아직 첨부 안 된 이미지를 고아로 오인 삭제하는 레이스 방지 유예기간. */
     private static final Duration ORPHAN_GRACE = Duration.ofMinutes(30);

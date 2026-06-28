@@ -11,9 +11,8 @@ import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
 import com.google.firebase.messaging.SendResponse;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import site.krip.global.config.FcmProperties;
 
@@ -32,9 +31,8 @@ import java.util.Map;
  * 전송에는 명시 타임아웃 + 서킷 브레이커를 적용해 FCM 장애가 push 워커 풀을 고갈시키지 않게 한다.
  */
 @Component
+@Slf4j
 public class FcmClient {
-
-    private static final Logger log = LoggerFactory.getLogger(FcmClient.class);
 
     /** {@code sendEachForMulticast} 의 호출당 토큰 상한(Firebase Admin SDK 하드 제한). */
     static final int MAX_MULTICAST_BATCH = 500;

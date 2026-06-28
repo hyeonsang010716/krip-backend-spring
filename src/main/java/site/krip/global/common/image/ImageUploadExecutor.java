@@ -1,7 +1,6 @@
 package site.krip.global.common.image;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.DisposableBean;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.MdcTaskDecorator;
@@ -28,9 +27,8 @@ import java.util.function.Supplier;
  * {@code uploadPool}: 한 게시물의 variant(original/small/medium) S3 업로드를 병렬화한다 — processingPool 과
  * 분리된 별도 풀이라 처리 워커가 업로드 완료를 기다려도 데드락이 없다.
  */
+@Slf4j
 public class ImageUploadExecutor implements DisposableBean {
-
-    private static final Logger log = LoggerFactory.getLogger(ImageUploadExecutor.class);
 
     private final ThreadPoolExecutor processingPool;
     private final ThreadPoolExecutor uploadPool;

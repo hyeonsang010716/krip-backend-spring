@@ -1,7 +1,6 @@
 package site.krip.domain.ai.client;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpStatusCode;
@@ -23,9 +22,8 @@ import java.util.function.Supplier;
  * upstream 5xx/네트워크 실패만 서킷 실패로 집계하고, 4xx(클라이언트 입력 문제)는 서킷에 반영하지 않는다.
  */
 @Component
+@Slf4j
 public class AiServiceClient {
-
-    private static final Logger log = LoggerFactory.getLogger(AiServiceClient.class);
 
     private final RestClient ai;
     private final boolean enabled;

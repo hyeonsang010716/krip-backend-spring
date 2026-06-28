@@ -1,7 +1,6 @@
 package site.krip.domain.tripmate.adapter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.port.ExternalUserDataPurgePort;
 import site.krip.domain.tripmate.repository.TripmateImageRepository;
@@ -16,9 +15,8 @@ import site.krip.domain.tripmate.repository.TripmateSearchHistoryRepository;
  * 호출자(WithdrawService.purgeExternal)가 orphan 로그를 남기도록 마지막에 예외를 다시 던진다.
  */
 @Component
+@Slf4j
 public class TripmateUserDataPurgeAdapter implements ExternalUserDataPurgePort {
-
-    private static final Logger log = LoggerFactory.getLogger(TripmateUserDataPurgeAdapter.class);
 
     private final TripmateImageRepository imageRepository;
     private final TripmatePostDraftRepository draftRepository;

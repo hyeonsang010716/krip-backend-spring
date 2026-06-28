@@ -1,9 +1,8 @@
 package site.krip.domain.notification.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import site.krip.domain.notification.document.InboxItem;
@@ -26,9 +25,9 @@ import java.util.Objects;
  * 그 외 예외는 로그만(사용자 응답 정상). 본인→본인 항목 skip.
  */
 @Service
+@Slf4j
 public class InboxService {
 
-    private static final Logger log = LoggerFactory.getLogger(InboxService.class);
     private static final int COMMENT_PREVIEW_MAX_LENGTH = 100;
 
     private final InboxRepository repo;

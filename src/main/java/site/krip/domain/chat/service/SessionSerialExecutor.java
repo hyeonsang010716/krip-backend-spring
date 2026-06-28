@@ -1,7 +1,6 @@
 package site.krip.domain.chat.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -18,9 +17,8 @@ import java.util.concurrent.RejectedExecutionException;
  * <p>{@code submit}은 thread-safe 다(synchronized). 같은 세션에 여러 스레드가 제출해도 안전하며,
  * 각 제출원의 순서는 보존되고 제출원 간 인터리브만 비결정적이다.
  */
+@Slf4j
 public final class SessionSerialExecutor {
-
-    private static final Logger log = LoggerFactory.getLogger(SessionSerialExecutor.class);
 
     private final Executor pool;
     private final int maxQueued;

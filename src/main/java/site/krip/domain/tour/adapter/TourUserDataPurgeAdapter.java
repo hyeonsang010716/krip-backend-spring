@@ -1,7 +1,6 @@
 package site.krip.domain.tour.adapter;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.port.ExternalUserDataPurgePort;
 import site.krip.domain.tour.repository.TourSearchHistoryRepository;
@@ -15,9 +14,8 @@ import site.krip.domain.tour.repository.TourSearchHistoryRepository;
  * 남기도록 예외를 그대로 전파한다.
  */
 @Component
+@Slf4j
 public class TourUserDataPurgeAdapter implements ExternalUserDataPurgePort {
-
-    private static final Logger log = LoggerFactory.getLogger(TourUserDataPurgeAdapter.class);
 
     private final TourSearchHistoryRepository searchHistoryRepository;
 

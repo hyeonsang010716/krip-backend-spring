@@ -5,8 +5,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -34,9 +33,8 @@ import site.krip.global.common.dto.MessageResponse;
 @RestController
 @RequestMapping("/api/tour/places")
 @Validated
+@Slf4j
 public class PlaceController {
-
-    private static final Logger log = LoggerFactory.getLogger(PlaceController.class);
 
     // 기본 좌표 (서울 광화문)
     private static final double DEFAULT_LAT = 37.57594;

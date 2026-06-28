@@ -2,8 +2,7 @@ package site.krip.domain.chat.ws;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
@@ -49,9 +48,9 @@ import java.util.concurrent.RejectedExecutionException;
  * 대기 한도 초과/풀 포화 시 server_busy 로 백프레셔한다. 송신은 {@code FanoutService} 가 세션 단위로 직렬화한다.
  */
 @Component
+@Slf4j
 public class ChatWebSocketHandler extends TextWebSocketHandler implements SubProtocolCapable {
 
-    private static final Logger log = LoggerFactory.getLogger(ChatWebSocketHandler.class);
     private static final String SUBPROTOCOL_VERSION = "krip.chat.v1";
     private static final int HEARTBEAT_INTERVAL_SEC = 30;
     private static final int CLOSE_AUTH_EXPIRED = 4001;

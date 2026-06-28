@@ -1,9 +1,8 @@
 package site.krip.domain.chat.service;
 
+import lombok.extern.slf4j.Slf4j;
 import org.bson.Document;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -44,9 +43,9 @@ import java.util.concurrent.ThreadLocalRandom;
  * unread 캐시 무효화 → fan-out → FCM 푸시(fire-and-forget). RDB 쓰기는 last_message bulk UPDATE 1건뿐.
  */
 @Service
+@Slf4j
 public class MessageService {
 
-    private static final Logger log = LoggerFactory.getLogger(MessageService.class);
     private static final int MAX_INSERT_ATTEMPTS = 3;
     private static final Duration EDIT_TIME_LIMIT = Duration.ofMinutes(5);
     private static final int PUSH_BODY_PREVIEW_LIMIT = 100;

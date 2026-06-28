@@ -1,7 +1,6 @@
 package site.krip.domain.chat.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.connection.RedisZSetCommands.ZAddArgs;
 import org.springframework.data.redis.core.RedisCallback;
@@ -27,9 +26,8 @@ import java.util.Set;
  * ZREMRANGEBYSCORE 한 번으로 죽은 세션 청소 — 자가 치유. 유저당 {@code MAX_SESSIONS_PER_USER} 초과 시 oldest revoke.
  */
 @Service
+@Slf4j
 public class SessionService {
-
-    private static final Logger log = LoggerFactory.getLogger(SessionService.class);
 
     private final FanoutService fanout;
     private final StringRedisTemplate redis;

@@ -2,8 +2,7 @@ package site.krip.domain.chat.ws;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.jspecify.annotations.Nullable;
 import org.springframework.http.server.ServerHttpRequest;
@@ -34,9 +33,9 @@ import java.util.Map;
  * accept 이후 receive loop(ChatWebSocketHandler)에서 송신한다.
  */
 @Component
+@Slf4j
 public class ChatHandshakeInterceptor implements HandshakeInterceptor {
 
-    private static final Logger log = LoggerFactory.getLogger(ChatHandshakeInterceptor.class);
     private static final String SUBPROTOCOL_AUTH_PREFIX = "auth.";
 
     public static final String ATTR_WS_USER = "ws_user_id";

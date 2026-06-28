@@ -1,7 +1,6 @@
 package site.krip.domain.chat.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import site.krip.domain.chat.entity.ChatRoom;
@@ -16,9 +15,8 @@ import site.krip.global.chat.ChatRedisKeys;
  * chat 이 자기 Redis 키 규약을 소유하므로 모든 조작은 이 클래스에만 존재.
  */
 @Service
+@Slf4j
 public class BlockCacheService implements BlockCachePort {
-
-    private static final Logger log = LoggerFactory.getLogger(BlockCacheService.class);
 
     private final ChatRoomRepository roomRepo;
     private final StringRedisTemplate redis;
