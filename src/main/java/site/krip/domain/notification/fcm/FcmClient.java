@@ -11,6 +11,7 @@ import com.google.firebase.messaging.MulticastMessage;
 import com.google.firebase.messaging.Notification;
 import com.google.firebase.messaging.SendResponse;
 import jakarta.annotation.PostConstruct;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -40,7 +41,8 @@ public class FcmClient {
 
     private final FcmProperties props;
     private final FcmCircuitBreaker circuit;
-    private volatile FirebaseMessaging messaging;
+    // FCM 미설정/초기화 전이면 null — isEnabled() 로 가드. lazy init 후엔 non-null 유지.
+    private volatile @Nullable FirebaseMessaging messaging;
 
     public FcmClient(FcmProperties props) {
         this.props = props;
@@ -99,6 +101,10 @@ public class FcmClient {
     /** 단일 배치(≤ {@link #MAX_MULTICAST_BATCH}) 발송. 성공 수 반환, 무효 토큰은 {@code invalidOut} 에 누적. */
     private int sendBatch(List<String> tokens, Notification notification, Map<String, String> data,
                           List<String> invalidOut) {
+        FirebaseMessaging m = messaging;
+        if (m == null) {
+            return 0; // 비활성 — sendMulticast 가 보통 먼저 거르지만, 호출 경로 무관하게 방어.
+        }
         // build 는 acquire 보다 먼저 — 페이로드 빌드 실패(우리 버그)는 FCM 장애가 아니고,
         // probe 선점 후 여기서 throw 하면 probeInFlight 가 영구 고착되기 때문이다.
         MulticastMessage message;
@@ -119,7 +125,7 @@ public class FcmClient {
         }
         BatchResponse batch;
         try {
-            batch = messaging.sendEachForMulticast(message);
+            batch = m.sendEachForMulticast(message);
         } catch (FirebaseMessagingException | RuntimeException e) {
             // 글로벌 실패(인증·쿼터·네트워크)는 이 배치만 포기하고 서킷에 기록 — 연속 실패 시 단락된다.
             circuit.recordFailure();
@@ -204,7 +210,7 @@ public class FcmClient {
      * 영구 무효(삭제 대상) 토큰 여부. UNREGISTERED·SENDER_ID_MISMATCH 는 즉시 삭제,
      * INVALID_ARGUMENT 는 배치에 성공이 있을 때만 삭제(페이로드 결함으로 인한 대량 삭제 방지).
      */
-    static boolean isPermanentlyInvalid(MessagingErrorCode code, boolean batchHadSuccess) {
+    static boolean isPermanentlyInvalid(@Nullable MessagingErrorCode code, boolean batchHadSuccess) {
         if (code == MessagingErrorCode.UNREGISTERED || code == MessagingErrorCode.SENDER_ID_MISMATCH) {
             return true;
         }
@@ -215,7 +221,7 @@ public class FcmClient {
      * 토큰/클라이언트 계열 오류 여부 — FCM 건강과 무관(서킷에 실패로 반영하지 않는다).
      * UNREGISTERED·SENDER_ID_MISMATCH 는 죽은 토큰, INVALID_ARGUMENT 는 페이로드 결함(우리 버그)이라 모두 FCM 정상.
      */
-    static boolean isTokenLevelError(MessagingErrorCode code) {
+    static boolean isTokenLevelError(@Nullable MessagingErrorCode code) {
         return code == MessagingErrorCode.UNREGISTERED
                 || code == MessagingErrorCode.SENDER_ID_MISMATCH
                 || code == MessagingErrorCode.INVALID_ARGUMENT;

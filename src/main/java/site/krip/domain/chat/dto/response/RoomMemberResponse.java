@@ -1,5 +1,6 @@
 package site.krip.domain.chat.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.User;
 import site.krip.domain.auth.port.UserProfileView;
 
@@ -7,7 +8,7 @@ import site.krip.domain.auth.port.UserProfileView;
 public record RoomMemberResponse(
         String userId,
         String userName,
-        String profileImageUrl
+        @Nullable String profileImageUrl
 ) {
     /** 멤버 목록 — ChatRoomMember.user JPA 연관관계로 얻은 User 용. detail 결손 시 빈 문자열 fallback. */
     public static RoomMemberResponse from(User user) {

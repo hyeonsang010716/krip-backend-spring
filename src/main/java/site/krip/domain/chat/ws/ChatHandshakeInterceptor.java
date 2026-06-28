@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -123,7 +124,7 @@ public class ChatHandshakeInterceptor implements HandshakeInterceptor {
         return app != null && app.contains(origin);
     }
 
-    private String extractJwt(ServerHttpRequest request) {
+    private @Nullable String extractJwt(ServerHttpRequest request) {
         if (request instanceof ServletServerHttpRequest servlet) {
             HttpServletRequest req = servlet.getServletRequest();
             Cookie[] cookies = req.getCookies();

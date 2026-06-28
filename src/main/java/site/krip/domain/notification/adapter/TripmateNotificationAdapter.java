@@ -1,5 +1,6 @@
 package site.krip.domain.notification.adapter;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import site.krip.domain.notification.document.TargetType;
 import site.krip.domain.notification.service.InboxService;
@@ -19,7 +20,7 @@ public class TripmateNotificationAdapter implements TripmateNotificationPort {
 
     @Override
     public void notifyTripmateLike(String recipientId, String actorId, String actorName,
-                                   String actorProfileImageUrl, String postId, String postPreview) {
+                                   @Nullable String actorProfileImageUrl, String postId, String postPreview) {
         inboxService.notifyTripmateLike(recipientId, actorId, actorName, actorProfileImageUrl, postId, postPreview);
     }
 

@@ -1,6 +1,7 @@
 package site.krip.domain.tour.service;
 
 import org.springframework.dao.DataIntegrityViolationException;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -27,6 +28,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -90,7 +92,8 @@ public class TourPlanService {
         Map<Integer, Double> dayPositions = new LinkedHashMap<>();
         List<TourPlanItem> entities = items.stream().map(it -> {
             double pos = dayPositions.merge(it.dayNumber(), POSITION_SPACING, Double::sum);
-            Place raw = placeMap.get(it.placeId());
+            // 위에서 누락 placeId 를 전부 검증(throw)했으므로 placeMap 에 반드시 존재.
+            Place raw = Objects.requireNonNull(placeMap.get(it.placeId()));
             return new TourPlanItem(plan.getPlanId(), it.dayNumber(), pos, it.placeId(),
                     raw.getDisplayName(), raw.getAddress(), it.visitTime());
         }).toList();
@@ -140,7 +143,7 @@ public class TourPlanService {
     // ──────────────────── 플랜 메타 수정 ────────────────────
 
     @Transactional
-    public PlanSummaryResponse updatePlanTitle(String planId, String userId, String title) {
+    public PlanSummaryResponse updatePlanTitle(String planId, String userId, @Nullable String title) {
         TourPlan plan = findOwnedPlan(planId, userId, "플랜 수정 권한이 없습니다.");
         plan.changeTitle(normalizeTitle(title));
         planRepo.flush();
@@ -325,7 +328,7 @@ public class TourPlanService {
     }
 
     /** insertIdx 자리의 분수 position(dayItems 비어있지 않음). 표현 가능한 빈틈이 없으면 null(→ 재정규화 필요). */
-    private static Double fractionalPosition(List<TourPlanItem> dayItems, int insertIdx) {
+    private static @Nullable Double fractionalPosition(List<TourPlanItem> dayItems, int insertIdx) {
         if (insertIdx == 0) {
             double p = dayItems.get(0).getPosition() / 2;
             return p > 0 ? p : null;
@@ -376,7 +379,7 @@ public class TourPlanService {
     }
 
     /** title 정규화 — 양 끝 공백 제거, 공백만이면 400. */
-    private static String normalizeTitle(String title) {
+    private static @Nullable String normalizeTitle(@Nullable String title) {
         if (title == null) {
             return null;
         }

@@ -2,6 +2,7 @@ package site.krip.global.auth.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.ExpiredJwtException;
+import org.jspecify.annotations.Nullable;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -49,7 +50,7 @@ public class LoginAuthFilter extends OncePerRequestFilter {
         return skip.matches(request);
     }
 
-    private String extractToken(HttpServletRequest request) {
+    private @Nullable String extractToken(HttpServletRequest request) {
         String header = request.getHeader("X-Auth-Token");
         if (header != null && !header.isBlank()) {
             return header;

@@ -1,5 +1,6 @@
 package site.krip.domain.auth.port;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.Gender;
 
 /**
@@ -11,7 +12,7 @@ import site.krip.domain.auth.entity.Gender;
 public record UserProfileView(
         String userId,
         String userName,
-        String profileImageUrl,
+        @Nullable String profileImageUrl,
         int age,
         Gender gender,
         String nationality

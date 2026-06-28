@@ -1,5 +1,6 @@
 package site.krip.global.support;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.global.common.exception.ApiException;
 
 import java.time.Instant;
@@ -26,8 +27,11 @@ public final class KeysetCursor {
     }
 
     /** 토큰 → (정렬키, id). 형식 오류는 400(InboxService 와 동일 계약). */
-    public static Decoded decode(String cursor) {
-        int sep = cursor == null ? -1 : cursor.indexOf('_');
+    public static Decoded decode(@Nullable String cursor) {
+        if (cursor == null) {
+            throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
+        }
+        int sep = cursor.indexOf('_');
         if (sep <= 0 || sep >= cursor.length() - 1) {
             throw ApiException.badRequest("cursor 형식이 올바르지 않습니다.");
         }

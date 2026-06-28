@@ -2,6 +2,7 @@ package site.krip.global.auth.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import site.krip.global.config.AuthProperties;
 import site.krip.global.support.SecretKeys;
@@ -26,7 +27,7 @@ public class JwtProvider {
     private static final String CLAIM_USER_ID = "user_id";
 
     /** 검증된 토큰에서 추출한 폐기·인증용 클레임. */
-    public record ParsedToken(String userId, String jti, Instant expiresAt) {
+    public record ParsedToken(String userId, String jti, @Nullable Instant expiresAt) {
     }
 
     private final SecretKey key;

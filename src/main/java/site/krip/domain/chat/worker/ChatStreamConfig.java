@@ -57,6 +57,8 @@ public class ChatStreamConfig {
     private final ChatProperties props;
     private final ObjectMapper mapper;
 
+    // @Bean chatStreamContainer 에서 할당, start()/stop()(ApplicationReady/ContextClosed)에서 사용 — 프레임워크 초기화 순서 보장.
+    @SuppressWarnings("NullAway.Init")
     private StreamMessageListenerContainer<String, MapRecord<String, String, String>> container;
     // group 별 연속 부재 카운트 — heartbeat 스케줄러 단일 스레드만 접근.
     private final Map<String, Integer> absenceStreak = new HashMap<>();

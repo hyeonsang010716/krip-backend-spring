@@ -1,5 +1,6 @@
 package site.krip.domain.chat.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.chat.entity.ChatRoomType;
 
 import java.time.Instant;
@@ -8,11 +9,11 @@ import java.time.Instant;
 public record ChatRoomResponse(
         String chatRoomId,
         ChatRoomType type,
-        String title,
-        ChatRoomPeerResponse peer,
-        LastMessagePreviewResponse lastMessage,
+        @Nullable String title,
+        @Nullable ChatRoomPeerResponse peer,
+        @Nullable LastMessagePreviewResponse lastMessage,
         int unreadCount,
-        Instant lastMessageAt,
+        @Nullable Instant lastMessageAt,
         Instant effectiveLastAt,
         boolean notificationMuted
 ) {

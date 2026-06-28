@@ -12,6 +12,7 @@ import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import site.krip.global.support.IdGenerator;
 
 import java.time.Instant;
@@ -55,7 +56,7 @@ public class TourPlanItem {
     private String address;
 
     @Column(name = "visit_time", length = 5)
-    private String visitTime;
+    private @Nullable String visitTime;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -69,7 +70,7 @@ public class TourPlanItem {
     private long version;
 
     public TourPlanItem(String planId, int dayNumber, double position, String placeId,
-                        String displayName, String address, String visitTime) {
+                        String displayName, String address, @Nullable String visitTime) {
         this.itemId = IdGenerator.tourPlanItemId();
         this.planId = planId;
         this.dayNumber = dayNumber;
@@ -81,7 +82,7 @@ public class TourPlanItem {
     }
 
     /** 카드 교체 (PUT) — place 스냅샷 + visit_time 일괄 갱신. day/position 은 move 로만 변경. */
-    public void replace(String placeId, String displayName, String address, String visitTime) {
+    public void replace(String placeId, String displayName, String address, @Nullable String visitTime) {
         this.placeId = placeId;
         this.displayName = orEmpty(displayName);
         this.address = orEmpty(address);

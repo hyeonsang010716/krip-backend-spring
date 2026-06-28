@@ -1,5 +1,6 @@
 package site.krip.domain.auth.service;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -178,10 +179,10 @@ public class ProfileService {
             oldUrl = txTemplate.execute(status -> {
                 UserDetailInform detail = detailRepository.findByIdForUpdate(userId)
                         .orElseThrow(ProfileNotRegisteredException::new);
-                if (detail.getProfileImageUrl() == null) {
+                String old = detail.getProfileImageUrl();
+                if (old == null) {
                     throw new ProfileImageNotFoundException("수정할 프로필 이미지가 없습니다. 먼저 POST 로 추가해주세요.");
                 }
-                String old = detail.getProfileImageUrl();
                 detail.changeProfileImageUrl(newUrl);
                 return old;
             });
@@ -201,10 +202,10 @@ public class ProfileService {
             // 행 잠금으로 동시 수정/삭제를 직렬화 — old 캡처와 null 세팅 사이의 lost-update 방지.
             UserDetailInform detail = detailRepository.findByIdForUpdate(userId)
                     .orElseThrow(ProfileNotRegisteredException::new);
-            if (detail.getProfileImageUrl() == null) {
+            String old = detail.getProfileImageUrl();
+            if (old == null) {
                 throw new ProfileImageNotFoundException("삭제할 프로필 이미지가 없습니다.");
             }
-            String old = detail.getProfileImageUrl();
             detail.changeProfileImageUrl(null);
             return old;
         });
@@ -223,7 +224,7 @@ public class ProfileService {
     }
 
     /** 스토리지 삭제 best-effort — 실패해도 orphan 만 남기고 흐름은 진행. */
-    private void safeDelete(String url, String userId, String ctx) {
+    private void safeDelete(@Nullable String url, String userId, String ctx) {
         if (url == null) {
             return;
         }

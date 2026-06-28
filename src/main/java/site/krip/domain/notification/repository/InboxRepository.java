@@ -7,6 +7,7 @@ import com.mongodb.client.model.Indexes;
 import jakarta.annotation.PostConstruct;
 import org.bson.Document;
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -92,7 +93,8 @@ public class InboxRepository {
      * 커서는 (created_at, _id) keyset — 2키 정렬과 일치시켜 동일 시각 경계의 항목 skip/중복을 막는다.
      * {@code cursorId} 가 null 이면 timestamp-only(구 커서 하위호환): created_at &lt; cursorTs.
      */
-    public List<InboxItem> findByRecipient(String recipientId, Instant cursorTs, ObjectId cursorId, int limit) {
+    public List<InboxItem> findByRecipient(String recipientId, @Nullable Instant cursorTs,
+                                           @Nullable ObjectId cursorId, int limit) {
         Criteria base = Criteria.where("recipient_id").is(recipientId).and("display").is(true);
         Criteria filter = base;
         if (cursorTs != null) {

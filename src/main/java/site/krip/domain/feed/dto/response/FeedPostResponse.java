@@ -1,5 +1,6 @@
 package site.krip.domain.feed.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.feed.entity.FeedVisibility;
 import site.krip.domain.feed.repository.FeedPostRow;
 
@@ -10,7 +11,7 @@ public record FeedPostResponse(
         String postId,
         String userId,
         FeedVisibility visibility,
-        String caption,
+        @Nullable String caption,
         String originalUrl,
         String thumbnailSmallUrl,
         String thumbnailMediumUrl,

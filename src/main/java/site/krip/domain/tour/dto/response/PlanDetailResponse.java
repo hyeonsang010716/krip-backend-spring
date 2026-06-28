@@ -1,5 +1,7 @@
 package site.krip.domain.tour.dto.response;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -9,7 +11,7 @@ import java.util.List;
 public record PlanDetailResponse(
         String planId,
         String userId,
-        String title,
+        @Nullable String title,
         int travelDays,
         Instant createdAt,
         Instant updatedAt,

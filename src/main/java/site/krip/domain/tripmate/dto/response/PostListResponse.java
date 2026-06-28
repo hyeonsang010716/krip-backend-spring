@@ -1,5 +1,7 @@
 package site.krip.domain.tripmate.dto.response;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -7,6 +9,6 @@ import java.util.List;
  */
 public record PostListResponse(
         List<PostDetailResponse> posts,
-        String nextCursor
+        @Nullable String nextCursor
 ) {
 }

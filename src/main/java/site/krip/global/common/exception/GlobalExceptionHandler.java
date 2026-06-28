@@ -2,6 +2,7 @@ package site.krip.global.common.exception;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -98,7 +99,7 @@ public class GlobalExceptionHandler {
      * 노출 가능한 원인 메시지만 반환 — 우리가 검증용으로 던진 {@link IllegalArgumentException} 만 허용.
      * {@link NumberFormatException}(입력값 노출)·기타 파서/변환 내부 예외는 감추려고 null 을 반환한다.
      */
-    private static String safeCauseMessage(Throwable root) {
+    private static @Nullable String safeCauseMessage(Throwable root) {
         if (root instanceof IllegalArgumentException && !(root instanceof NumberFormatException)
                 && root.getMessage() != null) {
             return root.getMessage();

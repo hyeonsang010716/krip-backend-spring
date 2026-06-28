@@ -1,5 +1,6 @@
 package site.krip.domain.auth.oauth;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import site.krip.domain.auth.entity.OAuthProvider;
 import site.krip.global.common.exception.ApiException;
@@ -54,7 +55,7 @@ public class OAuthConfigs {
         return client;
     }
 
-    private OAuthConfig require(OAuthConfig config, OAuthProvider provider) {
+    private OAuthConfig require(@Nullable OAuthConfig config, OAuthProvider provider) {
         if (config == null) {
             throw ApiException.badRequest("지원하지 않는 OAuth 제공자: " + provider);
         }

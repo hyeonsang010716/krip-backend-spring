@@ -1,5 +1,6 @@
 package site.krip.domain.tour.service;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.tour.document.Place;
@@ -80,7 +81,7 @@ public class PlaceService {
         return Set.copyOf(favRepo.findFavoritedPlaceIds(userId, placeIds));
     }
 
-    private static Boolean isFavorite(Set<String> favorited, String placeId) {
+    private static @Nullable Boolean isFavorite(Set<String> favorited, String placeId) {
         return favorited.contains(placeId) ? Boolean.TRUE : null;
     }
 }

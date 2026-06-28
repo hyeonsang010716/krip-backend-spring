@@ -1,5 +1,7 @@
 package site.krip.domain.publicshare.dto.response;
 
+import org.jspecify.annotations.Nullable;
+
 import java.time.Instant;
 import java.util.List;
 
@@ -8,7 +10,7 @@ import java.util.List;
  */
 public record PublicPlanResponse(
         String planId,
-        String title,
+        @Nullable String title,
         int travelDays,
         Instant createdAt,
         Instant updatedAt,

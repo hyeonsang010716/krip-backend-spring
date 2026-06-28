@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.jspecify.annotations.Nullable;
 
 /** 유저 상세 정보 — 2차 회원가입 결과. PK = FK(user_id), {@code users} 와 1:1, DB CASCADE. */
 @Entity
@@ -55,7 +56,7 @@ public class UserDetailInform {
     private String nationality;
 
     @Column(name = "profile_image_url", length = 2048)
-    private String profileImageUrl;
+    private @Nullable String profileImageUrl;
 
     public UserDetailInform(User user, String email, String userName, String phoneNumber,
                             int age, Gender gender, String nationality) {
@@ -94,7 +95,7 @@ public class UserDetailInform {
         this.nationality = nationality;
     }
 
-    public void changeProfileImageUrl(String url) {
+    public void changeProfileImageUrl(@Nullable String url) {
         this.profileImageUrl = url;
     }
 }

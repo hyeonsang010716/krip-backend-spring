@@ -2,6 +2,7 @@ package site.krip.domain.auth.oauth;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import site.krip.global.common.exception.ApiException;
@@ -67,7 +68,7 @@ public class OAuthStateService {
                 .build();
     }
 
-    private String readCookie(HttpServletRequest request) {
+    private @Nullable String readCookie(HttpServletRequest request) {
         if (request.getCookies() == null) {
             return null;
         }

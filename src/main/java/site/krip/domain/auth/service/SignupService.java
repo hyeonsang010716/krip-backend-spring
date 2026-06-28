@@ -1,5 +1,6 @@
 package site.krip.domain.auth.service;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import site.krip.domain.auth.dto.SignupResult;
@@ -54,7 +55,7 @@ public class SignupService {
                 hasDetail ? SignupStatus.COMPLETE : SignupStatus.IN_PROGRESS);
     }
 
-    private User findUser(OAuthProvider authProvider, String authProviderId) {
+    private @Nullable User findUser(OAuthProvider authProvider, String authProviderId) {
         return userRepository.findByAuthProviderAndAuthProviderId(authProvider, authProviderId)
                 .orElse(null);
     }

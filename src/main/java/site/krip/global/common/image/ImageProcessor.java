@@ -4,6 +4,7 @@ import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import net.coobird.thumbnailator.Thumbnails;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -21,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -150,7 +152,7 @@ public class ImageProcessor {
         if (!needsShrink && !wasRotated) {
             byte[] stripped = stripMetadata(src, format);
             if (stripped != null) {
-                String[] meta = FORMAT_META.get(format);
+                String[] meta = Objects.requireNonNull(FORMAT_META.get(format)); // 지원 포맷 키만 도달
                 return new ProcessedVariant(stripped, meta[0], meta[1]);
             }
             // 무손실 스트립 불가(WEBP·비정상 구조) → 재인코딩으로 메타데이터 제거
@@ -162,7 +164,7 @@ public class ImageProcessor {
      * 픽셀 재인코딩 없이 메타데이터만 제거한 bytes. 무손실 스트립이 불가하면(WEBP·비정상 구조) null
      * → 호출측이 재인코딩으로 폴백. JPEG/PNG 의 EXIF/GPS·텍스트와 EOI/IEND 뒤 트레일링을 제거한다.
      */
-    private static byte[] stripMetadata(byte[] src, String format) {
+    private static byte @Nullable [] stripMetadata(byte[] src, String format) {
         if ("JPEG".equals(format)) {
             return stripJpegMetadata(src);
         }
@@ -174,7 +176,7 @@ public class ImageProcessor {
 
     // SOI 부터 마커를 순회하며 APPn(0xE0~0xEF)·COM(0xFE) 세그먼트를 제거. SOS 엔트로피는 0xFF00/RSTn
     // 스터핑을 데이터로 보고 다음 마커까지 복사하고, EOI 에서 종료해 트레일링도 버린다. 구조 이상 시 null.
-    private static byte[] stripJpegMetadata(byte[] b) {
+    private static byte @Nullable [] stripJpegMetadata(byte[] b) {
         if (b.length < 2 || (b[0] & 0xFF) != 0xFF || (b[1] & 0xFF) != 0xD8) {
             return null;
         }
@@ -233,7 +235,7 @@ public class ImageProcessor {
 
     // 8바이트 시그니처 뒤 청크를 순회하며 메타데이터 청크만 제거(색상·IDAT 보존, CRC 재계산 불필요).
     // IEND 에서 종료해 트레일링도 버린다. 구조 이상 시 null.
-    private static byte[] stripPngMetadata(byte[] b) {
+    private static byte @Nullable [] stripPngMetadata(byte[] b) {
         if (b.length < 8) {
             return null;
         }

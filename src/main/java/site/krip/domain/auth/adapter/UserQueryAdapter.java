@@ -1,5 +1,6 @@
 package site.krip.domain.auth.adapter;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,7 +80,7 @@ public class UserQueryAdapter implements UserQueryPort {
     }
 
     /** detail 없으면(2차 가입 미완료) null 반환 → 호출부에서 제외. */
-    private static UserProfileView toView(User user) {
+    private static @Nullable UserProfileView toView(User user) {
         UserDetailInform d = user.getDetail();
         if (d == null) {
             return null;

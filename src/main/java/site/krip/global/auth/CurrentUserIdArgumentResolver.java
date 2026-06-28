@@ -1,5 +1,6 @@
 package site.krip.global.auth;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -24,7 +25,7 @@ public class CurrentUserIdArgumentResolver implements HandlerMethodArgumentResol
     }
 
     @Override
-    public Object resolveArgument(MethodParameter parameter,
+    public @Nullable Object resolveArgument(MethodParameter parameter,
                                   ModelAndViewContainer mavContainer,
                                   NativeWebRequest webRequest,
                                   WebDataBinderFactory binderFactory) {

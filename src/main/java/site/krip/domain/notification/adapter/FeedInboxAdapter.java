@@ -1,5 +1,6 @@
 package site.krip.domain.notification.adapter;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Component;
 import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.notification.document.TargetType;
@@ -19,13 +20,13 @@ public class FeedInboxAdapter implements FeedInboxPort {
 
     @Override
     public void notifyFeedLike(String recipientId, String actorId, String actorName,
-                               String actorProfileImageUrl, String postId, String postPreview) {
+                               @Nullable String actorProfileImageUrl, String postId, String postPreview) {
         inboxService.notifyFeedLike(recipientId, actorId, actorName, actorProfileImageUrl, postId, postPreview);
     }
 
     @Override
     public void notifyFeedComment(String recipientId, String actorId, String actorName,
-                                  String actorProfileImageUrl, String postId, String postPreview,
+                                  @Nullable String actorProfileImageUrl, String postId, String postPreview,
                                   String commentId, String commentContent) {
         inboxService.notifyFeedComment(recipientId, actorId, actorName, actorProfileImageUrl,
                 postId, postPreview, commentId, commentContent);

@@ -1,5 +1,6 @@
 package site.krip.domain.notification.service;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -92,7 +93,8 @@ public class FcmService {
      * 채팅 새 메시지 푸시 — N명 fan-out. 게이팅(방/전역 뮤트) 후 multicast 1회.
      * 트랜잭션 없이 각 repo 호출이 독립 — Firebase 네트워크 호출이 DB 커넥션을 점유하지 않게 한다.
      */
-    public int sendChatPush(List<String> userIds, String chatRoomId, String senderId, String body, String title) {
+    public int sendChatPush(List<String> userIds, String chatRoomId, String senderId, String body,
+                            @Nullable String title) {
         if (userIds == null || userIds.isEmpty()) {
             return 0;
         }

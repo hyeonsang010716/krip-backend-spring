@@ -1,5 +1,6 @@
 package site.krip.domain.ai.client;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 
@@ -36,10 +37,15 @@ final class AiCircuitBreaker {
         this.nanoClock = nanoClock;
     }
 
+    /** state 는 항상 non-null 로 초기화·CAS 됨(get() 의 @Nullable 모델을 단정으로 해소). */
+    private State currentState() {
+        return Objects.requireNonNull(state.get());
+    }
+
     /** closed=항상 통과, open(cooldown)=차단, cooldown 후=probe 1건만. 통과 시 success/failure/release 보고 필수. */
     boolean tryAcquire() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (s.openUntilNanos == NOT_OPEN) {
                 return true; // closed
             }
@@ -57,7 +63,7 @@ final class AiCircuitBreaker {
 
     void recordSuccess() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (s.openUntilNanos == NOT_OPEN) {
                 if (s.failures == 0) {
                     return; // 이미 깨끗한 closed
@@ -78,7 +84,7 @@ final class AiCircuitBreaker {
     /** 결과 미기록으로 probe 만 해제 — AI 무관 중단(직렬화 실패 등). closed/probe 미점유면 no-op. */
     void release() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (!s.probeInFlight) {
                 return;
             }
@@ -91,7 +97,7 @@ final class AiCircuitBreaker {
 
     void recordFailure() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (s.openUntilNanos != NOT_OPEN) {
                 if (s.probeInFlight) {
                     if (state.compareAndSet(s, openState())) {

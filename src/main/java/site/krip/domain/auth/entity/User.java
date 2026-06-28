@@ -16,6 +16,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.jspecify.annotations.Nullable;
 import site.krip.global.support.IdGenerator;
 
 import java.time.Instant;
@@ -55,7 +56,7 @@ public class User {
 
     // 전역 알림 차단 — TRUE 면 차단, NULL = 기본(허용). 명시적 차단만 row 에 적힘.
     @Column(name = "notification_muted")
-    private Boolean notificationMuted;
+    private @Nullable Boolean notificationMuted;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

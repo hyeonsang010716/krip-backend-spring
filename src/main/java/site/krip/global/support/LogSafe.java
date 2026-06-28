@@ -1,5 +1,7 @@
 package site.krip.global.support;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * 로그에 넣을 사용자 입력의 개행·제어문자 무력화 — CRLF 로그 위조(CWE-117) 방지.
  */
@@ -9,7 +11,7 @@ public final class LogSafe {
     }
 
     /** 제어문자(CR/LF/탭 등)를 '_' 로 치환. null 통과. */
-    public static String clean(String s) {
+    public static @Nullable String clean(@Nullable String s) {
         if (s == null) {
             return null;
         }

@@ -87,7 +87,8 @@ public class UnreadService {
         writeCache(userId, computed);
         // 계산~기록 사이 새 메시지로 무효화된 방은 캐시 폐기 — 다음 읽기에 진실로 재계산.
         for (String roomId : computed.keySet()) {
-            if (invalidationEpoch(roomId) != epochBefore.get(roomId)) {
+            Long before = epochBefore.get(roomId);
+            if (before == null || invalidationEpoch(roomId) != before) {
                 clear(userId, roomId);
             }
         }

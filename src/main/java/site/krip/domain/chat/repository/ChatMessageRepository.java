@@ -11,6 +11,7 @@ import com.mongodb.client.model.Updates;
 import jakarta.annotation.PostConstruct;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -20,6 +21,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * MongoDB {@code chat_message} 리포지토리.
@@ -72,8 +74,8 @@ public class ChatMessageRepository {
         }
     }
 
-    /** (room, sender, client_msg_id) 로 기존 메시지 조회 — 재시도 멱등 ack 용. */
-    public Document findByClientMsgId(String chatRoomId, String senderId, String clientMsgId) {
+    /** (room, sender, client_msg_id) 로 기존 메시지 조회 — 재시도 멱등 ack 용. 없으면 null. */
+    public @Nullable Document findByClientMsgId(String chatRoomId, String senderId, String clientMsgId) {
         return collection.find(Filters.and(
                 Filters.eq("chat_room_id", chatRoomId),
                 Filters.eq("sender_id", senderId),
@@ -86,7 +88,7 @@ public class ChatMessageRepository {
                 .sort(Sorts.descending("server_seq"))
                 .projection(new Document("server_seq", 1).append("_id", 0))
                 .first();
-        return doc != null ? ((Number) doc.get("server_seq")).longValue() : 0L;
+        return doc != null ? ((Number) Objects.requireNonNull(doc.get("server_seq"))).longValue() : 0L;
     }
 
     /** seq &lt; before 메시지 DESC, limit+1 건(호출측이 has_more 판정). */
@@ -107,7 +109,8 @@ public class ChatMessageRepository {
                 .limit(limit + 1));
     }
 
-    public Document findById(String messageId) {
+    /** _id 로 메시지 조회 — 없으면 null. */
+    public @Nullable Document findById(String messageId) {
         return collection.find(Filters.eq("_id", messageId)).first();
     }
 
@@ -139,7 +142,7 @@ public class ChatMessageRepository {
         for (Document doc : collection.aggregate(pipeline)) {
             result.put(doc.getString("_id"), new LastMessage(
                     doc.getString("message_id"),
-                    ((Number) doc.get("server_seq")).longValue(),
+                    ((Number) Objects.requireNonNull(doc.get("server_seq"))).longValue(),
                     doc.getDate("created_at")));
         }
         return result;
@@ -172,7 +175,7 @@ public class ChatMessageRepository {
                 new Document("$match", new Document("type", new Document("$ne", "system")).append("$or", branches)),
                 new Document("$group", new Document("_id", "$chat_room_id").append("n", new Document("$sum", 1))));
         for (Document doc : collection.aggregate(pipeline)) {
-            result.put(doc.getString("_id"), ((Number) doc.get("n")).longValue());
+            result.put(doc.getString("_id"), ((Number) Objects.requireNonNull(doc.get("n"))).longValue());
         }
         return result;
     }

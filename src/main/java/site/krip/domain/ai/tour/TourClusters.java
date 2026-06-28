@@ -1,5 +1,7 @@
 package site.krip.domain.ai.tour;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.Map;
 
 /**
@@ -58,7 +60,7 @@ public final class TourClusters {
     }
 
     /** {@code [lat, lng]} 반환, 없으면 null. */
-    public static double[] get(String cluster) {
+    public static double @Nullable [] get(String cluster) {
         return COORDINATES.get(cluster);
     }
 }

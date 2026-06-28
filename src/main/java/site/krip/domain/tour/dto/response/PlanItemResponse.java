@@ -1,5 +1,6 @@
 package site.krip.domain.tour.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.tour.entity.TourPlanItem;
 
 import java.util.List;
@@ -14,11 +15,11 @@ public record PlanItemResponse(
         String placeId,
         String displayName,
         String address,
-        String visitTime,
-        Double rating,
+        @Nullable String visitTime,
+        @Nullable Double rating,
         List<String> photos
 ) {
-    public static PlanItemResponse of(TourPlanItem item, Double rating, List<String> photos) {
+    public static PlanItemResponse of(TourPlanItem item, @Nullable Double rating, List<String> photos) {
         return new PlanItemResponse(
                 item.getItemId(), item.getDayNumber(), item.getPosition(), item.getPlaceId(),
                 item.getDisplayName(), item.getAddress(), item.getVisitTime(),

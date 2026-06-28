@@ -1,6 +1,7 @@
 package site.krip.domain.chat.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,6 +18,7 @@ import site.krip.global.config.ChatProperties;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
@@ -68,15 +70,15 @@ public class FanoutService {
     }
 
     @SuppressWarnings("unchecked")
-    private static Set<String> rooms(WebSocketSession ws) {
+    private static @Nullable Set<String> rooms(WebSocketSession ws) {
         return (Set<String>) ws.getAttributes().get(ATTR_ROOMS);
     }
 
-    private static String sessionId(WebSocketSession ws) {
+    private static @Nullable String sessionId(WebSocketSession ws) {
         return (String) ws.getAttributes().get(ATTR_SESSION_ID);
     }
 
-    private static String userId(WebSocketSession ws) {
+    private static @Nullable String userId(WebSocketSession ws) {
         return (String) ws.getAttributes().get(ATTR_USER_ID);
     }
 
@@ -106,9 +108,11 @@ public class FanoutService {
     }
 
     public void registerSession(WebSocketSession ws) {
-        String sid = sessionId(ws);
+        // 등록 시점엔 핸들러가 핸드셰이크에서 속성을 심어둔 상태 — 없으면 등록 불가(fail-fast).
+        String sid = Objects.requireNonNull(sessionId(ws), "WS 세션에 session_id 속성이 없습니다.");
+        String uid = Objects.requireNonNull(userId(ws), "WS 세션에 user_id 속성이 없습니다.");
         localWsBySession.put(sid, ws);
-        addToSet(userSubs, userId(ws), ws);
+        addToSet(userSubs, uid, ws);
         // 전송 상한 데코레이터 + 세션 직렬 실행기 — fan-out 송신을 폴 스레드에서 분리하고 느린 소켓을 차단.
         deliveryDecorated.put(sid, new ConcurrentWebSocketSessionDecorator(ws, sendTimeLimitMs, sendBufferBytes));
         deliveryExecutors.put(sid, new SessionSerialExecutor(deliveryPool, deliverySessionMaxQueued));
@@ -116,7 +120,7 @@ public class FanoutService {
 
     public void registerWsToRoom(WebSocketSession ws, String roomId) {
         addToSet(roomSubs, roomId, ws);
-        rooms(ws).add(roomId);
+        Objects.requireNonNull(rooms(ws), "WS 세션에 subscribed_rooms 속성이 없습니다.").add(roomId);
     }
 
     public void unregisterWs(WebSocketSession ws) {
@@ -188,17 +192,37 @@ public class FanoutService {
     public void dispatchEnvelope(Map<String, Object> envelope) {
         String op = (String) envelope.getOrDefault("op", "unknown");
         try {
+            // 필수 필드는 명시적으로 꺼내 검증 — 누락(malformed)이면 조용히 drop.
+            String roomId = (String) envelope.get("room_id");
+            String userId = (String) envelope.get("user_id");
+            String sessionId = (String) envelope.get("session_id");
+            Map<String, Object> payload = (Map<String, Object>) envelope.get("payload");
             switch (op) {
-                case "room" -> localDeliverToRoom((String) envelope.get("room_id"),
-                        (Map<String, Object>) envelope.get("payload"));
-                case "user" -> localDeliverToUser((String) envelope.get("user_id"),
-                        (Map<String, Object>) envelope.get("payload"));
-                case "session" -> localDeliverToSession((String) envelope.get("session_id"),
-                        (Map<String, Object>) envelope.get("payload"));
-                case "subscribe" -> localSubscribeUserToRoom((String) envelope.get("user_id"),
-                        (String) envelope.get("room_id"));
-                case "unsubscribe" -> localUnsubscribeUserFromRoom((String) envelope.get("user_id"),
-                        (String) envelope.get("room_id"));
+                case "room" -> {
+                    if (roomId != null && payload != null) {
+                        localDeliverToRoom(roomId, payload);
+                    }
+                }
+                case "user" -> {
+                    if (userId != null && payload != null) {
+                        localDeliverToUser(userId, payload);
+                    }
+                }
+                case "session" -> {
+                    if (sessionId != null && payload != null) {
+                        localDeliverToSession(sessionId, payload);
+                    }
+                }
+                case "subscribe" -> {
+                    if (userId != null && roomId != null) {
+                        localSubscribeUserToRoom(userId, roomId);
+                    }
+                }
+                case "unsubscribe" -> {
+                    if (userId != null && roomId != null) {
+                        localUnsubscribeUserFromRoom(userId, roomId);
+                    }
+                }
                 default -> log.warn("알 수 없는 envelope op (drop): {}", op);
             }
         } catch (Exception e) {
@@ -275,7 +299,7 @@ public class FanoutService {
         redis.opsForStream().add(ChatRedisKeys.CHAT_STREAM_KEY, Map.of("data", json));
     }
 
-    private String toJson(Map<String, Object> value) {
+    private @Nullable String toJson(Map<String, Object> value) {
         try {
             return mapper.writeValueAsString(value);
         } catch (Exception e) {

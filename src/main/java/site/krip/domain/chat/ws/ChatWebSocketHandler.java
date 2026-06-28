@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
+import org.jspecify.annotations.Nullable;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.PingMessage;
 import org.springframework.web.socket.PongMessage;
@@ -169,6 +170,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
         String userId = (String) session.getAttributes().get(ChatHandshakeInterceptor.ATTR_WS_USER);
         String jti = (String) session.getAttributes().get(ChatHandshakeInterceptor.ATTR_WS_JTI);
+        if (userId == null || jti == null) {
+            // 핸드셰이크가 인증 속성을 심으므로 정상 경로에선 발생 불가 — 방어적 종료.
+            log.warn("핸드셰이크 인증 속성 누락 — 세션 종료");
+            session.close(CloseStatus.SERVICE_RESTARTED);
+            return;
+        }
 
         String sessionId;
         try {
@@ -213,9 +220,12 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String sessionId = (String) session.getAttributes().get(FanoutService.ATTR_SESSION_ID);
         String userId = (String) session.getAttributes().get(FanoutService.ATTR_USER_ID);
-        SessionSerialExecutor exec = sessionId != null ? sessionExecutors.get(sessionId) : null;
-        if (exec == null) {
+        if (sessionId == null || userId == null) {
             return; // 세션 등록 전/종료 후 도착 — 무시(곧 close 처리됨).
+        }
+        SessionSerialExecutor exec = sessionExecutors.get(sessionId);
+        if (exec == null) {
+            return;
         }
         String payload = message.getPayload();
         try {
@@ -295,7 +305,8 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         if (content.length() > 2000) {
             throw ApiException.badRequest("invalid op: content 는 2000자 이하");
         }
-        MessageType type = req.get("type") != null ? MessageType.from(str(req.get("type"))) : MessageType.TEXT;
+        Object typeRaw = req.get("type");
+        MessageType type = typeRaw != null ? MessageType.from(typeRaw.toString()) : MessageType.TEXT;
         if (type == MessageType.SYSTEM) {
             // SYSTEM 은 서버만 발행 — 클라이언트 위조 차단.
             throw ApiException.badRequest("invalid op: type=system 불가");
@@ -363,10 +374,13 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
             lastPongAt.remove(sessionId);
             // 신규 op 수락 중단(드레인 중인 작업은 완료될 때까지 큐를 비운다 — safeSend 가 isOpen 으로 가드).
             sessionExecutors.remove(sessionId);
-            try {
-                sessionService.terminateSession(sessionId, userId);
-            } catch (Exception e) {
-                log.warn("세션 종료 실패 (무시): session_id={}, err={}", sessionId, e.toString());
+            // session_id 와 user_id 는 등록 시 함께 심기므로 보통 둘 다 존재 — 방어적 가드.
+            if (userId != null) {
+                try {
+                    sessionService.terminateSession(sessionId, userId);
+                } catch (Exception e) {
+                    log.warn("세션 종료 실패 (무시): session_id={}, err={}", sessionId, e.toString());
+                }
             }
         }
     }
@@ -404,7 +418,7 @@ public class ChatWebSocketHandler extends TextWebSocketHandler implements SubPro
         }
     }
 
-    private static String str(Object o) {
+    private static @Nullable String str(@Nullable Object o) {
         return o != null ? o.toString() : null;
     }
 }

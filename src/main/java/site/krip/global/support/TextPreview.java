@@ -1,5 +1,7 @@
 package site.krip.global.support;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * 코드포인트 경계를 보존하는 미리보기 truncation.
  *
@@ -16,7 +18,7 @@ public final class TextPreview {
      * {@code content} 를 최대 {@code maxCodePoints} 코드포인트로 자르고, 잘렸으면 {@code ellipsis} 를 덧붙인다.
      * surrogate pair 를 쪼개지 않으며, 한도 이하면 원본을 그대로 반환한다. {@code null} 은 그대로 통과.
      */
-    public static String truncate(String content, int maxCodePoints, String ellipsis) {
+    public static @Nullable String truncate(@Nullable String content, int maxCodePoints, String ellipsis) {
         // 빠른 경로: 코드 유닛 수 ≤ 한도면 코드포인트 수도 ≤ 한도라 자를 필요 없음.
         if (content == null || content.length() <= maxCodePoints) {
             return content;

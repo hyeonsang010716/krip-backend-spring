@@ -1,5 +1,6 @@
 package site.krip.domain.tour.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.tour.document.Place;
 
 import java.util.List;
@@ -17,23 +18,23 @@ public record PlaceDetailResponse(
         String address,
         String shortAddress,
         PlaceLocationResponse location,
-        Double rating,
-        Integer ratingCount,
-        String priceLevel,
-        PlacePriceRangeResponse priceRange,
-        String editorialSummary,
-        String generativeSummary,
-        String reviewSummary,
-        String phone,
-        String phoneInternational,
-        String website,
-        String googleMapsUrl,
-        String googleMapReviewLink,
-        List<String> openingHours,
-        List<String> services,
-        List<String> payment,
-        List<String> accessibility,
-        List<String> parking,
+        @Nullable Double rating,
+        @Nullable Integer ratingCount,
+        @Nullable String priceLevel,
+        @Nullable PlacePriceRangeResponse priceRange,
+        @Nullable String editorialSummary,
+        @Nullable String generativeSummary,
+        @Nullable String reviewSummary,
+        @Nullable String phone,
+        @Nullable String phoneInternational,
+        @Nullable String website,
+        @Nullable String googleMapsUrl,
+        @Nullable String googleMapReviewLink,
+        @Nullable List<String> openingHours,
+        @Nullable List<String> services,
+        @Nullable List<String> payment,
+        @Nullable List<String> accessibility,
+        @Nullable List<String> parking,
         List<PlaceReviewResponse> reviews,
         List<String> photos
 ) {

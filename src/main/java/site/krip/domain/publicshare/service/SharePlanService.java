@@ -1,5 +1,6 @@
 package site.krip.domain.publicshare.service;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import site.krip.domain.publicshare.dto.response.PublicPlanItemResponse;
@@ -80,7 +81,7 @@ public class SharePlanService {
         );
     }
 
-    private static PublicPlanItemResponse toItemResponse(TourPlanItem item, Place place) {
+    private static PublicPlanItemResponse toItemResponse(TourPlanItem item, @Nullable Place place) {
         Double rating = place != null ? place.getRating() : null;
         List<String> photos = place != null ? place.getPhotos() : List.of();
         return new PublicPlanItemResponse(

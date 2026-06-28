@@ -1,5 +1,6 @@
 package site.krip.domain.auth.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.Gender;
 import site.krip.domain.auth.entity.TravelStyle;
 import site.krip.domain.auth.entity.User;
@@ -18,7 +19,7 @@ public record ProfileResponse(
         Gender gender,
         String nationality,
         List<TravelStyle> travelStyles,
-        String profileImageUrl,
+        @Nullable String profileImageUrl,
         boolean notificationMuted
 ) {
     /** 프로필 로드된 User(detail + travelStyles fetch 완료) → 응답 매핑. */

@@ -1,5 +1,6 @@
 package site.krip.domain.friend.service;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -106,7 +107,7 @@ public class FriendSearchService {
         return new FriendSearchListResponse(items, nextCursor);
     }
 
-    private FriendSearchItemResponse toItem(String viewerId, User user, Friendship friendship,
+    private FriendSearchItemResponse toItem(String viewerId, User user, @Nullable Friendship friendship,
                                             List<TravelStyle> styles) {
         FriendshipStatus status = null;
         Boolean isRequester = null;

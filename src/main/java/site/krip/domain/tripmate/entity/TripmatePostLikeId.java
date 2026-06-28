@@ -6,6 +6,8 @@ import java.util.Objects;
 /**
  * {@link TripmatePostLike} 복합 PK (user_id, post_id) — JPA {@code @IdClass}.
  */
+// 필드는 JPA 가 채움(no-arg 생성자 후 주입) — NullAway 초기화 검사 제외.
+@SuppressWarnings("NullAway.Init")
 public class TripmatePostLikeId implements Serializable {
 
     private String userId;

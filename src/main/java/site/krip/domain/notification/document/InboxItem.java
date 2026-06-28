@@ -1,5 +1,6 @@
 package site.krip.domain.notification.document;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -35,25 +36,25 @@ public class InboxItem {
     private String targetId;
 
     @Field("comment_id")
-    private String commentId;
+    private @Nullable String commentId;
 
     @Field("actor_name")
     private String actorName;
 
     @Field("actor_profile_image_url")
-    private String actorProfileImageUrl;
+    private @Nullable String actorProfileImageUrl;
 
     @Field("target_preview")
     private String targetPreview;
 
     @Field("comment_preview")
-    private String commentPreview;
+    private @Nullable String commentPreview;
 
     @Field("display")
     private boolean display;
 
     @Field("read_at")
-    private Instant readAt;
+    private @Nullable Instant readAt;
 
     @Field("created_at")
     private Instant createdAt;
@@ -62,8 +63,9 @@ public class InboxItem {
     }
 
     private InboxItem(String recipientId, String actorId, InboxItemType type, TargetType targetType,
-                      String targetId, String commentId, String actorName, String actorProfileImageUrl,
-                      String targetPreview, String commentPreview) {
+                      String targetId, @Nullable String commentId, String actorName,
+                      @Nullable String actorProfileImageUrl, String targetPreview,
+                      @Nullable String commentPreview) {
         this.recipientId = recipientId;
         this.actorId = actorId;
         this.type = type.getValue();
@@ -80,20 +82,20 @@ public class InboxItem {
     }
 
     public static InboxItem feedLike(String recipientId, String actorId, String actorName,
-                                     String actorProfileImageUrl, String postId, String postPreview) {
+                                     @Nullable String actorProfileImageUrl, String postId, String postPreview) {
         return new InboxItem(recipientId, actorId, InboxItemType.FEED_LIKE, TargetType.FEED_POST,
                 postId, null, actorName, actorProfileImageUrl, postPreview, null);
     }
 
     public static InboxItem feedComment(String recipientId, String actorId, String actorName,
-                                        String actorProfileImageUrl, String postId, String postPreview,
-                                        String commentId, String commentPreview) {
+                                        @Nullable String actorProfileImageUrl, String postId, String postPreview,
+                                        String commentId, @Nullable String commentPreview) {
         return new InboxItem(recipientId, actorId, InboxItemType.FEED_COMMENT, TargetType.FEED_POST,
                 postId, commentId, actorName, actorProfileImageUrl, postPreview, commentPreview);
     }
 
     public static InboxItem tripmateLike(String recipientId, String actorId, String actorName,
-                                         String actorProfileImageUrl, String postId, String postPreview) {
+                                         @Nullable String actorProfileImageUrl, String postId, String postPreview) {
         return new InboxItem(recipientId, actorId, InboxItemType.TRIPMATE_LIKE, TargetType.TRIPMATE_POST,
                 postId, null, actorName, actorProfileImageUrl, postPreview, null);
     }
@@ -118,7 +120,7 @@ public class InboxItem {
         return targetId;
     }
 
-    public String getCommentId() {
+    public @Nullable String getCommentId() {
         return commentId;
     }
 
@@ -130,7 +132,7 @@ public class InboxItem {
         return actorName;
     }
 
-    public String getActorProfileImageUrl() {
+    public @Nullable String getActorProfileImageUrl() {
         return actorProfileImageUrl;
     }
 
@@ -138,11 +140,11 @@ public class InboxItem {
         return targetPreview;
     }
 
-    public String getCommentPreview() {
+    public @Nullable String getCommentPreview() {
         return commentPreview;
     }
 
-    public Instant getReadAt() {
+    public @Nullable Instant getReadAt() {
         return readAt;
     }
 

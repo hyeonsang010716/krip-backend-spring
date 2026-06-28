@@ -1,5 +1,6 @@
 package site.krip.global.storage;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -192,7 +193,7 @@ public class S3ObjectStorage implements ObjectStorage {
         return fileName;
     }
 
-    private String keyFromUrl(String url) {
+    private @Nullable String keyFromUrl(@Nullable String url) {
         if (url == null) {
             return null;
         }

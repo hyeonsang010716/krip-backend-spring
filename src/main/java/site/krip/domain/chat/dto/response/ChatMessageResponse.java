@@ -1,8 +1,10 @@
 package site.krip.domain.chat.dto.response;
 
 import org.bson.Document;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * 채팅 메시지 응답. content 는 type 별 다형(삭제 시 null).
@@ -13,10 +15,10 @@ public record ChatMessageResponse(
         long serverSeq,
         String senderId,
         String type,
-        Object content,
-        Instant createdAt,
-        Instant editedAt,
-        Instant deletedAt
+        @Nullable Object content,
+        @Nullable Instant createdAt,
+        @Nullable Instant editedAt,
+        @Nullable Instant deletedAt
 ) {
     public static ChatMessageResponse fromDoc(Document d) {
         java.util.Date deletedAt = d.getDate("deleted_at");
@@ -27,7 +29,7 @@ public record ChatMessageResponse(
         return new ChatMessageResponse(
                 d.getString("_id"),
                 d.getString("chat_room_id"),
-                ((Number) d.get("server_seq")).longValue(),
+                ((Number) Objects.requireNonNull(d.get("server_seq"))).longValue(),
                 d.getString("sender_id"),
                 type != null ? type : "text",
                 content,

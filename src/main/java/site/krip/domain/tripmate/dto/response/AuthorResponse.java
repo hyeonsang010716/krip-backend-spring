@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.Gender;
 import site.krip.domain.auth.entity.UserDetailInform;
 import site.krip.domain.auth.port.UserProfileView;
@@ -19,7 +20,7 @@ public record AuthorResponse(
     }
 
     /** JPA 연관관계(post.getUser().getDetail())로 얻은 detail 용. */
-    public static AuthorResponse from(UserDetailInform detail) {
+    public static AuthorResponse from(@Nullable UserDetailInform detail) {
         if (detail == null) {
             return anonymous();
         }
@@ -27,7 +28,7 @@ public record AuthorResponse(
                 detail.getNationality());
     }
 
-    public static AuthorResponse from(UserProfileView view) {
+    public static AuthorResponse from(@Nullable UserProfileView view) {
         if (view == null) {
             return anonymous();
         }

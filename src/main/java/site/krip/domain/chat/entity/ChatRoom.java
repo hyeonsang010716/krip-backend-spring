@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 import site.krip.global.support.IdGenerator;
 
 import java.time.Instant;
@@ -40,25 +41,25 @@ public class ChatRoom {
     private ChatRoomType type;
 
     @Column(name = "title", length = 100)
-    private String title;
+    private @Nullable String title;
 
     @Column(name = "creator_id", length = 50)
-    private String creatorId;
+    private @Nullable String creatorId;
 
     @Column(name = "direct_user_a_id", length = 50)
-    private String directUserAId;
+    private @Nullable String directUserAId;
 
     @Column(name = "direct_user_b_id", length = 50)
-    private String directUserBId;
+    private @Nullable String directUserBId;
 
     @Column(name = "last_message_id", length = 50)
-    private String lastMessageId;
+    private @Nullable String lastMessageId;
 
     @Column(name = "last_message_server_seq")
-    private Long lastMessageServerSeq;
+    private @Nullable Long lastMessageServerSeq;
 
     @Column(name = "last_message_at")
-    private Instant lastMessageAt;
+    private @Nullable Instant lastMessageAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
@@ -68,10 +69,10 @@ public class ChatRoom {
 
     // GENERATED ALWAYS AS (COALESCE(last_message_at, created_at)) STORED — DB 가 채움(읽기 전용).
     @Column(name = "effective_last_at", insertable = false, updatable = false)
-    private Instant effectiveLastAt;
+    private @Nullable Instant effectiveLastAt;
 
-    private ChatRoom(ChatRoomType type, String title, String creatorId,
-                     String directUserAId, String directUserBId) {
+    private ChatRoom(ChatRoomType type, @Nullable String title, String creatorId,
+                     @Nullable String directUserAId, @Nullable String directUserBId) {
         this.chatRoomId = IdGenerator.chatRoomId();
         this.type = type;
         this.title = title;

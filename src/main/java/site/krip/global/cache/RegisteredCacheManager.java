@@ -1,5 +1,6 @@
 package site.krip.global.cache;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -44,7 +45,7 @@ public class RegisteredCacheManager {
     }
 
     /** 캐시된 판정 결과. 미스/Redis 장애 시 null(fail-open) → 호출측이 DB 로 폴백한다. */
-    public Outcome lookup(String userId) {
+    public @Nullable Outcome lookup(String userId) {
         try {
             String value = redis.opsForValue().get(key(userId));
             return value == null ? null : decode(value);
@@ -93,7 +94,7 @@ public class RegisteredCacheManager {
         };
     }
 
-    private static Outcome decode(String value) {
+    private static @Nullable Outcome decode(String value) {
         return switch (value) {
             case "R" -> Outcome.REGISTERED;
             case "U" -> Outcome.UNREGISTERED;

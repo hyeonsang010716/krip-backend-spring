@@ -1,6 +1,7 @@
 package site.krip.domain.notification.service;
 
 import org.bson.types.ObjectId;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -16,6 +17,7 @@ import site.krip.global.support.TextPreview;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 인박스 fan-out + 조회/hide + cascade.
@@ -38,7 +40,7 @@ public class InboxService {
     // ──────────────────── fan-out ────────────────────
 
     public void notifyFeedLike(String recipientId, String actorId, String actorName,
-                               String actorProfileImageUrl, String postId, String postPreview) {
+                               @Nullable String actorProfileImageUrl, String postId, String postPreview) {
         if (recipientId.equals(actorId)) {
             return;
         }
@@ -46,7 +48,7 @@ public class InboxService {
     }
 
     public void notifyFeedComment(String recipientId, String actorId, String actorName,
-                                  String actorProfileImageUrl, String postId, String postPreview,
+                                  @Nullable String actorProfileImageUrl, String postId, String postPreview,
                                   String commentId, String commentContent) {
         if (recipientId.equals(actorId)) {
             return;
@@ -56,7 +58,7 @@ public class InboxService {
     }
 
     public void notifyTripmateLike(String recipientId, String actorId, String actorName,
-                                   String actorProfileImageUrl, String postId, String postPreview) {
+                                   @Nullable String actorProfileImageUrl, String postId, String postPreview) {
         if (recipientId.equals(actorId)) {
             return;
         }
@@ -162,7 +164,7 @@ public class InboxService {
         }
     }
 
-    private record InboxCursor(Instant ts, ObjectId id) {
+    private record InboxCursor(@Nullable Instant ts, @Nullable ObjectId id) {
     }
 
     private void safeInsert(InboxItem item) {
@@ -176,6 +178,7 @@ public class InboxService {
     }
 
     private static String truncateComment(String content) {
-        return TextPreview.truncate(content, COMMENT_PREVIEW_MAX_LENGTH, "…");
+        // content 는 비-null(댓글은 항상 내용 있음)이라 truncate 결과도 비-null.
+        return Objects.requireNonNull(TextPreview.truncate(content, COMMENT_PREVIEW_MAX_LENGTH, "…"));
     }
 }

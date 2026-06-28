@@ -1,5 +1,7 @@
 package site.krip.domain.chat.dto.response;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -8,6 +10,6 @@ import java.util.List;
 public record MessageHistoryResponse(
         List<ChatMessageResponse> messages,
         boolean hasMore,
-        Long nextCursor
+        @Nullable Long nextCursor
 ) {
 }

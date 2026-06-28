@@ -1,6 +1,7 @@
 package site.krip.global.auth.filter;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.jspecify.annotations.Nullable;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -132,7 +133,7 @@ public class RegisterCheckFilter extends OncePerRequestFilter {
         return true;
     }
 
-    private String authenticatedUserId() {
+    private @Nullable String authenticatedUserId() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth instanceof AnonymousAuthenticationToken) {
             return null;

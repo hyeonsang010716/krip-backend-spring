@@ -1,5 +1,6 @@
 package site.krip.domain.feed.service;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
@@ -105,7 +106,7 @@ public class FeedPostService {
     private record Variants(String original, String small, String medium) {
     }
 
-    private FeedPost insertPost(String postId, String userId, FeedVisibility visibility, String caption,
+    private FeedPost insertPost(String postId, String userId, FeedVisibility visibility, @Nullable String caption,
                                 String originalUrl, String smallUrl, String mediumUrl) {
         FeedPost post = new FeedPost(postId, userId, visibility, caption, originalUrl, smallUrl, mediumUrl);
         FeedPost saved = feedPostRepo.saveAndFlush(post);
@@ -222,7 +223,7 @@ public class FeedPostService {
     }
 
     /** 빈/공백만 → null. 비-빈 캡션의 양끝 공백은 보존. */
-    private static String normalizeCaption(String caption) {
+    private static @Nullable String normalizeCaption(@Nullable String caption) {
         if (caption == null || caption.strip().isEmpty()) {
             return null;
         }

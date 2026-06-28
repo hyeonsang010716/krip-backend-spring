@@ -1,6 +1,7 @@
 package site.krip.domain.tour.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.tour.document.Place;
 
 /**
@@ -11,9 +12,9 @@ import site.krip.domain.tour.document.Place;
 public record PlaceResponse(
         @JsonUnwrapped PlaceDetailResponse detail,
         double distance,
-        Boolean isFavorite
+        @Nullable Boolean isFavorite
 ) {
-    public static PlaceResponse of(Place place, double distance, Boolean isFavorite) {
+    public static PlaceResponse of(Place place, double distance, @Nullable Boolean isFavorite) {
         return new PlaceResponse(PlaceDetailResponse.from(place), distance, isFavorite);
     }
 }

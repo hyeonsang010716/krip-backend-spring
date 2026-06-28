@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 
@@ -38,18 +39,18 @@ public class ChatRoomMember {
     private Instant joinedAt;
 
     @Column(name = "last_read_message_server_seq")
-    private Long lastReadMessageServerSeq;
+    private @Nullable Long lastReadMessageServerSeq;
 
     @Column(name = "last_read_at")
-    private Instant lastReadAt;
+    private @Nullable Instant lastReadAt;
 
     @Column(name = "is_left", nullable = false)
     private boolean left = false;
 
     @Column(name = "notification_muted")
-    private Boolean notificationMuted;
+    private @Nullable Boolean notificationMuted;
 
-    public ChatRoomMember(String chatRoomId, String userId, Long lastReadMessageServerSeq) {
+    public ChatRoomMember(String chatRoomId, String userId, @Nullable Long lastReadMessageServerSeq) {
         this.chatRoomId = chatRoomId;
         this.userId = userId;
         this.lastReadMessageServerSeq = lastReadMessageServerSeq;

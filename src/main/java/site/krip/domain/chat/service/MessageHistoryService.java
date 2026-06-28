@@ -1,6 +1,7 @@
 package site.krip.domain.chat.service;
 
 import org.bson.Document;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -152,10 +153,13 @@ public class MessageHistoryService {
             return new RoomMemberListResponse(List.of());
         }
         Map<String, UserProfileView> usersMap = userQuery.findProfiles(friendIds);
-        List<RoomMemberResponse> items = friendIds.stream()
-                .filter(usersMap::containsKey)
-                .map(uid -> RoomMemberResponse.from(usersMap.get(uid)))
-                .toList();
+        List<RoomMemberResponse> items = new ArrayList<>();
+        for (String uid : friendIds) {
+            UserProfileView view = usersMap.get(uid);
+            if (view != null) {
+                items.add(RoomMemberResponse.from(view));
+            }
+        }
         return new RoomMemberListResponse(items);
     }
 
@@ -182,8 +186,9 @@ public class MessageHistoryService {
         }
     }
 
-    private static ChatRoomResponse roomToResponse(ChatRoom room, String peerUserId, UserProfileView peerUser,
-                                                   int unreadCount, Document lastMessageDoc, boolean muted) {
+    private static ChatRoomResponse roomToResponse(ChatRoom room, @Nullable String peerUserId,
+                                                   @Nullable UserProfileView peerUser, int unreadCount,
+                                                   @Nullable Document lastMessageDoc, boolean muted) {
         ChatRoomPeerResponse peer = null;
         if (peerUserId != null) {
             if (peerUser == null) {

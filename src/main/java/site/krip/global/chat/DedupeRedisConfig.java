@@ -1,5 +1,6 @@
 package site.krip.global.chat;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.autoconfigure.data.redis.RedisConnectionDetails;
 import org.springframework.context.annotation.Bean;
@@ -23,7 +24,7 @@ import site.krip.global.config.ChatProperties;
 @Configuration
 public class DedupeRedisConfig implements DisposableBean {
 
-    private LettuceConnectionFactory dedupeConnectionFactory;
+    private @Nullable LettuceConnectionFactory dedupeConnectionFactory;
 
     @Bean(defaultCandidate = false)
     public StringRedisTemplate dedupeRedisTemplate(RedisConnectionDetails connectionDetails,

@@ -1,6 +1,7 @@
 package site.krip.domain.chat.service;
 
 import org.bson.Document;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -30,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadLocalRandom;
@@ -146,7 +148,7 @@ public class MessageService {
     // ──────────────────── 시스템 메시지 ────────────────────
 
     /** 방 관리 액션(created/join/leave/kick) 타임라인 기록 — 멤버십/rate/dedupe/unread/push skip. */
-    public void sendSystemMessage(String roomId, String action, String actorId, List<String> targetIds) {
+    public void sendSystemMessage(String roomId, String action, String actorId, @Nullable List<String> targetIds) {
         Instant now = Instant.now();
         String messageId = IdGenerator.messageId();
         Map<String, Object> content = new HashMap<>();
@@ -331,7 +333,7 @@ public class MessageService {
 
     /** 저장된 메시지 Document → 멱등 ack. */
     private static MessageSentAck ackFromDoc(Document doc, String clientMsgId) {
-        long serverSeq = ((Number) doc.get("server_seq")).longValue();
+        long serverSeq = ((Number) Objects.requireNonNull(doc.get("server_seq"))).longValue();
         Instant createdAt = doc.getDate("created_at").toInstant();
         return new MessageSentAck(clientMsgId, doc.getString("_id"), serverSeq, createdAt);
     }
@@ -361,7 +363,7 @@ public class MessageService {
         }
     }
 
-    private static Document baseDoc(String messageId, String roomId, long serverSeq, String senderId,
+    private static Document baseDoc(String messageId, String roomId, long serverSeq, @Nullable String senderId,
                                     MessageType type, Object content, Instant now) {
         Document doc = new Document();
         doc.put("_id", messageId);
@@ -376,8 +378,8 @@ public class MessageService {
         return doc;
     }
 
-    private static Map<String, Object> messageNewPayload(String senderSessionId, String messageId,
-                                                         String roomId, long serverSeq, String senderId,
+    private static Map<String, Object> messageNewPayload(@Nullable String senderSessionId, String messageId,
+                                                         String roomId, long serverSeq, @Nullable String senderId,
                                                          MessageType type, Object content, Instant now) {
         Map<String, Object> message = new HashMap<>();
         message.put("message_id", messageId);
@@ -401,7 +403,8 @@ public class MessageService {
         if (recipients.isEmpty()) {
             return;
         }
-        String body = TextPreview.truncate(content, PUSH_BODY_PREVIEW_LIMIT, "...");
+        // content 는 비-null(검증됨)이라 truncate 결과도 비-null — 채팅 푸시 body 는 항상 존재.
+        String body = Objects.requireNonNull(TextPreview.truncate(content, PUSH_BODY_PREVIEW_LIMIT, "..."));
         pushExecutor.execute(() -> {
             try {
                 push.sendChatPush(recipients, roomId, senderUserId, body);

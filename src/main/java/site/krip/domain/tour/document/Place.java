@@ -1,5 +1,6 @@
 package site.krip.domain.tour.document;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
 import org.springframework.data.mongodb.core.index.GeoSpatialIndexed;
@@ -15,6 +16,9 @@ import java.util.List;
  * <p>Google Places 기반 서울 장소 데이터. {@code location} 은 GeoJSON Point 로 저장되어
  * 근처 장소 검색($geoNear)을 지원한다. 거리순 조회 결과의 {@code distance} 는 문서 필드가 아니라
  * 집계 단계 산출값이라 별도 매핑하지 않는다(레포지토리가 raw Document 에서 추출).
+ *
+ * <p>Google Places 응답은 다수 필드가 optional 이라 해당 필드는 {@code @Nullable}. 방어적 getter
+ * (types/reviews/photos)는 null 을 빈 리스트로 폴백하므로 반환은 non-null 이다.
  */
 @Document(collection = "place")
 public class Place {
@@ -34,7 +38,7 @@ public class Place {
     private String category;
 
     @Field("types")
-    private List<String> types;
+    private @Nullable List<String> types;
 
     @Field("address")
     private String address;
@@ -45,64 +49,64 @@ public class Place {
     // GeoJSON Point — $geoNear 를 위해 2dsphere 인덱스 자동 생성(auto-index-creation=true).
     @GeoSpatialIndexed(type = GeoSpatialIndexType.GEO_2DSPHERE)
     @Field("location")
-    private Location location;
+    private @Nullable Location location;
 
     @Field("rating")
-    private Double rating;
+    private @Nullable Double rating;
 
     @Field("rating_count")
-    private Integer ratingCount;
+    private @Nullable Integer ratingCount;
 
     @Field("price_level")
-    private String priceLevel;
+    private @Nullable String priceLevel;
 
     @Field("price_range")
-    private PriceRange priceRange;
+    private @Nullable PriceRange priceRange;
 
     @Field("editorial_summary")
-    private String editorialSummary;
+    private @Nullable String editorialSummary;
 
     @Field("generative_summary")
-    private String generativeSummary;
+    private @Nullable String generativeSummary;
 
     @Field("review_summary")
-    private String reviewSummary;
+    private @Nullable String reviewSummary;
 
     @Field("phone")
-    private String phone;
+    private @Nullable String phone;
 
     @Field("phone_international")
-    private String phoneInternational;
+    private @Nullable String phoneInternational;
 
     @Field("website")
-    private String website;
+    private @Nullable String website;
 
     @Field("google_maps_url")
-    private String googleMapsUrl;
+    private @Nullable String googleMapsUrl;
 
     @Field("google_map_review_link")
-    private String googleMapReviewLink;
+    private @Nullable String googleMapReviewLink;
 
     @Field("opening_hours")
-    private List<String> openingHours;
+    private @Nullable List<String> openingHours;
 
     @Field("services")
-    private List<String> services;
+    private @Nullable List<String> services;
 
     @Field("payment")
-    private List<String> payment;
+    private @Nullable List<String> payment;
 
     @Field("accessibility")
-    private List<String> accessibility;
+    private @Nullable List<String> accessibility;
 
     @Field("parking")
-    private List<String> parking;
+    private @Nullable List<String> parking;
 
     @Field("reviews")
-    private List<Review> reviews;
+    private @Nullable List<Review> reviews;
 
     @Field("photos")
-    private List<String> photos;
+    private @Nullable List<String> photos;
 
     protected Place() {
     }
@@ -112,7 +116,7 @@ public class Place {
         @Field("type")
         private String type;
         @Field("coordinates")
-        private List<Double> coordinates;
+        private @Nullable List<Double> coordinates;
 
         public List<Double> getCoordinates() {
             return coordinates != null ? coordinates : List.of(0.0, 0.0);
@@ -133,42 +137,42 @@ public class Place {
 
     public static class PriceRange {
         @Field("min")
-        private String min;
+        private @Nullable String min;
         @Field("max")
-        private String max;
+        private @Nullable String max;
 
-        public String getMin() {
+        public @Nullable String getMin() {
             return min;
         }
 
-        public String getMax() {
+        public @Nullable String getMax() {
             return max;
         }
     }
 
     public static class Review {
         @Field("author")
-        private String author;
+        private @Nullable String author;
         @Field("rating")
-        private Integer rating;
+        private @Nullable Integer rating;
         @Field("relative_time")
-        private String relativeTime;
+        private @Nullable String relativeTime;
         @Field("text")
-        private String text;
+        private @Nullable String text;
 
         public String getAuthor() {
             return author != null ? author : "";
         }
 
-        public Integer getRating() {
+        public @Nullable Integer getRating() {
             return rating;
         }
 
-        public String getRelativeTime() {
+        public @Nullable String getRelativeTime() {
             return relativeTime;
         }
 
-        public String getText() {
+        public @Nullable String getText() {
             return text;
         }
     }
@@ -197,75 +201,75 @@ public class Place {
         return shortAddress;
     }
 
-    public Location getLocation() {
+    public @Nullable Location getLocation() {
         return location;
     }
 
-    public Double getRating() {
+    public @Nullable Double getRating() {
         return rating;
     }
 
-    public Integer getRatingCount() {
+    public @Nullable Integer getRatingCount() {
         return ratingCount;
     }
 
-    public String getPriceLevel() {
+    public @Nullable String getPriceLevel() {
         return priceLevel;
     }
 
-    public PriceRange getPriceRange() {
+    public @Nullable PriceRange getPriceRange() {
         return priceRange;
     }
 
-    public String getEditorialSummary() {
+    public @Nullable String getEditorialSummary() {
         return editorialSummary;
     }
 
-    public String getGenerativeSummary() {
+    public @Nullable String getGenerativeSummary() {
         return generativeSummary;
     }
 
-    public String getReviewSummary() {
+    public @Nullable String getReviewSummary() {
         return reviewSummary;
     }
 
-    public String getPhone() {
+    public @Nullable String getPhone() {
         return phone;
     }
 
-    public String getPhoneInternational() {
+    public @Nullable String getPhoneInternational() {
         return phoneInternational;
     }
 
-    public String getWebsite() {
+    public @Nullable String getWebsite() {
         return website;
     }
 
-    public String getGoogleMapsUrl() {
+    public @Nullable String getGoogleMapsUrl() {
         return googleMapsUrl;
     }
 
-    public String getGoogleMapReviewLink() {
+    public @Nullable String getGoogleMapReviewLink() {
         return googleMapReviewLink;
     }
 
-    public List<String> getOpeningHours() {
+    public @Nullable List<String> getOpeningHours() {
         return openingHours;
     }
 
-    public List<String> getServices() {
+    public @Nullable List<String> getServices() {
         return services;
     }
 
-    public List<String> getPayment() {
+    public @Nullable List<String> getPayment() {
         return payment;
     }
 
-    public List<String> getAccessibility() {
+    public @Nullable List<String> getAccessibility() {
         return accessibility;
     }
 
-    public List<String> getParking() {
+    public @Nullable List<String> getParking() {
         return parking;
     }
 

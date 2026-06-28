@@ -1,5 +1,6 @@
 package site.krip.domain.tour.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.tour.entity.TourPlan;
 
 import java.time.Instant;
@@ -9,7 +10,7 @@ import java.time.Instant;
  */
 public record PlanSummaryResponse(
         String planId,
-        String title,
+        @Nullable String title,
         int travelDays,
         Instant createdAt,
         Instant updatedAt

@@ -1,5 +1,6 @@
 package site.krip.domain.auth.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.TravelStyle;
 import site.krip.domain.auth.entity.User;
 
@@ -11,7 +12,7 @@ public record OtherUserProfileResponse(
         String userName,
         String nationality,
         List<TravelStyle> travelStyles,
-        String profileImageUrl
+        @Nullable String profileImageUrl
 ) {
     public static OtherUserProfileResponse from(User user) {
         var d = user.getDetail();

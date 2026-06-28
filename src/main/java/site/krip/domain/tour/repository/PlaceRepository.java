@@ -1,6 +1,7 @@
 package site.krip.domain.tour.repository;
 
 import org.bson.Document;
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
@@ -81,7 +82,7 @@ public class PlaceRepository {
     }
 
     /** 음식 필터 → MongoDB 쿼리. 식당이 아니면 통과 OR types 에 허용 식당 타입 포함. any/null 이면 null. */
-    private static Document foodFilterQuery(String foodFilter) {
+    private static @Nullable Document foodFilterQuery(@Nullable String foodFilter) {
         List<String> allowed;
         if ("halal".equals(foodFilter)) {
             allowed = List.of("halal_restaurant");
@@ -114,7 +115,7 @@ public class PlaceRepository {
         return aggregateNearby(lat, lng, query, cursor, maxDistance);
     }
 
-    private List<NearbyPlace> aggregateNearby(double lat, double lng, Document query,
+    private List<NearbyPlace> aggregateNearby(double lat, double lng, @Nullable Document query,
                                               String cursor, Double maxDistance) {
         Double cursorDistance = null;
         String cursorPlaceId = null;

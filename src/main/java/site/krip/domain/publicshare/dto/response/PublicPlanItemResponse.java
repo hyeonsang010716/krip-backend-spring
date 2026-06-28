@@ -1,5 +1,7 @@
 package site.krip.domain.publicshare.dto.response;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.List;
 
 /**
@@ -14,8 +16,8 @@ public record PublicPlanItemResponse(
         String placeId,
         String displayName,
         String address,
-        String visitTime,
-        Double rating,
+        @Nullable String visitTime,
+        @Nullable Double rating,
         List<String> photos
 ) {
 }

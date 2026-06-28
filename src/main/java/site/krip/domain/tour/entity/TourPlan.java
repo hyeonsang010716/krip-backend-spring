@@ -15,6 +15,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.BatchSize;
+import org.jspecify.annotations.Nullable;
 import site.krip.global.support.IdGenerator;
 
 import java.time.Instant;
@@ -43,7 +44,7 @@ public class TourPlan {
     private String userId;
 
     @Column(name = "title", length = 100)
-    private String title;
+    private @Nullable String title;
 
     @Column(name = "travel_days", nullable = false)
     private int travelDays;
@@ -60,7 +61,7 @@ public class TourPlan {
     @BatchSize(size = 100)
     private List<TourPlanItem> items = new ArrayList<>();
 
-    public TourPlan(String userId, String title, int travelDays) {
+    public TourPlan(String userId, @Nullable String title, int travelDays) {
         this.planId = IdGenerator.tourPlanId();
         this.userId = userId;
         this.title = title;
@@ -68,7 +69,7 @@ public class TourPlan {
     }
 
     /** 플랜 title 수정 (null 이면 제목 제거). */
-    public void changeTitle(String title) {
+    public void changeTitle(@Nullable String title) {
         this.title = title;
     }
 

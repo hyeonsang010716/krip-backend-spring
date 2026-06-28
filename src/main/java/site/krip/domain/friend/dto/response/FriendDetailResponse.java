@@ -1,5 +1,6 @@
 package site.krip.domain.friend.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.Gender;
 import site.krip.domain.auth.entity.TravelStyle;
 import site.krip.domain.friend.entity.FriendshipStatus;
@@ -17,10 +18,10 @@ public record FriendDetailResponse(
         Gender gender,
         String nationality,
         List<TravelStyle> travelStyles,
-        String friendshipId,
-        FriendshipStatus friendshipStatus,
-        Boolean isRequester,
+        @Nullable String friendshipId,
+        @Nullable FriendshipStatus friendshipStatus,
+        @Nullable Boolean isRequester,
         boolean iBlockedPeer,
-        String profileImageUrl
+        @Nullable String profileImageUrl
 ) {
 }

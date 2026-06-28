@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.document;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -24,37 +25,37 @@ public class TripmatePostDraft {
     private String userId;
 
     @Field("title")
-    private String title;
+    private @Nullable String title;
 
     @Field("content")
-    private String content;
+    private @Nullable String content;
 
     @Field("preferred_age_min")
-    private Integer preferredAgeMin;
+    private @Nullable Integer preferredAgeMin;
 
     @Field("preferred_age_max")
-    private Integer preferredAgeMax;
+    private @Nullable Integer preferredAgeMax;
 
     @Field("preferred_gender")
-    private String preferredGender;
+    private @Nullable String preferredGender;
 
     @Field("region")
-    private String region;
+    private @Nullable String region;
 
     @Field("travel_start_date")
-    private LocalDate travelStartDate;
+    private @Nullable LocalDate travelStartDate;
 
     @Field("travel_end_date")
-    private LocalDate travelEndDate;
+    private @Nullable LocalDate travelEndDate;
 
     @Field("companion_type")
-    private String companionType;
+    private @Nullable String companionType;
 
     @Field("image_urls")
-    private List<String> imageUrls = new ArrayList<>();
+    private @Nullable List<String> imageUrls = new ArrayList<>();
 
     @Field("updated_at")
-    private Instant updatedAt;
+    private @Nullable Instant updatedAt;
 
     protected TripmatePostDraft() {
     }
@@ -63,39 +64,39 @@ public class TripmatePostDraft {
         return userId;
     }
 
-    public String getTitle() {
+    public @Nullable String getTitle() {
         return title;
     }
 
-    public String getContent() {
+    public @Nullable String getContent() {
         return content;
     }
 
-    public Integer getPreferredAgeMin() {
+    public @Nullable Integer getPreferredAgeMin() {
         return preferredAgeMin;
     }
 
-    public Integer getPreferredAgeMax() {
+    public @Nullable Integer getPreferredAgeMax() {
         return preferredAgeMax;
     }
 
-    public String getPreferredGender() {
+    public @Nullable String getPreferredGender() {
         return preferredGender;
     }
 
-    public String getRegion() {
+    public @Nullable String getRegion() {
         return region;
     }
 
-    public LocalDate getTravelStartDate() {
+    public @Nullable LocalDate getTravelStartDate() {
         return travelStartDate;
     }
 
-    public LocalDate getTravelEndDate() {
+    public @Nullable LocalDate getTravelEndDate() {
         return travelEndDate;
     }
 
-    public String getCompanionType() {
+    public @Nullable String getCompanionType() {
         return companionType;
     }
 
@@ -103,7 +104,7 @@ public class TripmatePostDraft {
         return imageUrls == null ? List.of() : imageUrls;
     }
 
-    public Instant getUpdatedAt() {
+    public @Nullable Instant getUpdatedAt() {
         return updatedAt;
     }
 }

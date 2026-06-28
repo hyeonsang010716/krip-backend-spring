@@ -1,5 +1,6 @@
 package site.krip.domain.notification.fcm;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.LongSupplier;
 
@@ -35,10 +36,15 @@ final class FcmCircuitBreaker {
         this.nanoClock = nanoClock;
     }
 
+    /** state 는 항상 non-null 로 초기화·CAS 됨(get() 의 @Nullable 모델을 단정으로 해소). */
+    private State currentState() {
+        return Objects.requireNonNull(state.get());
+    }
+
     /** closed=항상 통과, open(cooldown)=차단, cooldown 후=probe 1건만. 통과 시 success/failure/release 보고 필수. */
     boolean tryAcquire() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (s.openUntilNanos == NOT_OPEN) {
                 return true; // closed
             }
@@ -56,7 +62,7 @@ final class FcmCircuitBreaker {
 
     void recordSuccess() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (s.openUntilNanos == NOT_OPEN) {
                 if (s.failures == 0) {
                     return; // 이미 깨끗한 closed
@@ -77,7 +83,7 @@ final class FcmCircuitBreaker {
     /** 결과 미기록으로 probe 만 해제 — FCM 무관 중단(빌드 실패 등). closed/probe 미점유면 no-op. */
     void release() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (!s.probeInFlight) {
                 return;
             }
@@ -90,7 +96,7 @@ final class FcmCircuitBreaker {
 
     void recordFailure() {
         while (true) {
-            State s = state.get();
+            State s = currentState();
             if (s.openUntilNanos != NOT_OPEN) {
                 if (s.probeInFlight) {
                     if (state.compareAndSet(s, openState())) {

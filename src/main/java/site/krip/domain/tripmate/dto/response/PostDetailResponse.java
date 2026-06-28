@@ -1,5 +1,6 @@
 package site.krip.domain.tripmate.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.tripmate.entity.CompanionType;
 import site.krip.domain.tripmate.entity.PreferredGender;
 
@@ -29,6 +30,6 @@ public record PostDetailResponse(
         long likeCount,
         boolean isLiked,
         List<String> imageUrls,
-        String profileImageUrl
+        @Nullable String profileImageUrl
 ) {
 }

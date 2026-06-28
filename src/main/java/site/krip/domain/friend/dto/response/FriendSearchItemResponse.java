@@ -1,5 +1,6 @@
 package site.krip.domain.friend.dto.response;
 
+import org.jspecify.annotations.Nullable;
 import site.krip.domain.auth.entity.TravelStyle;
 import site.krip.domain.friend.entity.FriendshipStatus;
 
@@ -12,11 +13,11 @@ import java.util.List;
 public record FriendSearchItemResponse(
         String userId,
         String userName,
-        String profileImageUrl,
+        @Nullable String profileImageUrl,
         String nationality,
         List<TravelStyle> travelStyles,
-        FriendshipStatus friendshipStatus,
-        Boolean isRequester,
+        @Nullable FriendshipStatus friendshipStatus,
+        @Nullable Boolean isRequester,
         boolean iBlockedPeer
 ) {
 }

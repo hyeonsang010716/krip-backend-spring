@@ -1,5 +1,6 @@
 package site.krip.domain.ai.service;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 import site.krip.domain.ai.client.AiServiceClient;
 import site.krip.domain.ai.dto.request.TourDayRequest;
@@ -16,6 +17,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -135,7 +137,7 @@ public class AiTourService {
 
     // ──────────────────── 후보 조회/풀 구성 ────────────────────
 
-    private Place loadFixedPlace(String additionalPlaceId) {
+    private @Nullable Place loadFixedPlace(String additionalPlaceId) {
         if (additionalPlaceId == null || additionalPlaceId.isBlank()) {
             return null;
         }
@@ -144,7 +146,7 @@ public class AiTourService {
     }
 
     /** 출발/도착 권역 좌표 + 추가 장소 좌표를 검색점으로 합치고 중복 제거. */
-    private List<double[]> buildSearchPoints(TourDayRequest day, Place fixedPlace) {
+    private List<double[]> buildSearchPoints(TourDayRequest day, @Nullable Place fixedPlace) {
         List<double[]> points = new ArrayList<>();
         for (String cluster : List.of(day.departureCluster(), day.arrivalCluster())) {
             double[] coord = TourClusters.get(cluster);
@@ -175,7 +177,7 @@ public class AiTourService {
      * 각 후보 map 에 {@code _group} 라벨을 부여한다.
      */
     private List<Map<String, Object>> buildBalancedPool(List<List<Place>> searchResults,
-                                                        String additionalPid, List<String> styles) {
+                                                        @Nullable String additionalPid, List<String> styles) {
         Map<String, List<Place>> groups = new LinkedHashMap<>();
         for (String g : PlaceGrouping.GROUPS) {
             groups.put(g, new ArrayList<>());
@@ -192,7 +194,8 @@ public class AiTourService {
                 if (group.equals(PlaceGrouping.GROUP_OTHER)) {
                     continue;
                 }
-                groups.get(group).add(place);
+                // group 은 OTHER 제외 후라 GROUPS 키 — groups 가 위에서 전부 사전 채움.
+                Objects.requireNonNull(groups.get(group)).add(place);
             }
         }
 
@@ -205,7 +208,7 @@ public class AiTourService {
         Map<String, Integer> caps = PlaceGrouping.computeCaps(styles);
         List<Map<String, Object>> pool = new ArrayList<>();
         caps.forEach((group, cap) -> {
-            List<Place> list = groups.get(group);
+            List<Place> list = Objects.requireNonNull(groups.get(group)); // caps 키 ⊆ GROUPS
             for (int i = 0; i < Math.min(cap, list.size()); i++) {
                 pool.add(placeToMap(list.get(i), group));
             }
@@ -216,7 +219,7 @@ public class AiTourService {
     // ──────────────────── payload 변환 ────────────────────
 
     /** Place → FastAPI 포맷터가 읽는 dict 형태. {@code group} 이 있으면 후보용으로 {@code _group} 부여. */
-    private static Map<String, Object> placeToMap(Place p, String group) {
+    private static Map<String, Object> placeToMap(Place p, @Nullable String group) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("place_id", p.getPlaceId());
         m.put("display_name", p.getDisplayName());
@@ -255,7 +258,7 @@ public class AiTourService {
     private record BuildPlanPayload(String foodPreference, List<DayPayload> days) {
     }
 
-    private record DayPayload(DayInputPayload dayInput, Map<String, Object> fixedPlace,
+    private record DayPayload(DayInputPayload dayInput, @Nullable Map<String, Object> fixedPlace,
                               List<Map<String, Object>> candidatePlaces) {
     }
 

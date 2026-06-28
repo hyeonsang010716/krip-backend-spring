@@ -13,6 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.DynamicUpdate;
+import org.jspecify.annotations.Nullable;
 import site.krip.global.support.IdGenerator;
 
 import java.time.Instant;
@@ -48,7 +49,7 @@ public class FeedPost {
     private FeedVisibility visibility;
 
     @Column(name = "caption", length = CAPTION_MAX_LENGTH)
-    private String caption;
+    private @Nullable String caption;
 
     @Column(name = "original_url", length = 500, nullable = false)
     private String originalUrl;
@@ -65,7 +66,7 @@ public class FeedPost {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    public FeedPost(String postId, String userId, FeedVisibility visibility, String caption,
+    public FeedPost(String postId, String userId, FeedVisibility visibility, @Nullable String caption,
                     String originalUrl, String thumbnailSmallUrl, String thumbnailMediumUrl) {
         this.postId = postId != null ? postId : IdGenerator.feedPostId();
         this.userId = userId;
@@ -80,7 +81,7 @@ public class FeedPost {
         this.visibility = visibility;
     }
 
-    public void changeCaption(String caption) {
+    public void changeCaption(@Nullable String caption) {
         this.caption = caption;
     }
 
