@@ -1,0 +1,156 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.14'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'net.ltgt.errorprone' version '4.1.0'
+    id 'jacoco'
+}
+
+group = 'site.krip'
+version = '0.3.0'
+description = 'Krip Backend (Spring Boot port)'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+ext {
+    jjwtVersion = '0.13.0'
+    awssdkVersion = '2.42.37'
+    springdocVersion = '2.8.17'
+    shedlockVersion = '7.7.0'
+    errorproneVersion = '2.36.0'
+    nullawayVersion = '0.12.3'
+}
+
+repositories {
+    mavenCentral()
+}
+
+// annotationProcessor 의존성을 compileOnly 에도 노출 (Lombok 표준 설정)
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+dependencyManagement {
+    dependencies {
+        // 전이 의존성의 알려진 취약 버전을 패치본으로 강제 (pom 의 dependencyManagement 와 동일)
+        dependency 'org.webjars:swagger-ui:5.32.5'           // springdoc 5.32.2 → XSS 등 수정
+        dependency 'org.apache.commons:commons-lang3:3.18.0' // CVE-2025-48924 DoS 수정
+        dependency 'org.apache.commons:commons-compress:1.27.1' // testcontainers 1.24.0 → CVE-2024-25710·26308
+    }
+}
+
+dependencies {
+    // Web (MVC)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
+    // 이미지 처리 (피드 썸네일)
+    implementation 'net.coobird:thumbnailator:0.4.21'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.13.1'
+    implementation 'com.drewnoakes:metadata-extractor:2.19.0'
+
+    // FCM 푸시 (Firebase Admin SDK)
+    implementation 'com.google.firebase:firebase-admin:9.9.0'
+
+    // Persistence: PostgreSQL (JPA), MongoDB, Redis
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    // 스키마 마이그레이션
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // JWT (HS256)
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+
+    // Object Storage (S3-compatible)
+    implementation "software.amazon.awssdk:s3:${awssdkVersion}"
+
+    // OpenAPI / Swagger UI
+    implementation "org.springdoc:springdoc-openapi-starter-webmvc-ui:${springdocVersion}"
+
+    // 분산 스케줄러 락 (ShedLock + Redis)
+    implementation "net.javacrumbs.shedlock:shedlock-spring:${shedlockVersion}"
+    implementation "net.javacrumbs.shedlock:shedlock-provider-redis-spring:${shedlockVersion}"
+
+    // Lombok (optional → compileOnly + annotationProcessor)
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+
+    // Nullability — JSpecify 어노테이션
+    implementation 'org.jspecify:jspecify:1.0.0'
+
+    // Error Prone + NullAway (errorprone 설정으로 컴파일러에 주입)
+    errorprone "com.google.errorprone:error_prone_core:${errorproneVersion}"
+    errorprone "com.uber.nullaway:nullaway:${nullawayVersion}"
+
+    // Test
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'org.testcontainers:mongodb'
+}
+
+// NullAway — @NullMarked 패키지만 검사, NullAway 만 ERROR (pom 의 Error Prone 설정과 동일).
+// add-exports/add-opens(JDK17 javac 내부 API) 는 errorprone 플러그인이 자동 주입.
+tasks.named('compileJava') {
+    options.errorprone {
+        disableAllChecks = true
+        error 'NullAway'
+        option 'NullAway:OnlyNullMarked', 'true'
+        option 'NullAway:JSpecifyMode', 'true'
+        option 'NullAway:ExcludedFieldAnnotations', [
+            'jakarta.persistence.Id',
+            'jakarta.persistence.Column',
+            'jakarta.persistence.JoinColumn',
+            'jakarta.persistence.ManyToOne',
+            'jakarta.persistence.OneToMany',
+            'jakarta.persistence.OneToOne',
+            'jakarta.persistence.Enumerated',
+            'jakarta.persistence.Version',
+            'org.hibernate.annotations.CreationTimestamp',
+            'org.hibernate.annotations.UpdateTimestamp',
+            'org.springframework.data.annotation.Id',
+            'org.springframework.data.mongodb.core.mapping.Field'
+        ].join(',')
+    }
+}
+
+// 테스트 코드는 NullAway 미적용 (pom 의 XepExcludedPaths:.*/src/test/.* 와 동일 효과)
+tasks.named('compileTestJava') {
+    options.errorprone.enabled = false
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    finalizedBy jacocoTestReport
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+// 부트스트랩/설정 전용 클래스는 커버리지 측정 제외 (pom 의 jacoco excludes 와 동일)
+tasks.named('jacocoTestReport') {
+    dependsOn test
+    classDirectories.setFrom(files(sourceSets.main.output.collect {
+        fileTree(dir: it, exclude: [
+            'site/krip/KripApplication.class',
+            '**/*Config.class',
+            '**/*Properties.class'
+        ])
+    }))
+}

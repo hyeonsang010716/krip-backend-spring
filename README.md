@@ -12,6 +12,8 @@ docker compose up --build
 - API: http://localhost:8000
 - Swagger UI: http://localhost:8000/docs
 
+로컬 단독 실행:
+
 ```bash
-mvn spring-boot:run
+./gradlew bootRun
 ```
