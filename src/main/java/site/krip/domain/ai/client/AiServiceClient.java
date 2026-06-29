@@ -12,6 +12,7 @@ import org.springframework.web.client.RestClient;
 import site.krip.domain.ai.exception.AiServiceException;
 import site.krip.global.config.AiProperties;
 
+import java.util.concurrent.Semaphore;
 import java.util.function.Supplier;
 
 /**
@@ -28,11 +29,13 @@ public class AiServiceClient {
     private final RestClient ai;
     private final boolean enabled;
     private final AiCircuitBreaker circuit;
+    private final Semaphore inFlight;
 
     public AiServiceClient(@Qualifier("aiRestClient") RestClient ai, AiProperties props) {
         this.ai = ai;
         this.enabled = props.enabled();
         this.circuit = new AiCircuitBreaker(props.circuitFailureThreshold(), props.circuitOpenMs());
+        this.inFlight = new Semaphore(props.maxConcurrency());
     }
 
     /** JSON 본문 POST 후 응답을 {@code responseType} 으로 역직렬화. */
@@ -66,31 +69,39 @@ public class AiServiceClient {
         if (!enabled) {
             throw new AiServiceException(503, "AI 기능이 비활성화되어 있습니다.");
         }
-        if (!circuit.tryAcquire()) {
-            throw new AiServiceException(503, "AI 서비스가 일시적으로 불안정합니다. 잠시 후 다시 시도해주세요.");
+        // 동시 호출 상한(bulkhead) — 느린 LLM 호출이 Tomcat 풀을 고갈시키지 않게 격리. 초과 시 즉시 503.
+        if (!inFlight.tryAcquire()) {
+            throw new AiServiceException(503, "AI 요청이 혼잡합니다. 잠시 후 다시 시도해주세요.");
         }
         try {
-            T result = call.get();
-            circuit.recordSuccess();
-            return result;
-        } catch (AiServiceException e) {
-            // upstream 4xx/5xx 매핑됨 — 5xx 만 서킷 실패, 4xx 는 입력 문제라 미반영.
-            if (e.getStatus() >= 500) {
-                circuit.recordFailure();
-            } else {
-                circuit.release();
+            if (!circuit.tryAcquire()) {
+                throw new AiServiceException(503, "AI 서비스가 일시적으로 불안정합니다. 잠시 후 다시 시도해주세요.");
             }
-            throw e;
-        } catch (ResourceAccessException e) {
-            // connect/read timeout, connection refused → upstream 장애.
-            circuit.recordFailure();
-            log.warn("AI 서비스 연결 실패 (path={})", path, e);
-            throw new AiServiceException(502, "AI 서비스에 연결할 수 없습니다.");
-        } catch (RuntimeException e) {
-            // 직렬화/변환 등 우리측 결함 — AI 건강과 무관하므로 probe 만 해제.
-            circuit.release();
-            log.warn("AI 서비스 호출 실패 (path={})", path, e);
-            throw new AiServiceException(502, "AI 서비스 호출에 실패했습니다.");
+            try {
+                T result = call.get();
+                circuit.recordSuccess();
+                return result;
+            } catch (AiServiceException e) {
+                // upstream 4xx/5xx 매핑됨 — 5xx 만 서킷 실패, 4xx 는 입력 문제라 미반영.
+                if (e.getStatus() >= 500) {
+                    circuit.recordFailure();
+                } else {
+                    circuit.release();
+                }
+                throw e;
+            } catch (ResourceAccessException e) {
+                // connect/read timeout, connection refused → upstream 장애.
+                circuit.recordFailure();
+                log.warn("AI 서비스 연결 실패 (path={})", path, e);
+                throw new AiServiceException(502, "AI 서비스에 연결할 수 없습니다.");
+            } catch (RuntimeException e) {
+                // 직렬화/변환 등 우리측 결함 — AI 건강과 무관하므로 probe 만 해제.
+                circuit.release();
+                log.warn("AI 서비스 호출 실패 (path={})", path, e);
+                throw new AiServiceException(502, "AI 서비스 호출에 실패했습니다.");
+            }
+        } finally {
+            inFlight.release();
         }
     }
 

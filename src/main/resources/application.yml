@@ -134,6 +134,8 @@ krip:
     # 서킷 브레이커 — 연속 실패 N회 시 cooldown(ms) 동안 호출 단락(fast-fail).
     circuit-failure-threshold: ${AI_CIRCUIT_FAILURE_THRESHOLD:5}
     circuit-open-ms: ${AI_CIRCUIT_OPEN_MS:30000}
+    # 동시 AI 호출 상한(bulkhead) — 초과 시 503. 느린 LLM 호출이 Tomcat 풀을 고갈시키는 것을 차단.
+    max-concurrency: ${AI_MAX_CONCURRENCY:16}
   fcm:
     # Firebase 서비스 계정 JSON 경로. 미설정/파일 부재 시 FCM 발송 비활성(토큰/뮤트/인박스는 정상).
     enabled: ${FCM_ENABLED:true}
