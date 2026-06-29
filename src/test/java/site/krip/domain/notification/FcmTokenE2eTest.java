@@ -178,7 +178,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(json()))
                 .andExpect(status().isBadRequest());
     }
 

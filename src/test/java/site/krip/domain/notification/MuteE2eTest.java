@@ -82,7 +82,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/global")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(json()))
                 .andExpect(status().isBadRequest());
     }
 
@@ -166,7 +166,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(json()))
                 .andExpect(status().isBadRequest());
     }
 

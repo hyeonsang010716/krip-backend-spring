@@ -41,7 +41,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
     void updatePlanMissingTitleKey() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(patch(NO_SUCH_PLAN)
-                        .contentType(MediaType.APPLICATION_JSON).content("{}")
+                        .contentType(MediaType.APPLICATION_JSON).content(json())
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }

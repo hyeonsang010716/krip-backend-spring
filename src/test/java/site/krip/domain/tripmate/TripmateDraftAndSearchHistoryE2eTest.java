@@ -78,7 +78,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tripmate/posts/draft")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(json()))
                 .andExpect(status().isOk());
     }
 
