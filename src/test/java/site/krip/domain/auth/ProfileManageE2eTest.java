@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.List;
+
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -35,13 +37,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "user_name": "수정후이름",
-                                  "age": 30,
-                                  "travel_styles": ["healing", "food_tour"]
-                                }
-                                """))
+                        .content(json("user_name", "수정후이름", "age", 30, "travel_styles", List.of("healing", "food_tour"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_name").value("수정후이름"))
                 .andExpect(jsonPath("$.age").value(30))
@@ -65,14 +61,14 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"travel_styles\": [\"healing\"]}"))
+                        .content(json("travel_styles", List.of("healing"))))
                 .andExpect(status().isOk());
 
         // 빈 배열 → 전체 삭제
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"travel_styles\": []}"))
+                        .content(json("travel_styles", List.of())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.travel_styles").isEmpty());
     }
@@ -85,7 +81,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"email\": \"not-an-email\"}"))
+                        .content(json("email", "not-an-email")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -97,7 +93,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"phone_number\": \"012345678901234567890\"}")) // 21자 > varchar(20)
+                        .content(json("phone_number", "012345678901234567890"))) // 21자 > varchar(20)
                 .andExpect(status().isBadRequest());
     }
 

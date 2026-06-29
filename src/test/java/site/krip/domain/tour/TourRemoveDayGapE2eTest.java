@@ -46,7 +46,7 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\":" + day + ",\"place_id\":\"" + placeId + "\",\"visit_time\":\"11:00\"}"))
+                        .content(json("day_number", day, "place_id", placeId, "visit_time", "11:00")))
                 .andExpect(status().isCreated());
     }
 

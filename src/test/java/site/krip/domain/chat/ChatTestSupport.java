@@ -4,6 +4,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.List;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -18,7 +20,7 @@ abstract class ChatTestSupport extends IntegrationTestSupport {
         return mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + peer + "\"}"))
+                        .content(json("peer_user_id", peer)))
                 .andReturn();
     }
 
@@ -27,7 +29,7 @@ abstract class ChatTestSupport extends IntegrationTestSupport {
         MvcResult res = mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + peer + "\"}"))
+                        .content(json("peer_user_id", peer)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return idFrom(res, "chat_room_id");
@@ -35,17 +37,10 @@ abstract class ChatTestSupport extends IntegrationTestSupport {
 
     /** 그룹 방 생성(201 확인) 후 chat_room_id 반환. */
     protected String createGroup(String me, String title, String... memberIds) throws Exception {
-        StringBuilder ids = new StringBuilder();
-        for (int i = 0; i < memberIds.length; i++) {
-            if (i > 0) {
-                ids.append(",");
-            }
-            ids.append("\"").append(memberIds[i]).append("\"");
-        }
         MvcResult res = mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + title + "\",\"member_ids\":[" + ids + "]}"))
+                        .content(json("title", title, "member_ids", List.of(memberIds))))
                 .andExpect(status().isCreated())
                 .andReturn();
         return idFrom(res, "chat_room_id");

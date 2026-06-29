@@ -34,7 +34,7 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
                         .with(auth(commenter))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"" + content + "\"}"))
+                        .content(json("content", content)))
                 .andExpect(status().isCreated());
     }
 

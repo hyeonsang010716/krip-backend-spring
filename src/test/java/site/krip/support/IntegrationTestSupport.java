@@ -21,9 +21,13 @@ import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.auth.jwt.JwtProvider;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -148,7 +152,7 @@ public abstract class IntegrationTestSupport {
         String res = mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + b + "\"}"))
+                        .content(json("addressee_id", b)))
                 .andExpect(status().isCreated())
                 .andReturn().getResponse().getContentAsString();
         String friendshipId = JsonPath.read(res, "$.friendship_id");
@@ -162,8 +166,25 @@ public abstract class IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(blocker))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + blocked + "\"}"))
+                        .content(json("target_user_id", blocked)))
                 .andExpect(status().isCreated());
+    }
+
+    /**
+     * key-value 쌍으로 JSON 요청 본문을 만든다 — Jackson 이 이스케이프/타입 변환을 처리하므로
+     * 손으로 따옴표를 붙이지 않는다. 값은 String/Number/Boolean/List/Map/null 모두 가능.
+     * 예: {@code json("title", "방", "member_ids", List.of(a, b))}.
+     */
+    protected String json(Object... keyValues) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        for (int i = 0; i + 1 < keyValues.length; i += 2) {
+            body.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        try {
+            return objectMapper.writeValueAsString(body);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("test json build failed", e);
+        }
     }
 
     /** 응답 본문을 JsonNode 로 파싱. */

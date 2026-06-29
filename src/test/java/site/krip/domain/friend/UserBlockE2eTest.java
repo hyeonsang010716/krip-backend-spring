@@ -31,7 +31,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + b + "\"}"))
+                        .content(json("target_user_id", b)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.block_id").exists())
                 .andExpect(jsonPath("$.blocked.user_id").value(b));
@@ -70,7 +70,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + b + "\"}"))
+                        .content(json("target_user_id", b)))
                 .andExpect(status().isCreated());
 
         // A 의 검색에서 B 제외(내가 차단한 유저)
@@ -115,13 +115,13 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + b + "\"}"))
+                        .content(json("target_user_id", b)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + b + "\"}"))
+                        .content(json("addressee_id", b)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -134,7 +134,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + a + "\"}"))
+                        .content(json("target_user_id", a)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -148,13 +148,13 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + b + "\"}"))
+                        .content(json("target_user_id", b)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + b + "\"}"))
+                        .content(json("target_user_id", b)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -168,7 +168,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + preRegister + "\"}"))
+                        .content(json("target_user_id", preRegister)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }

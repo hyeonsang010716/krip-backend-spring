@@ -119,7 +119,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\": \"서울 알찬 여행\"}"))
+                        .content(json("title", "서울 알찬 여행")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan_id").value(planId))
                 .andExpect(jsonPath("$.title").value("서울 알찬 여행"));
@@ -134,7 +134,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         MvcResult addedItem = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\": 1, \"place_id\": \"" + placeB + "\", \"visit_time\": \"13:00\"}"))
+                        .content(json("day_number", 1, "place_id", placeB, "visit_time", "13:00")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.place_id").value(placeB))
                 .andExpect(jsonPath("$.day_number").value(1))
@@ -147,7 +147,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         MvcResult addedItemC = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\": 1, \"place_id\": \"" + placeC + "\", \"visit_time\": \"15:00\"}"))
+                        .content(json("day_number", 1, "place_id", placeC, "visit_time", "15:00")))
                 .andExpect(status().isCreated())
                 .andReturn();
         String itemCId = objectMapper.readTree(addedItemC.getResponse().getContentAsString())
@@ -166,7 +166,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/" + itemBId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"" + placeC + "\", \"visit_time\": \"14:30\"}"))
+                        .content(json("place_id", placeC, "visit_time", "14:30")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.item_id").value(itemBId))
                 .andExpect(jsonPath("$.place_id").value(placeC))
@@ -177,7 +177,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemCId + "/move")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_day_number\": 2, \"after_item_id\": null}"))
+                        .content(json("target_day_number", 2, "after_item_id", null)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -232,7 +232,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\": 1, \"place_id\": \"" + placeA + "\", \"visit_time\": \"11:00\"}"))
+                        .content(json("day_number", 1, "place_id", placeA, "visit_time", "11:00")))
                 .andExpect(status().isCreated());
 
         // day1 의 첫 카드 id 조회
@@ -247,7 +247,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_day_number\": 1, \"after_item_id\": \"no-such-item\"}"))
+                        .content(json("target_day_number", 1, "after_item_id", "no-such-item")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -267,7 +267,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_day_number\": 1, \"after_item_id\": \"" + itemId + "\"}"))
+                        .content(json("target_day_number", 1, "after_item_id", itemId)))
                 .andExpect(status().isOk());
 
         // 위치 불변 확인 — day1 에 그대로.
@@ -295,7 +295,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_day_number\": 2, \"after_item_id\": \"" + itemId + "\"}"))
+                        .content(json("target_day_number", 2, "after_item_id", itemId)))
                 .andExpect(status().isOk());
 
         // day2 로 실제 이동됐는지 확인 (구버그: silent no-op 으로 day1 잔존).
@@ -327,7 +327,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
             mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + moving + "/move")
                             .with(auth(userId))
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"target_day_number\": 1, \"after_item_id\": \"" + c0 + "\"}"))
+                            .content(json("target_day_number", 1, "after_item_id", c0)))
                     .andExpect(status().isOk());
         }
 
@@ -347,7 +347,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         MvcResult res = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\": 1, \"place_id\": \"" + placeId + "\", \"visit_time\": \"10:00\"}"))
+                        .content(json("day_number", 1, "place_id", placeId, "visit_time", "10:00")))
                 .andExpect(status().isCreated())
                 .andReturn();
         return objectMapper.readTree(res.getResponse().getContentAsString()).get("item_id").asText();
@@ -363,7 +363,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\": 9, \"place_id\": \"" + placeA + "\"}"))
+                        .content(json("day_number", 9, "place_id", placeA)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -377,7 +377,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"day_number\": 1, \"place_id\": \"no-such-place\"}"))
+                        .content(json("day_number", 1, "place_id", "no-such-place")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -388,7 +388,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/plans")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\": \"빈 플랜\", \"travel_days\": 2, \"items\": []}"))
+                        .content(json("title", "빈 플랜", "travel_days", 2, "items", List.of())))
                 .andExpect(status().isBadRequest());
     }
 

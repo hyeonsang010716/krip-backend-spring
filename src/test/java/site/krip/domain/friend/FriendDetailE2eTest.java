@@ -30,7 +30,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + addressee + "\"}"))
+                        .content(json("addressee_id", addressee)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return idFrom(res, "friendship_id");

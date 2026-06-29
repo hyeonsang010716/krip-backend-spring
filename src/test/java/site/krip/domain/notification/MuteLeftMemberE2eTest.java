@@ -47,7 +47,7 @@ class MuteLeftMemberE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"muted\": true}"))
+                        .content(json("muted", true)))
                 .andExpect(status().isBadRequest());
     }
 }

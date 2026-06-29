@@ -37,7 +37,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + addressee + "\"}"))
+                        .content(json("addressee_id", addressee)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return idFrom(res, "friendship_id");
@@ -158,7 +158,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + addressee + "\"}"))
+                        .content(json("addressee_id", addressee)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -211,7 +211,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"no-such-user\"}"))
+                        .content(json("target_user_id", "no-such-user")))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.detail").exists());
     }

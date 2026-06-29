@@ -24,7 +24,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + viewer + "\"}"))
+                        .content(json("addressee_id", viewer)))
                 .andExpect(status().isCreated());
 
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);

@@ -29,7 +29,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"caption\": \"새로운 캡션\"}"))
+                        .content(json("caption", "새로운 캡션")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.caption").value("새로운 캡션"));
@@ -44,7 +44,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"caption\": \"   \"}"))
+                        .content(json("caption", "   ")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.caption").doesNotExist());
     }
@@ -59,7 +59,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"caption\": \"" + caption101 + "\"}"))
+                        .content(json("caption", caption101)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -74,7 +74,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"caption\": \"" + emoji100 + "\"}"))
+                        .content(json("caption", emoji100)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.caption").value(emoji100));
     }
@@ -89,7 +89,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"caption\": \"" + emoji101 + "\"}"))
+                        .content(json("caption", emoji101)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -103,7 +103,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"caption\": \"뺏으려는 캡션\"}"))
+                        .content(json("caption", "뺏으려는 캡션")))
                 .andExpect(status().isNotFound());
     }
 
@@ -118,7 +118,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"visibility\": \"private\"}"))
+                        .content(json("visibility", "private")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.visibility").value("private"));
@@ -133,7 +133,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"visibility\": \"private\"}"))
+                        .content(json("visibility", "private")))
                 .andExpect(status().isOk());
 
         // 별도 요청(새 트랜잭션)으로 재조회 — DB 영속 확인
@@ -152,7 +152,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"visibility\": \"bogus\"}"))
+                        .content(json("visibility", "bogus")))
                 .andExpect(status().isBadRequest());
     }
 

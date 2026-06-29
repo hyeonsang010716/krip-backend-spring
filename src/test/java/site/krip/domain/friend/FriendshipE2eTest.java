@@ -26,7 +26,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + addressee + "\"}"))
+                        .content(json("addressee_id", addressee)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.is_requester").value(true))
@@ -176,7 +176,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(b))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + a + "\"}"))
+                        .content(json("addressee_id", a)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.is_requester").value(true))
@@ -198,7 +198,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + a + "\"}"))
+                        .content(json("addressee_id", a)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -214,7 +214,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + b + "\"}"))
+                        .content(json("addressee_id", b)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -254,7 +254,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + preRegister + "\"}"))
+                        .content(json("addressee_id", preRegister)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }

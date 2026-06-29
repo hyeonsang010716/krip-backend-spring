@@ -109,7 +109,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/places/favorites")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"" + placeId + "\"}"))
+                        .content(json("place_id", placeId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -117,7 +117,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/places/favorites")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"" + placeId + "\"}"))
+                        .content(json("place_id", placeId)))
                 .andExpect(status().isBadRequest());
 
         // 목록 (200) — 추가된 장소가 반영
@@ -153,7 +153,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/places/favorites")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"no-such-place\"}"))
+                        .content(json("place_id", "no-such-place")))
                 .andExpect(status().isBadRequest());
     }
 

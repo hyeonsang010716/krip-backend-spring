@@ -77,7 +77,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(viewer))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + target + "\"}"))
+                        .content(json("addressee_id", target)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/friend/search")
@@ -187,7 +187,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(viewer))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + target + "\"}"))
+                        .content(json("addressee_id", target)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)

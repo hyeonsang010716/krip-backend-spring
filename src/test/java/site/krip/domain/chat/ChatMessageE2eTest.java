@@ -205,7 +205,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"수정됨\"}"))
+                        .content(json("content", "수정됨")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message_id").value(messageId))
                 .andExpect(jsonPath("$.content").value("수정됨"))
@@ -223,7 +223,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(b))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"해킹\"}"))
+                        .content(json("content", "해킹")))
                 .andExpect(status().isForbidden());
     }
 
@@ -240,7 +240,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"이미늦음\"}"))
+                        .content(json("content", "이미늦음")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -253,7 +253,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         mockMvc.perform(patch("/api/chat/messages/{id}", "no-such-message")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"내용\"}"))
+                        .content(json("content", "내용")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -269,7 +269,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"\"}"))
+                        .content(json("content", "")))
                 .andExpect(status().isBadRequest());
     }
 

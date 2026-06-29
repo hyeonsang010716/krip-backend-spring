@@ -23,7 +23,7 @@ class FeedCommentLengthE2eTest extends IntegrationTestSupport {
             throws Exception {
         mockMvc.perform(post(COMMENTS)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"content\":\"" + content + "\"}")
+                        .content(json("content", content))
                         .with(auth(userId)))
                 .andExpect(expect);
     }

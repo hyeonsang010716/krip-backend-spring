@@ -124,7 +124,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\": \"   \"}"))
+                        .content(json("title", "   ")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -140,7 +140,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(patch("/api/tour/plans/" + planId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\": \"가로채기\"}"))
+                        .content(json("title", "가로채기")))
                 .andExpect(status().isForbidden());
     }
 
@@ -193,7 +193,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/" + itemId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"" + placeId + "\", \"visit_time\": \"11:00\"}"))
+                        .content(json("place_id", placeId, "visit_time", "11:00")))
                 .andExpect(status().isForbidden());
     }
 
@@ -220,7 +220,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/" + itemId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"no-such-place\", \"visit_time\": \"11:00\"}"))
+                        .content(json("place_id", "no-such-place", "visit_time", "11:00")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -234,7 +234,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/no-such-item")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"" + placeId + "\", \"visit_time\": \"11:00\"}"))
+                        .content(json("place_id", placeId, "visit_time", "11:00")))
                 .andExpect(status().isNotFound());
     }
 }

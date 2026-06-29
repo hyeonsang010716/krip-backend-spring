@@ -54,7 +54,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
     void updatePlanNullTitlePassesValidation() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(patch(NO_SUCH_PLAN)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"title\": null}")
+                        .contentType(MediaType.APPLICATION_JSON).content(json("title", null))
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
@@ -64,7 +64,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
     void updateItemMissingVisitTimeKey() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(put(NO_SUCH_ITEM)
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"place_id\": \"p1\"}")
+                        .contentType(MediaType.APPLICATION_JSON).content(json("place_id", "p1"))
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
@@ -77,7 +77,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
         seedPlace("p1");
         mockMvc.perform(put(NO_SUCH_ITEM)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"place_id\": \"p1\", \"visit_time\": null}")
+                        .content(json("place_id", "p1", "visit_time", null))
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }

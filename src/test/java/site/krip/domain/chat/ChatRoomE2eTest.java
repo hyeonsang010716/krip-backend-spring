@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -56,7 +58,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + b + "\"}"))
+                        .content(json("peer_user_id", b)))
                 .andExpect(status().isCreated());
     }
 
@@ -68,7 +70,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + a + "\"}"))
+                        .content(json("peer_user_id", a)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -81,7 +83,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"nonexistent-user-id\"}"))
+                        .content(json("peer_user_id", "nonexistent-user-id")))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -96,7 +98,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + b + "\"}"))
+                        .content(json("peer_user_id", b)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -143,7 +145,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"혼자방\",\"member_ids\":[\"" + owner + "\"]}"))
+                        .content(json("title", "혼자방", "member_ids", List.of(owner))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -157,7 +159,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"낯선방\",\"member_ids\":[\"" + stranger + "\"]}"))
+                        .content(json("title", "낯선방", "member_ids", List.of(stranger))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -170,7 +172,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"빈방\",\"member_ids\":[]}"))
+                        .content(json("title", "빈방", "member_ids", List.of())))
                 .andExpect(status().isBadRequest());
     }
 
@@ -190,7 +192,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_ids\":[\"" + invitee + "\"]}"))
+                        .content(json("user_ids", List.of(invitee))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.invited_user_ids[0]").value(invitee));
     }
@@ -208,7 +210,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_ids\":[\"" + stranger + "\"]}"))
+                        .content(json("user_ids", List.of(stranger))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -228,7 +230,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
                         .with(auth(outsider))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_ids\":[\"" + target + "\"]}"))
+                        .content(json("user_ids", List.of(target))))
                 .andExpect(status().isForbidden());
     }
 
@@ -263,7 +265,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_id\":\"" + target + "\"}"))
+                        .content(json("user_id", target)))
                 .andExpect(status().isNoContent());
     }
 
@@ -282,7 +284,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(m1))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_id\":\"" + m2 + "\"}"))
+                        .content(json("user_id", m2)))
                 .andExpect(status().isForbidden());
     }
 

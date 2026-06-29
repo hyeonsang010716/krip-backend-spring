@@ -42,7 +42,7 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_id\":\"" + b + "\"}"))
+                        .content(json("user_id", b)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -57,7 +57,7 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_id\":\"" + owner + "\"}"))
+                        .content(json("user_id", owner)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -78,7 +78,7 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"user_id\":\"" + member + "\"}"))
+                        .content(json("user_id", member)))
                 .andExpect(status().isBadRequest());
     }
 }
