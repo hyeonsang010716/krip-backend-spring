@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,20 +30,20 @@ class ChatRoomE2eTest extends ChatTestSupport {
         String b = fixtures.createActiveUser("밥");
 
         MvcResult res = createDirect(a, b);
-        org.junit.jupiter.api.Assertions.assertEquals(201, res.getResponse().getStatus());
+        assertThat(res.getResponse().getStatus()).isEqualTo(201);
         JsonNode body = readJson(res);
         String roomId = body.get("chat_room_id").asText();
-        org.junit.jupiter.api.Assertions.assertEquals("direct", body.get("type").asText());
-        org.junit.jupiter.api.Assertions.assertEquals(b, body.get("peer").get("user_id").asText());
+        assertThat(body.get("type").asText()).isEqualTo("direct");
+        assertThat(body.get("peer").get("user_id").asText()).isEqualTo(b);
 
         // 재생성 → 같은 room_id (canonical UNIQUE 로 idempotent)
         MvcResult again = createDirect(a, b);
-        org.junit.jupiter.api.Assertions.assertEquals(201, again.getResponse().getStatus());
-        org.junit.jupiter.api.Assertions.assertEquals(roomId, idFrom(again, "chat_room_id"));
+        assertThat(again.getResponse().getStatus()).isEqualTo(201);
+        assertThat(idFrom(again, "chat_room_id")).isEqualTo(roomId);
 
         // 반대 방향(B→A)도 동일 방 (canonical 정렬)
         MvcResult reverse = createDirect(b, a);
-        org.junit.jupiter.api.Assertions.assertEquals(roomId, idFrom(reverse, "chat_room_id"));
+        assertThat(idFrom(reverse, "chat_room_id")).isEqualTo(roomId);
     }
 
     @Test
@@ -124,7 +125,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         makeFriends(owner, m2);
 
         String roomId = createGroup(owner, "여행 단톡방", m1, m2);
-        org.junit.jupiter.api.Assertions.assertNotNull(roomId);
+        assertThat(roomId).isNotNull();
 
         // 방 상세 — GROUP + title
         mockMvc.perform(get("/api/chat/rooms/{id}", roomId)

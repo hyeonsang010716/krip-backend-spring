@@ -13,6 +13,7 @@ import site.krip.support.IntegrationTestSupport;
 import java.util.List;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -98,7 +99,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.user_id").doesNotExist())
                 .andReturn();
         JsonNode body = objectMapper.readTree(res.getResponse().getContentAsString());
-        org.junit.jupiter.api.Assertions.assertFalse(body.has("user_id"), "공개 응답에 user_id 가 없어야 한다");
+        assertThat(body.has("user_id")).as("공개 응답에 user_id 가 없어야 한다").isFalse();
     }
 
     // ──────────────────── 오류 케이스 ────────────────────

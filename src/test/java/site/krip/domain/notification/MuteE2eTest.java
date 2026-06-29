@@ -13,8 +13,7 @@ import site.krip.domain.chat.repository.ChatRoomMemberRepository;
 import site.krip.domain.chat.repository.ChatRoomRepository;
 import site.krip.support.IntegrationTestSupport;
 
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,7 +55,7 @@ class MuteE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.message").exists());
 
         User user = userRepo.findById(userId).orElseThrow();
-        assertTrue(user.isNotificationMuted(), "전역 mute=true 가 영속되어야 한다");
+        assertThat(user.isNotificationMuted()).as("전역 mute=true 가 영속되어야 한다").isTrue();
     }
 
     @Test
@@ -79,7 +78,7 @@ class MuteE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isOk());
 
         User user = userRepo.findById(userId).orElseThrow();
-        assertTrue(!user.isNotificationMuted(), "해제 후 mute 가 false 여야 한다");
+        assertThat(user.isNotificationMuted()).as("해제 후 mute 가 false 여야 한다").isFalse();
     }
 
     @Test
@@ -111,7 +110,7 @@ class MuteE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.message").exists());
 
         ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(roomId, userId)).orElseThrow();
-        assertTrue(Boolean.TRUE.equals(member.getNotificationMuted()), "방 mute=true 가 영속되어야 한다");
+        assertThat(member.getNotificationMuted()).as("방 mute=true 가 영속되어야 한다").isTrue();
     }
 
     @Test
@@ -134,7 +133,7 @@ class MuteE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isOk());
 
         ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(roomId, userId)).orElseThrow();
-        assertNull(member.getNotificationMuted(), "해제는 NULL 로 정규화되어야 한다");
+        assertThat(member.getNotificationMuted()).as("해제는 NULL 로 정규화되어야 한다").isNull();
     }
 
     @Test

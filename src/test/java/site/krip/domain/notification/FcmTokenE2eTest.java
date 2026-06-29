@@ -10,8 +10,7 @@ import site.krip.domain.notification.entity.FcmToken;
 import site.krip.domain.notification.repository.FcmTokenRepository;
 import site.krip.support.IntegrationTestSupport;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -71,7 +70,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String secondId = objectMapper.readTree(second.getResponse().getContentAsString())
                 .get("fcm_token_id").asText();
 
-        assertEquals(firstId, secondId, "같은 토큰 재등록은 동일 fcm_token_id 를 돌려줘야 한다");
+        assertThat(secondId).as("같은 토큰 재등록은 동일 fcm_token_id 를 돌려줘야 한다").isEqualTo(firstId);
     }
 
     @Test
@@ -88,8 +87,8 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
 
         // 등록 직후엔 created_at == updated_at.
         FcmToken afterCreate = tokenRepo.findByToken(token).orElseThrow();
-        assertEquals(afterCreate.getCreatedAt(), afterCreate.getUpdatedAt(),
-                "최초 등록 시 created_at 과 updated_at 이 같아야 한다");
+        assertThat(afterCreate.getUpdatedAt()).as("최초 등록 시 created_at 과 updated_at 이 같아야 한다")
+                .isEqualTo(afterCreate.getCreatedAt());
 
         Thread.sleep(10); // updated_at 이 확실히 뒤가 되도록 최소 간격 확보.
 
@@ -101,8 +100,8 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
 
         // 동일 owner 재등록인데도 updated_at 이 created_at 보다 뒤로 갱신되어야 한다(early-return 회귀 방지).
         FcmToken afterReRegister = tokenRepo.findByToken(token).orElseThrow();
-        assertTrue(afterReRegister.getUpdatedAt().isAfter(afterReRegister.getCreatedAt()),
-                "동일 토큰 재등록 시 updated_at 이 갱신되어야 한다");
+        assertThat(afterReRegister.getUpdatedAt()).as("동일 토큰 재등록 시 updated_at 이 갱신되어야 한다")
+                .isAfter(afterReRegister.getCreatedAt());
     }
 
     @Test
@@ -131,9 +130,9 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
                 .get("fcm_token_id").asText();
 
         // 같은 토큰 → 같은 행(같은 id), 소유자만 B 로 교체.
-        assertEquals(firstId, secondId, "동일 토큰은 owner 교체일 뿐 새 행이 아니다");
+        assertThat(secondId).as("동일 토큰은 owner 교체일 뿐 새 행이 아니다").isEqualTo(firstId);
         FcmToken row = tokenRepo.findByToken(token).orElseThrow();
-        assertEquals(ownerB, row.getUserId(), "토큰 소유자가 B 로 교체되어야 한다");
+        assertThat(row.getUserId()).as("토큰 소유자가 B 로 교체되어야 한다").isEqualTo(ownerB);
     }
 
     @Test
@@ -155,7 +154,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
-        assertTrue(tokenRepo.findByToken(token).isEmpty(), "해제 후 토큰이 삭제되어야 한다");
+        assertThat(tokenRepo.findByToken(token)).as("해제 후 토큰이 삭제되어야 한다").isEmpty();
     }
 
     @Test
