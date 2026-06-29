@@ -1,6 +1,8 @@
 package site.krip.domain.tripmate.controller;
 
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,6 +22,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/tripmate/search-history")
 @RequiredArgsConstructor
+@Validated
 public class TripmateSearchHistoryController {
 
     private final TripmateSearchHistoryService searchService;
@@ -34,7 +37,8 @@ public class TripmateSearchHistoryController {
 
     @DeleteMapping("/one")
     public MessageResponse deleteSearch(@CurrentUserId String userId,
-                                        @RequestParam("search_name") String searchName) {
+                                        @RequestParam("search_name")
+                                        @Size(max = 100, message = "검색어는 100자 이하여야 합니다.") String searchName) {
         searchService.deleteSearch(userId, searchName);
         return new MessageResponse("검색어가 삭제되었습니다.");
     }

@@ -1,7 +1,9 @@
 package site.krip.domain.ai.controller;
 
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -18,6 +20,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/menu-ai/ocr")
 @RequiredArgsConstructor
+@Validated
 public class AiOcrController {
 
     private final AiOcrService ocrService;
@@ -30,7 +33,9 @@ public class AiOcrController {
 
     @PostMapping("/batch")
     @ResponseStatus(HttpStatus.OK)
-    public OcrBatchResponse ocrBatch(@RequestParam("files") List<MultipartFile> files) {
+    public OcrBatchResponse ocrBatch(
+            @RequestParam("files")
+            @Size(max = 10, message = "한 번에 최대 10개까지 업로드할 수 있습니다.") List<MultipartFile> files) {
         return ocrService.ocrBatch(files);
     }
 }

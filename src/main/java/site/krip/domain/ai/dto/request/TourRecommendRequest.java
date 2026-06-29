@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -20,6 +21,7 @@ public record TourRecommendRequest(
         String foodPreference,
 
         @NotEmpty(message = "days 는 필수입니다.")
+        @Size(max = 3, message = "days 는 최대 3개까지 가능합니다.")
         @Valid
         List<TourDayRequest> days
 ) {

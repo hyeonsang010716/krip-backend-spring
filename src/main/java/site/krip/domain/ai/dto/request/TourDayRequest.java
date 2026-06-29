@@ -3,6 +3,7 @@ package site.krip.domain.ai.dto.request;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 
 import java.util.List;
 
@@ -32,6 +33,7 @@ public record TourDayRequest(
         int budgetPerPersonKrw,
 
         @NotEmpty(message = "styles 는 최소 1개 이상이어야 합니다.")
+        @Size(max = 20, message = "styles 는 최대 20개까지 가능합니다.")
         List<String> styles,
 
         @NotBlank(message = "schedule_density 는 필수입니다.")
