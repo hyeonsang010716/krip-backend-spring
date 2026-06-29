@@ -2,57 +2,28 @@ package site.krip.domain.auth;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import site.krip.domain.auth.document.WithdrawalRequest;
-import site.krip.domain.auth.repository.UserRepository;
-import site.krip.domain.auth.repository.WithdrawalRequestRepository;
-import site.krip.domain.auth.service.WithdrawService;
 import site.krip.global.storage.ObjectStorage;
-import site.krip.support.IntegrationTestSupport;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 
 /**
- * 외부 리소스(PII) 정리 실패 시 작업 큐(doc) 보존 + 다음 사이클 재시도 검증.
- *
- * <p>Object Storage 삭제를 첫 호출만 실패시켜, RDB 유저는 hard delete 되더라도 doc 이 남아 영구 누수를
- * 막는지(= 다음 사이클이 다시 집어 재처리하는지) 확인한다.
+ * 외부 리소스(PII) 정리 실패 시 작업 큐(doc) 보존 + 다음 사이클 재시도 검증 — Object Storage 삭제를
+ * 첫 호출만 실패시켜, RDB 유저는 hard delete 되더라도 doc 이 남아 영구 누수를 막는지 확인한다.
  */
-class WithdrawPurgeRetentionIntegrationTest extends IntegrationTestSupport {
-
-    @Autowired
-    private WithdrawService withdrawService;
-
-    @Autowired
-    private WithdrawalRequestRepository withdrawalRequestRepository;
-
-    @Autowired
-    private UserRepository userRepository;
+class WithdrawPurgeRetentionIntegrationTest extends WithdrawPurgeTestSupport {
 
     @MockitoBean
     private ObjectStorage storage;
-
-    private boolean withdrawalDocExists(String userId) {
-        Instant farFuture = Instant.now().plus(3650, ChronoUnit.DAYS);
-        return withdrawalRequestRepository.findDue(farFuture).stream()
-                .map(WithdrawalRequest::getUserId)
-                .anyMatch(userId::equals);
-    }
 
     @Test
     @DisplayName("외부 삭제 실패 → 유저는 삭제되나 doc 보존(재시도), 이후 성공 시 doc 제거")
     void retainsWorkItemWhenExternalPurgeFailsThenRetries() {
         String userId = fixtures.createActiveUser("재시도대상");
         withdrawService.requestWithdraw(userId);
-        Instant past = Instant.now().minus(1, ChronoUnit.DAYS);
-        withdrawalRequestRepository.upsert(userId, past, past); // due 로 만든다
+        makeDue(userId);
 
         // 첫 purge 의 Object Storage 삭제만 실패시키고, 두 번째부터는 성공시킨다.
         doThrow(new RuntimeException("S3 down")).doNothing().when(storage).deleteByPrefix(anyString());

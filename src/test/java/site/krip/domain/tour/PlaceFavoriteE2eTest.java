@@ -1,15 +1,10 @@
 package site.krip.domain.tour;
 
-import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
-import site.krip.support.IntegrationTestSupport;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,36 +13,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 장소 조회 + 즐겨찾기 + 검색 기록 E2E.
- *
- * <p>경로: {@code /api/tour/places}, {@code /api/tour/search-history}.
- * 즐겨찾기는 MongoDB place 문서를 시드해 검증하고, 거리순(geo) 조회는 geoNear 시드가 무거워
- * 빈 결과/단건 404 경로만 검증한다. 검색 기록은 place 조회(keyword)로 저장을 유발한다.
+ * 장소 조회 + 즐겨찾기 + 검색 기록 E2E ({@code /api/tour/places}, {@code /api/tour/search-history}).
+ * 거리순(geo) 조회는 시드가 무거워 빈/페이지 경로만 검증한다.
  */
-class PlaceFavoriteE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private MongoTemplate mongo;
-
-    /**
-     * 최소 Place 문서를 place 컬렉션에 시드(GeoJSON location 포함)하고 place_id 반환.
-     * location 을 넣어 geoNear 인덱스 요구를 충족하지만, 좌표/거리 단언은 하지 않는다.
-     */
-    private String seedPlace(String displayName) {
-        String placeId = "place-" + UUID.randomUUID();
-        Document loc = new Document("type", "Point")
-                .append("coordinates", List.of(126.97688, 37.57594));
-        Document doc = new Document()
-                .append("place_id", placeId)
-                .append("display_name", displayName)
-                .append("address", "서울 어딘가")
-                .append("category", "tourist")
-                .append("location", loc)
-                .append("rating", 4.2)
-                .append("photos", List.of("https://example.com/x.jpg"));
-        mongo.getCollection("place").insertOne(doc);
-        return placeId;
-    }
+class PlaceFavoriteE2eTest extends TourTestSupport {
 
     // ──────────────────── 장소 조회 ────────────────────
 

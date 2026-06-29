@@ -1,16 +1,11 @@
 package site.krip.domain.tour;
 
-import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import java.util.List;
-import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,55 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 여행 플랜 CRUD + 카드 편집 E2E — 생성→조회→목록→제목수정→일차추가→카드추가/수정/이동/삭제→일차삭제→삭제 의
- * 전체 흐름과 권한(403)/유효성(400)/미존재(404) 케이스 검증.
- *
- * <p>경로: {@code /api/tour/plans}. 카드 추가는 place_id 스냅샷이 필요하므로
- * 테스트 시작 시 최소 Place 문서를 MongoDB {@code place} 컬렉션에 BSON 으로 직접 시드한다.
+ * 여행 플랜 CRUD + 카드 편집 E2E ({@code /api/tour/plans}) — 생성→조회→목록→제목수정→일차추가→
+ * 카드추가/수정/이동/삭제→일차삭제→삭제 전체 흐름과 권한(403)/유효성(400)/미존재(404) 케이스.
  */
-class TourPlanE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private MongoTemplate mongo;
-
-    // ──────────────────── 시드 / 헬퍼 ────────────────────
-
-    /** 최소 Place 문서를 place 컬렉션에 시드하고 place_id 반환. display_name/address/rating/photos 만 채운다. */
-    private String seedPlace(String displayName, String address) {
-        String placeId = "place-" + UUID.randomUUID();
-        Document doc = new Document()
-                .append("place_id", placeId)
-                .append("display_name", displayName)
-                .append("address", address)
-                .append("category", "tourist")
-                .append("rating", 4.5)
-                .append("photos", List.of("https://example.com/p1.jpg"));
-        mongo.getCollection("place").insertOne(doc);
-        return placeId;
-    }
-
-    private String createPlanBody(String title, int travelDays, String placeId, int dayNumber, String visitTime) {
-        return """
-                {
-                  "title": "%s",
-                  "travel_days": %d,
-                  "items": [
-                    { "day_number": %d, "place_id": "%s", "visit_time": "%s" }
-                  ]
-                }
-                """.formatted(title, travelDays, dayNumber, placeId, visitTime);
-    }
-
-    /** 플랜 생성 후 plan_id 반환 (선행 데이터 준비용). */
-    private String createPlan(String userId, String title, int travelDays, String placeId) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/tour/plans")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createPlanBody(title, travelDays, placeId, 1, "10:00")))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return idFrom(res, "plan_id");
-    }
+class TourPlanE2eTest extends TourTestSupport {
 
     // ──────────────────── 전체 흐름 ────────────────────
 
@@ -85,7 +35,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         MvcResult created = mockMvc.perform(post("/api/tour/plans")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createPlanBody("서울 2박3일", 3, placeA, 1, "09:00")))
+                        .content(planBody("서울 2박3일", 3, placeA, 1, "09:00")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.user_id").value(userId))
                 .andExpect(jsonPath("$.title").value("서울 2박3일"))
@@ -313,8 +263,8 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                                 .with(auth(userId)))
                         .andReturn().getResponse().getContentAsString())
                 .get("items").get(0).get("item_id").asText();
-        String c1 = addCard(planId, userId, seedPlace("c1", "addr1"));
-        String c2 = addCard(planId, userId, seedPlace("c2", "addr2"));
+        String c1 = addItem(planId, userId, 1, seedPlace("c1", "addr1"));
+        String c2 = addItem(planId, userId, 1, seedPlace("c2", "addr2"));
 
         // c1/c2 를 번갈아 "c0 바로 뒤"로 이동 — 매번 c0 와 후속 사이 갭이 절반으로 줄어 ~51회째 double 표현 한계.
         // 붕괴 후 retry 가 같은 충돌값만 재계산하면 400 이지만, day 재정규화 폴백이 끼어 계속 200 이어야 한다.
@@ -336,17 +286,6 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.items[1].item_id").value(c1))
                 .andExpect(jsonPath("$.items[2].item_id").value(c2))
                 .andExpect(jsonPath("$.items[2].day_number").value(1));
-    }
-
-    /** day1 끝에 카드 추가 후 item_id 반환. */
-    private String addCard(String planId, String userId, String placeId) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("day_number", 1, "place_id", placeId, "visit_time", "10:00")))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return idFrom(res, "item_id");
     }
 
     @Test
@@ -453,7 +392,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/tour/plans")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createPlanBody("초장기", 400, "place-dummy", 1, "10:00")))
+                        .content(planBody("초장기", 400, "place-dummy", 1, "10:00")))
                 .andExpect(status().isBadRequest());
     }
 }
