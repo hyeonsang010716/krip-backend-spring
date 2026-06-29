@@ -101,8 +101,15 @@ public class MessageService {
         }
 
         String dedupeK = ChatRedisKeys.dedupe(senderUserId, clientMsgId);
-        Boolean first = dedupeRedis.opsForValue()
-                .setIfAbsent(dedupeK, "1", Duration.ofSeconds(ChatRedisKeys.DEDUPE_TTL));
+        Boolean first;
+        try {
+            first = dedupeRedis.opsForValue()
+                    .setIfAbsent(dedupeK, "1", Duration.ofSeconds(ChatRedisKeys.DEDUPE_TTL));
+        } catch (RuntimeException e) {
+            // dedupe Redis 장애 — fast-path 생략(fail-open). 멱등성 진실은 Mongo unique index.
+            log.warn("dedupe 기록 실패 — fast-path 생략", e);
+            first = null;
+        }
         if (!Boolean.TRUE.equals(first)) {
             // Redis 키는 fast-path 일 뿐 "처리됨"의 진실이 아니다 — 실제 영속 여부는 Mongo(unique index)가 판단.
             // 저장돼 있으면 멱등 ack, 키만 남고 미저장(set↔insert 사이 크래시)이면 계속 진행해 손실을 막는다.
@@ -124,7 +131,12 @@ public class MessageService {
             // 이전 시도가 이미 영속화됨(dedupe 키 유실/만료 후 재시도) — 멱등: 기존 메시지 ack 반환.
             return existingAck(roomId, senderUserId, clientMsgId);
         } catch (RuntimeException e) {
-            dedupeRedis.delete(dedupeK);
+            // dedupe 키 정리는 best-effort — 실패해도 원인 예외(e)를 가리지 않음(TTL 자연 만료).
+            try {
+                dedupeRedis.delete(dedupeK);
+            } catch (RuntimeException suppressed) {
+                e.addSuppressed(suppressed);
+            }
             throw e;
         }
 

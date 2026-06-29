@@ -7,9 +7,12 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisPassword;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import site.krip.global.config.ChatProperties;
+
+import java.time.Duration;
 
 /**
  * dedupe 전용 Redis 연결 — hot 키(DB 0)와 dedupe 키(DB 1)를 분리한다.
@@ -39,7 +42,11 @@ public class DedupeRedisConfig implements DisposableBean {
         if (connectionDetails.getPassword() != null) {
             config.setPassword(RedisPassword.of(connectionDetails.getPassword()));
         }
-        LettuceConnectionFactory factory = new LettuceConnectionFactory(config);
+        // 수동 팩토리라 spring.data.redis.timeout 미상속(Lettuce 기본 60s) → command 타임아웃 5s 명시.
+        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .commandTimeout(Duration.ofSeconds(5))
+                .build();
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
         factory.afterPropertiesSet();
         factory.start();
         this.dedupeConnectionFactory = factory;
