@@ -95,7 +95,8 @@ krip:
     chat-delivery-pool-size: ${CHAT_DELIVERY_POOL_SIZE:16}
     chat-delivery-queue-capacity: ${CHAT_DELIVERY_QUEUE_CAPACITY:1000}
   auth:
-    access-token: ${ACCESS_TOKEN:dev-access-token}
+    # 필수(기본값 없음) — 미설정 시 부팅 실패. 전 비공개 API 게이트 공유 비밀이라 약한 기본값 금지.
+    access-token: ${ACCESS_TOKEN}
     jwt:
       # 필수(기본값 없음) — 미설정 시 부팅 실패. 로컬/운영 모두 환경변수로 주입(≥32자).
       secret: ${USER_LOGIN_JWT_SECRET_KEY}

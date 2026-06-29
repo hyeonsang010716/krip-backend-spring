@@ -61,7 +61,8 @@ public abstract class IntegrationTestSupport {
         // Redis — hot(DB0)/dedupe(DB1) 모두 같은 컨테이너의 host/port 사용.
         registry.add("spring.data.redis.host", REDIS::getHost);
         registry.add("spring.data.redis.port", () -> REDIS.getMappedPort(6379));
-        // JWT/공유 토큰 secret — application.yml 에 기본값이 없으므로 테스트에서 명시(≥32자).
+        // access-token/JWT/공유 토큰 — application.yml 에 기본값이 없으므로 테스트에서 명시(≥32자).
+        registry.add("krip.auth.access-token", () -> ACCESS_TOKEN);
         registry.add("krip.auth.jwt.secret", () -> "test-login-jwt-secret-value-1234567890");
         registry.add("krip.share.secret", () -> "test-share-jwt-secret-value-1234567890");
         // 테스트는 여러 Spring 컨텍스트(@MockitoBean/@TestPropertySource 등)를 캐시하며 각자 Hikari 풀을 잡는다.

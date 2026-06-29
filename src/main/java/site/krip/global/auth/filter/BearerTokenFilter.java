@@ -23,6 +23,9 @@ public class BearerTokenFilter extends OncePerRequestFilter {
     private final RequestMatcher skip;
 
     public BearerTokenFilter(String accessToken, ObjectMapper mapper, RequestMatcher skip) {
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new IllegalStateException("krip.auth.access-token(ACCESS_TOKEN) 이 설정되지 않았습니다.");
+        }
         this.accessTokenBytes = accessToken.getBytes(StandardCharsets.UTF_8);
         this.mapper = mapper;
         this.skip = skip;
