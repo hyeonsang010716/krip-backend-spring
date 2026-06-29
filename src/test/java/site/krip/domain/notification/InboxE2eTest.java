@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.ResultMatcher;
 import site.krip.domain.notification.document.InboxItem;
 import site.krip.domain.notification.document.TargetType;
 import site.krip.domain.notification.dto.response.InboxListResponse;
@@ -41,6 +42,21 @@ class InboxE2eTest extends IntegrationTestSupport {
                 .orElseThrow();
     }
 
+    /** 목록 응답에 해당 inbox_item_id 항목이 존재하는지 단언. */
+    private static ResultMatcher itemPresent(String id) {
+        return jsonPath("$.items[?(@.inbox_item_id == '" + id + "')]").exists();
+    }
+
+    /** 목록 응답에서 해당 inbox_item_id 항목이 빠졌는지 단언. */
+    private static ResultMatcher itemAbsent(String id) {
+        return jsonPath("$.items[?(@.inbox_item_id == '" + id + "')]").doesNotExist();
+    }
+
+    /** 해당 항목의 is_read 플래그 단언. */
+    private static ResultMatcher itemRead(String id, boolean read) {
+        return jsonPath("$.items[?(@.inbox_item_id == '" + id + "')].is_read").value(read);
+    }
+
     // ──────────────────── 목록 / 카운트 ────────────────────
 
     @Test
@@ -54,7 +70,7 @@ class InboxE2eTest extends IntegrationTestSupport {
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray())
-                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").exists())
+                .andExpect(itemPresent(item.getId()))
                 .andExpect(jsonPath("$.items[0].type").value("feed_like"))
                 .andExpect(jsonPath("$.items[0].actor_id").value(actor));
     }
@@ -97,8 +113,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
-                        + "')].is_read").value(false));
+                .andExpect(itemRead(item.getId(), false));
 
         // 이후 미읽음 카운트는 0 (자동 read 반영).
         mockMvc.perform(get("/api/notification/inbox/unread-count")
@@ -110,8 +125,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
-                        + "')].is_read").value(true));
+                .andExpect(itemRead(item.getId(), true));
     }
 
     @Test
@@ -119,7 +133,8 @@ class InboxE2eTest extends IntegrationTestSupport {
     void autoReadMarksOnlyReturnedPage() {
         String recipient = fixtures.createActiveUser("페이지읽음수신자");
         String actor = fixtures.createActiveUser("페이지읽음행위자");
-        int total = InboxRepository.PAGE_SIZE + 5; // 한 페이지 초과
+        int overflow = 5; // 한 페이지를 넘기는 잔여 건수
+        int total = InboxRepository.PAGE_SIZE + overflow;
         for (int i = 0; i < total; i++) {
             seedFeedLike(recipient, actor, "post-page-" + i);
         }
@@ -181,7 +196,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").doesNotExist());
+                .andExpect(itemAbsent(item.getId()));
     }
 
     @Test
@@ -232,7 +247,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").doesNotExist());
+                .andExpect(itemAbsent(item.getId()));
     }
 
     @Test

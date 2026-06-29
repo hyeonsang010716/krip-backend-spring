@@ -51,11 +51,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         String a = fixtures.createActiveUser("찰리");
         String b = fixtures.createActiveUser("데이브");
 
-        mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(a))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("peer_user_id", b)))
-                .andExpect(status().isCreated());
+        assertThat(createDirect(a, b).getResponse().getStatus()).isEqualTo(201);
     }
 
     @Test
@@ -63,12 +59,9 @@ class ChatRoomE2eTest extends ChatTestSupport {
     void createDirectSelf() throws Exception {
         String a = fixtures.createActiveUser("이브");
 
-        mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(a))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("peer_user_id", a)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").exists());
+        MvcResult res = createDirect(a, a);
+        assertThat(res.getResponse().getStatus()).isEqualTo(400);
+        assertThat(readJson(res).has("detail")).isTrue();
     }
 
     @Test
@@ -76,12 +69,9 @@ class ChatRoomE2eTest extends ChatTestSupport {
     void createDirectNonexistentPeer() throws Exception {
         String a = fixtures.createActiveUser("프랭크");
 
-        mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(a))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("peer_user_id", "nonexistent-user-id")))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").exists());
+        MvcResult res = createDirect(a, "nonexistent-user-id");
+        assertThat(res.getResponse().getStatus()).isEqualTo(400);
+        assertThat(readJson(res).has("detail")).isTrue();
     }
 
     @Test
@@ -91,12 +81,9 @@ class ChatRoomE2eTest extends ChatTestSupport {
         String b = fixtures.createActiveUser("헨리");
         block(a, b);
 
-        mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(a))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("peer_user_id", b)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").exists());
+        MvcResult res = createDirect(a, b);
+        assertThat(res.getResponse().getStatus()).isEqualTo(400);
+        assertThat(readJson(res).has("detail")).isTrue();
     }
 
     @Test

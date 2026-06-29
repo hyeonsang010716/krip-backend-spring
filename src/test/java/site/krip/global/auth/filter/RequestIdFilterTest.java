@@ -2,9 +2,14 @@ package site.krip.global.auth.filter;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -14,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RequestIdFilterTest {
 
     private static final String HEADER = "X-Request-ID";
+    private static final String UUID_PATTERN = "[A-Za-z0-9-]{36}";
 
     private String runWithHeader(String headerValue) throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest();
@@ -36,19 +42,19 @@ class RequestIdFilterTest {
     void regeneratesOnCrlf() throws Exception {
         String out = runWithHeader("abc\r\nFAKE LOG LINE");
         assertThat(out).doesNotContain("\n").doesNotContain("\r").doesNotContain("FAKE");
-        assertThat(out).matches("[A-Za-z0-9-]{36}"); // UUID
+        assertThat(out).matches(UUID_PATTERN);
     }
 
-    @Test
-    @DisplayName("과도하게 긴 값(>64)은 UUID 재생성")
-    void regeneratesOnTooLong() throws Exception {
-        String out = runWithHeader("a".repeat(100));
-        assertThat(out).matches("[A-Za-z0-9-]{36}");
+    static Stream<Arguments> regeneratingHeaders() {
+        return Stream.of(
+                Arguments.of("과도하게 긴 값(>64)", "a".repeat(100)),
+                Arguments.of("헤더 없음", null));
     }
 
-    @Test
-    @DisplayName("헤더 없으면 UUID 생성")
-    void generatesWhenAbsent() throws Exception {
-        assertThat(runWithHeader(null)).matches("[A-Za-z0-9-]{36}");
+    @ParameterizedTest(name = "{0} → UUID 재생성")
+    @MethodSource("regeneratingHeaders")
+    @DisplayName("부적합/부재 헤더는 새 UUID 로 재생성된다")
+    void regeneratesAsUuid(String desc, String headerValue) throws Exception {
+        assertThat(runWithHeader(headerValue)).matches(UUID_PATTERN);
     }
 }

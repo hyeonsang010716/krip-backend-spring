@@ -2,6 +2,8 @@ package site.krip.domain.feed;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import site.krip.domain.feed.entity.FeedVisibility;
 
@@ -40,30 +42,18 @@ class FeedCommentE2eTest extends FeedTestSupport {
                 .andExpect(jsonPath("$.message").exists());
     }
 
-    @Test
-    @DisplayName("공백만 댓글 → 400")
-    void blankComment() throws Exception {
-        String owner = fixtures.createActiveUser("작성자2");
-        String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
-
-        // "   " 는 @Size(min=1) 통과 후 서비스 strip 에서 400.
-        mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
-                        .with(auth(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("content", "   ")))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("빈 문자열 댓글 → 400 (@Size min=1)")
-    void emptyComment() throws Exception {
-        String owner = fixtures.createActiveUser("작성자3");
+    // ""는 @Size(min=1), "   "는 통과 후 서비스 strip — 서로 다른 계층에서 400.
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    @DisplayName("빈/공백 댓글 → 400")
+    void blankOrEmptyComment(String content) throws Exception {
+        String owner = fixtures.createActiveUser();
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("content", "")))
+                        .content(json("content", content)))
                 .andExpect(status().isBadRequest());
     }
 

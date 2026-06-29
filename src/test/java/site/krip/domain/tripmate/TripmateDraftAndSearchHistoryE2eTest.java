@@ -10,6 +10,7 @@ import java.util.List;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -63,12 +64,14 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("저장한 적 없는 draft 조회 → 200 (빈 본문)")
+    @DisplayName("저장한 적 없는 draft 조회 → 200 (본문 JSON null)")
     void getEmptyDraft() throws Exception {
         String userId = fixtures.createActiveUser();
+        // 저장된 draft 가 없으면 Optional.empty → 200 + JSON null 직렬화.
         mockMvc.perform(get("/api/tripmate/posts/draft")
                         .with(auth(userId)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string("null"));
     }
 
     @Test

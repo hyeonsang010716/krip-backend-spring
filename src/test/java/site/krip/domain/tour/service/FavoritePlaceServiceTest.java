@@ -53,6 +53,11 @@ class FavoritePlaceServiceTest {
         when(placeRepo.findByPlaceIds(List.of(PLACE))).thenReturn(List.of(mock(Place.class)));
     }
 
+    /** 던져진 예외가 ApiException 이고 지정 status 인지 검증. */
+    private static void assertApiStatus(Throwable e, int status) {
+        assertThat(((ApiException) e).getStatus()).isEqualTo(status);
+    }
+
     @Test
     @DisplayName("동시 추가 race: saveAndFlush UNIQUE 충돌 → 500 이 아니라 400")
     void concurrentInsertMapsTo400() {
@@ -63,7 +68,7 @@ class FavoritePlaceServiceTest {
 
         assertThatThrownBy(() -> service.addFavorite(USER, PLACE))
                 .isInstanceOf(ApiException.class)
-                .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(400));
+                .satisfies(e -> assertApiStatus(e, 400));
     }
 
     @Test
@@ -74,7 +79,7 @@ class FavoritePlaceServiceTest {
 
         assertThatThrownBy(() -> service.addFavorite(USER, PLACE))
                 .isInstanceOf(ApiException.class)
-                .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(400));
+                .satisfies(e -> assertApiStatus(e, 400));
         verify(favRepo, never()).saveAndFlush(any());
     }
 
@@ -85,7 +90,7 @@ class FavoritePlaceServiceTest {
 
         assertThatThrownBy(() -> service.addFavorite(USER, PLACE))
                 .isInstanceOf(ApiException.class)
-                .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(400));
+                .satisfies(e -> assertApiStatus(e, 400));
         verify(favRepo, never()).existsByUserIdAndPlaceId(any(), any());
     }
 

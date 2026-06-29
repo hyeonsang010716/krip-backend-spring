@@ -2,6 +2,8 @@ package site.krip.domain.auth;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.hamcrest.Matchers.containsString;
@@ -41,49 +43,23 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    @DisplayName("웹 콜백 — state 검증 실패 → JSON 아닌 FE 리다이렉트(status=state_invalid)")
-    void webCallbackInvalidStateRedirects() throws Exception {
-        mockMvc.perform(get("/api/auth/login/callback")
+    @ParameterizedTest(name = "[{index}] {0} state={1} → {2} status=state_invalid")
+    @CsvSource({
+            // 웹 콜백: state 검증 실패 / 콜론 없는 malformed state
+            "/api/auth/login/callback,      server:kakao,   https://krip.site",
+            "/api/auth/login/callback,      no-colon-here,  status=state_invalid",
+            // 앱 콜백: state 검증 실패 / app 아닌 prefix
+            "/api/auth/login/app/callback,  app:kakao,      krip://auth/callback",
+            "/api/auth/login/app/callback,  server:google,  status=state_invalid",
+    })
+    @DisplayName("콜백 — state 검증/포맷 실패 → FE·딥링크 리다이렉트(status=state_invalid)")
+    void callbackStateInvalidRedirects(String path, String state, String locationFragment) throws Exception {
+        mockMvc.perform(get(path)
                         .param("code", "dummy-code")
-                        .param("state", "server:kakao")
+                        .param("state", state)
                         .with(bearerOnly()))
                 .andExpect(status().isFound())
-                .andExpect(header().string("Location", containsString("https://krip.site")))
-                .andExpect(header().string("Location", containsString("status=state_invalid")));
-    }
-
-    @Test
-    @DisplayName("웹 콜백 — 잘못된 state(콜론 없음) → FE 리다이렉트(status=state_invalid)")
-    void webCallbackMalformedStateRedirects() throws Exception {
-        mockMvc.perform(get("/api/auth/login/callback")
-                        .param("code", "dummy-code")
-                        .param("state", "no-colon-here")
-                        .with(bearerOnly()))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", containsString("status=state_invalid")));
-    }
-
-    @Test
-    @DisplayName("앱 콜백 — state 검증 실패 → 딥링크 리다이렉트(status=state_invalid)")
-    void appCallbackInvalidStateRedirects() throws Exception {
-        mockMvc.perform(get("/api/auth/login/app/callback")
-                        .param("code", "dummy-code")
-                        .param("state", "app:kakao")
-                        .with(bearerOnly()))
-                .andExpect(status().isFound())
-                .andExpect(header().string("Location", containsString("krip://auth/callback")))
-                .andExpect(header().string("Location", containsString("status=state_invalid")));
-    }
-
-    @Test
-    @DisplayName("앱 콜백 — state prefix 가 app 이 아님 → 딥링크 리다이렉트(status=state_invalid)")
-    void appCallbackWrongStatePrefixRedirects() throws Exception {
-        mockMvc.perform(get("/api/auth/login/app/callback")
-                        .param("code", "dummy-code")
-                        .param("state", "server:google")
-                        .with(bearerOnly()))
-                .andExpect(status().isFound())
+                .andExpect(header().string("Location", containsString(locationFragment)))
                 .andExpect(header().string("Location", containsString("status=state_invalid")));
     }
 }

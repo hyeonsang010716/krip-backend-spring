@@ -2,10 +2,11 @@ package site.krip.domain.friend;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
-import site.krip.domain.friend.entity.UserBlock;
-import site.krip.domain.friend.repository.UserBlockRepository;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -20,13 +21,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
 
-    @Autowired
-    private UserBlockRepository blockRepo;
+    /** ACCEPTED 상태에서 거부돼야 하는 PENDING 전용 전이 — 엔드포인트/요청자(actor) 만 다르다. */
+    private enum NonPendingTransition {
+        재수락(true) {
+            @Override MockHttpServletRequestBuilder request(String friendshipId) {
+                return patch("/api/friend/friendships/requests/{id}/accept", friendshipId);
+            }
+        },
+        거절(true) {
+            @Override MockHttpServletRequestBuilder request(String friendshipId) {
+                return patch("/api/friend/friendships/requests/{id}/reject", friendshipId);
+            }
+        },
+        취소(false) {
+            @Override MockHttpServletRequestBuilder request(String friendshipId) {
+                return delete("/api/friend/friendships/requests/{id}", friendshipId);
+            }
+        };
 
-    private void accept(String addressee, String friendshipId) throws Exception {
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .with(auth(addressee)))
-                .andExpect(status().isOk());
+        /** true=수신자(addressee), false=요청자(requester) 가 수행하는 전이. */
+        final boolean byAddressee;
+
+        NonPendingTransition(boolean byAddressee) {
+            this.byAddressee = byAddressee;
+        }
+
+        abstract MockHttpServletRequestBuilder request(String friendshipId);
     }
 
     // ──────────────────── 권한 가드 (403) ────────────────────
@@ -64,7 +84,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
         String b = fixtures.createActiveUser("삭제당사자B");
         String outsider = fixtures.createActiveUser("삭제제3자");
         String friendshipId = sendFriendRequest(a, b);
-        accept(b, friendshipId);
+        acceptFriendRequest(b, friendshipId);
 
         mockMvc.perform(delete("/api/friend/friendships/{id}", friendshipId)
                         .with(auth(outsider)))
@@ -73,44 +93,19 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
 
     // ──────────────────── 상태머신 (400) ────────────────────
 
-    @Test
-    @DisplayName("이미 수락된(ACCEPTED) 요청을 다시 수락 → 400")
-    void acceptNonPending() throws Exception {
-        String a = fixtures.createActiveUser("재수락A");
-        String b = fixtures.createActiveUser("재수락B");
+    @ParameterizedTest(name = "ACCEPTED 상태에서 {0} → 400")
+    @EnumSource(NonPendingTransition.class)
+    @DisplayName("이미 수락된(ACCEPTED) 요청의 재수락/거절/취소 → 400 (PENDING 전용 전이)")
+    void nonPendingTransitionRejected(NonPendingTransition transition) throws Exception {
+        String a = fixtures.createActiveUser("전이A");
+        String b = fixtures.createActiveUser("전이B");
         String friendshipId = sendFriendRequest(a, b);
-        accept(b, friendshipId);
+        acceptFriendRequest(b, friendshipId);
 
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .with(auth(b)))
+        String actor = transition.byAddressee ? b : a;
+        mockMvc.perform(transition.request(friendshipId).with(auth(actor)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
-    }
-
-    @Test
-    @DisplayName("이미 수락된(ACCEPTED) 요청을 거절 → 400 (대기 중인 요청만 거절)")
-    void rejectNonPending() throws Exception {
-        String a = fixtures.createActiveUser("수락후거절A");
-        String b = fixtures.createActiveUser("수락후거절B");
-        String friendshipId = sendFriendRequest(a, b);
-        accept(b, friendshipId);
-
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
-                        .with(auth(b)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("이미 수락된(ACCEPTED) 요청을 취소 → 400 (대기 중인 요청만 취소)")
-    void cancelNonPending() throws Exception {
-        String a = fixtures.createActiveUser("수락후취소A");
-        String b = fixtures.createActiveUser("수락후취소B");
-        String friendshipId = sendFriendRequest(a, b);
-        accept(b, friendshipId);
-
-        mockMvc.perform(delete("/api/friend/friendships/requests/{id}", friendshipId)
-                        .with(auth(a)))
-                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -122,7 +117,8 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(delete("/api/friend/friendships/{id}", friendshipId)
                         .with(auth(a)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     // ──────────────────── 차단 방향 / 미존재 ────────────────────
@@ -133,7 +129,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
         String requester = fixtures.createActiveUser("차단당한요청자");
         String addressee = fixtures.createActiveUser("차단한상대");
         // addressee 가 requester 를 차단(내가 건 차단이 아닌 역방향)
-        blockRepo.save(new UserBlock(addressee, requester));
+        block(addressee, requester);
 
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
@@ -143,34 +139,25 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.detail").exists());
     }
 
-    @Test
-    @DisplayName("TOCTOU 방어: PENDING 요청과 차단이 공존(경합 산물)하면 수락 → 400 (addressee 가 requester 차단)")
-    void acceptBlockedByAddressee() throws Exception {
+    @ParameterizedTest(name = "addressee 가 차단자={0}")
+    @ValueSource(booleans = {true, false})
+    @DisplayName("TOCTOU 방어: PENDING 요청과 차단이 공존(경합 산물)하면 수락 → 400 (방향 무관)")
+    void acceptRejectedWhenBlockCoexists(boolean addresseeBlocksRequester) throws Exception {
         String requester = fixtures.createActiveUser("수락차단요청자");
         String addressee = fixtures.createActiveUser("수락차단상대");
         String friendshipId = sendFriendRequest(requester, addressee);
 
-        // 경합으로 friendship 이 정리되지 않은 채 차단만 들어간 상태를 직접 재현(repo 직삽입)
-        blockRepo.save(new UserBlock(addressee, requester));
+        // 경합으로 friendship 이 정리되지 않은 채 차단만 들어간 상태를 직접 재현
+        if (addresseeBlocksRequester) {
+            block(addressee, requester);
+        } else {
+            block(requester, addressee);
+        }
 
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
                         .with(auth(addressee)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
-    }
-
-    @Test
-    @DisplayName("TOCTOU 방어: requester 가 addressee 를 차단한 경우에도 수락 → 400 (방향 무관)")
-    void acceptBlockedByRequester() throws Exception {
-        String requester = fixtures.createActiveUser("역방향차단요청자");
-        String addressee = fixtures.createActiveUser("역방향차단상대");
-        String friendshipId = sendFriendRequest(requester, addressee);
-
-        blockRepo.save(new UserBlock(requester, addressee));
-
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .with(auth(addressee)))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

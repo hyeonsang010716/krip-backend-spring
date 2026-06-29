@@ -85,7 +85,7 @@ class UnreadServiceTest {
 
     @Test
     @DisplayName("배치 aggregate 실패 시 miss 방 전체 skip — 빈 map 반환 + Redis 미기록")
-    void batchFailureReturnsCachedOnly() {
+    void batchFailureReturnsEmpty() {
         seedRooms();
         when(messageRepo.countAfterSeqByRooms(anyMap())).thenThrow(new RuntimeException("mongo down"));
 

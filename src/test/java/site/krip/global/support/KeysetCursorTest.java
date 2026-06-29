@@ -2,6 +2,9 @@ package site.krip.global.support;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import site.krip.global.common.exception.ApiException;
 
 import java.time.Instant;
@@ -23,13 +26,11 @@ class KeysetCursorTest {
         assertThat(d.id()).isEqualTo("fr_abc_123");
     }
 
-    @Test
+    @ParameterizedTest(name = "\"{0}\" -> 400")
+    @NullSource
+    @ValueSource(strings = {"no-separator", "_id-only", "ts-only_", "notatimestamp_id"})
     @DisplayName("형식 오류 커서 → 400(ApiException)")
-    void malformedCursorThrows() {
-        assertThatThrownBy(() -> KeysetCursor.decode("no-separator")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> KeysetCursor.decode("_id-only")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> KeysetCursor.decode("ts-only_")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> KeysetCursor.decode("notatimestamp_id")).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> KeysetCursor.decode(null)).isInstanceOf(ApiException.class);
+    void malformedCursorThrows(String cursor) {
+        assertThatThrownBy(() -> KeysetCursor.decode(cursor)).isInstanceOf(ApiException.class);
     }
 }

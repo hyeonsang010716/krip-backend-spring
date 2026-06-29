@@ -80,8 +80,8 @@ class IdGeneratorTest {
         Set<String> prefixes = factories()
                 .map(a -> (String) a.get()[0])
                 .collect(java.util.stream.Collectors.toSet());
-        // 15 개 팩토리 모두 접두사가 유일해야 한다.
-        assertThat(prefixes).hasSize(15);
+        // 모든 팩토리의 접두사가 유일해야 한다.
+        assertThat(prefixes).hasSize((int) factories().count());
     }
 
     @Test

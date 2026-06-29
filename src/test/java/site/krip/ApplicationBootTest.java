@@ -9,15 +9,7 @@ import site.krip.support.IntegrationTestSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 부팅 스모크 — 실 PG/Mongo/Redis 위에서 ApplicationContext 가 끝까지 올라오는지 검증.
- *
- * <p>이 한 테스트가 통과하면 다음이 모두 실증된다:
- * <ul>
- *   <li>Flyway V1~V8 마이그레이션이 빈 DB 에 정상 적용</li>
- *   <li>Hibernate {@code ddl-auto=validate} 가 17개 엔티티 ↔ 스키마 정합성 통과</li>
- *   <li>{@code @PostConstruct} Mongo 인덱스 생성(chat_message/inbox) 성공</li>
- *   <li>전체 빈 와이어링(포트/어댑터/Redis DB0·DB1 템플릿/스케줄러/WS) 충돌 없음</li>
- * </ul>
+ * 부팅 스모크 — 실 PG/Mongo/Redis 위에서 Flyway·ddl-auto=validate·Mongo 인덱스·전체 빈 와이어링이 끝까지 올라오는지 검증.
  */
 class ApplicationBootTest extends IntegrationTestSupport {
 

@@ -2,6 +2,9 @@ package site.krip.global.common.exception;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -9,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.sql.SQLException;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -27,28 +31,21 @@ class GlobalExceptionHandlerTest {
                 .isEqualTo(HttpStatus.CONFLICT);
     }
 
-    @Test
-    @DisplayName("UNIQUE 위반(SQLState 23505) 원인 체인 → 409")
-    void uniqueViolationReturns409() {
-        DataIntegrityViolationException e = new DataIntegrityViolationException(
-                "constraint", new SQLException("duplicate key", "23505"));
-        assertThat(handler.handleDataIntegrity(e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+    static Stream<Arguments> integrityCases() {
+        return Stream.of(
+                Arguments.of("23505", HttpStatus.CONFLICT),               // UNIQUE 위반 → 409
+                Arguments.of("23502", HttpStatus.INTERNAL_SERVER_ERROR),  // NOT NULL 위반 → 500 (결함 은폐 방지)
+                Arguments.of(null, HttpStatus.INTERNAL_SERVER_ERROR));    // SQL 원인 없음 → 500
     }
 
-    @Test
-    @DisplayName("NOT NULL 위반(SQLState 23502) → 500 (서버 결함 은폐 방지)")
-    void notNullViolationReturns500() {
-        DataIntegrityViolationException e = new DataIntegrityViolationException(
-                "not null", new SQLException("null value", "23502"));
-        assertThat(handler.handleDataIntegrity(e).getStatusCode())
-                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-
-    @Test
-    @DisplayName("SQL 원인 없는 무결성 위반 → 500")
-    void noSqlCauseReturns500() {
-        assertThat(handler.handleDataIntegrity(new DataIntegrityViolationException("x")).getStatusCode())
-                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+    @ParameterizedTest(name = "SQLState {0} -> {1}")
+    @MethodSource("integrityCases")
+    @DisplayName("무결성 위반은 SQLState 에 따라 409(UNIQUE) 또는 500 으로 매핑된다")
+    void dataIntegrityMapsBySqlState(String sqlState, HttpStatus expected) {
+        DataIntegrityViolationException e = sqlState == null
+                ? new DataIntegrityViolationException("x")
+                : new DataIntegrityViolationException("constraint", new SQLException("violation", sqlState));
+        assertThat(handler.handleDataIntegrity(e).getStatusCode()).isEqualTo(expected);
     }
 
     @Test

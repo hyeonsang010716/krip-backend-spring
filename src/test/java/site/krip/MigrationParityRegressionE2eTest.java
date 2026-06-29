@@ -2,6 +2,8 @@ package site.krip;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -28,34 +30,16 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    @DisplayName("friend 검색기록 — 빈 search_name 삭제 → 400")
-    void friendSearchHistoryBlankDelete() throws Exception {
+    @ParameterizedTest(name = "{0} 빈 search_name 삭제 → 400")
+    @ValueSource(strings = {
+            "/api/friend/search/history/one",
+            "/api/tour/search-history/one",
+            "/api/tripmate/search-history/one"})
+    @DisplayName("검색기록 — 빈 search_name 삭제 → 400 (friend·tour·tripmate)")
+    void searchHistoryBlankDelete(String path) throws Exception {
         String userId = fixtures.createActiveUser();
 
-        mockMvc.perform(delete("/api/friend/search/history/one")
-                        .param("search_name", " ")
-                        .with(auth(userId)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("tour 검색기록 — 빈 search_name 삭제 → 400")
-    void tourSearchHistoryBlankDelete() throws Exception {
-        String userId = fixtures.createActiveUser();
-
-        mockMvc.perform(delete("/api/tour/search-history/one")
-                        .param("search_name", " ")
-                        .with(auth(userId)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("tripmate 검색기록 — 빈 search_name 삭제 → 400")
-    void tripmateSearchHistoryBlankDelete() throws Exception {
-        String userId = fixtures.createActiveUser();
-
-        mockMvc.perform(delete("/api/tripmate/search-history/one")
+        mockMvc.perform(delete(path)
                         .param("search_name", " ")
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());

@@ -93,9 +93,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String b = fixtures.createActiveUser("준");
 
         String friendshipId = sendFriendRequest(a, b);
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .with(auth(b)))
-                .andExpect(status().isOk());
+        acceptFriendRequest(b, friendshipId);
 
         // A 가 친구 삭제
         mockMvc.perform(delete("/api/friend/friendships/{id}", friendshipId)

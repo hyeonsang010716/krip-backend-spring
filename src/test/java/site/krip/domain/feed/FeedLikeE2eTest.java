@@ -16,6 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FeedLikeE2eTest extends FeedTestSupport {
 
+    private static final int PAGE_SIZE = 30;
+
     @Test
     @DisplayName("좋아요 추가(201)→중복(400)→목록→취소(200)→재취소(400)")
     void likeLifecycle() throws Exception {
@@ -93,16 +95,17 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("페이지작성자");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        // 31명 좋아요 — tight loop 라 created_at 이 겹쳐 (created_at, user_id) tiebreak 까지 검증된다.
-        for (int i = 0; i < 31; i++) {
+        // 한 페이지 초과(31명) 좋아요 — tight loop 라 created_at 이 겹쳐 (created_at, user_id) tiebreak 까지 검증된다.
+        int total = PAGE_SIZE + 1;
+        for (int i = 0; i < total; i++) {
             like(fixtures.createActiveUser("좋아요" + i), postId);
         }
 
-        // 첫 페이지 — 30명 + next_cursor 존재
+        // 첫 페이지 — PAGE_SIZE 명 + next_cursor 존재
         String body = mockMvc.perform(get("/api/feed/posts/{postId}/likes", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.users.length()").value(30))
+                .andExpect(jsonPath("$.users.length()").value(PAGE_SIZE))
                 .andExpect(jsonPath("$.next_cursor").isNotEmpty())
                 .andReturn().getResponse().getContentAsString();
         String cursor = objectMapper.readTree(body).get("next_cursor").asText();
@@ -112,7 +115,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
                         .param("cursor", cursor)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.users.length()").value(1))
+                .andExpect(jsonPath("$.users.length()").value(total - PAGE_SIZE))
                 .andExpect(jsonPath("$.next_cursor").isEmpty());
     }
 }

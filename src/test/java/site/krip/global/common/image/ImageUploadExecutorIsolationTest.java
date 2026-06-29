@@ -19,6 +19,7 @@ class ImageUploadExecutorIsolationTest {
     @Test
     @DisplayName("process() 로 감싼 uploadInParallel 은 호출 스레드가 아닌 풀 워커에서 실행된다")
     void uploadRunsOnPoolWorkerNotCaller() {
+        // (processPoolSize, processQueueCapacity, uploadPoolSize, uploadQueueCapacity)
         ImageUploadExecutor executor = new ImageUploadExecutor(2, 4, 2, 4);
         try {
             String callerThread = Thread.currentThread().getName();
@@ -42,6 +43,7 @@ class ImageUploadExecutorIsolationTest {
     @Test
     @DisplayName("processAll 은 입력 순서대로 결과를 반환한다")
     void processAllReturnsInInputOrder() {
+        // (processPoolSize, processQueueCapacity, uploadPoolSize, uploadQueueCapacity)
         ImageUploadExecutor executor = new ImageUploadExecutor(3, 8, 2, 4);
         try {
             List<Supplier<Integer>> tasks = List.of(() -> 1, () -> 2, () -> 3, () -> 4);
@@ -54,6 +56,7 @@ class ImageUploadExecutorIsolationTest {
     @Test
     @DisplayName("processAll 은 한 작업이 실패하면 그 예외를 전파한다(나머지 형제는 취소)")
     void processAllPropagatesTaskFailure() {
+        // (processPoolSize, processQueueCapacity, uploadPoolSize, uploadQueueCapacity)
         ImageUploadExecutor executor = new ImageUploadExecutor(2, 8, 2, 4);
         try {
             List<Supplier<Integer>> tasks = List.of(

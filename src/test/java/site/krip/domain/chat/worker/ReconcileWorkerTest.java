@@ -101,13 +101,23 @@ class ReconcileWorkerTest {
         verify(setOps, never()).remove(any(), any());
     }
 
+    /** 한 배치를 가득 채우는 500개 dirty 방 집합(LinkedHashSet — 안정 순서). */
+    private static Set<String> fullDirtySet() {
+        return IntStream.range(0, 500).mapToObj(i -> "r" + i)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    /** 각 방에 동일한 LastMessage 를 매핑한 Mongo 조회 결과 stub. */
+    private static Map<String, LastMessage> docsFor(Set<String> rooms) {
+        return rooms.stream().collect(Collectors.toMap(r -> r, r -> new LastMessage("m", 1L, new Date())));
+    }
+
     @Test
     @Timeout(10)
     @DisplayName("백로그가 끝없어도 tick 은 배치 예산(50회)에서 멈춘다 — 무한 drain 방지")
     void tickIsBoundedByBatchBudget() {
         // 매 배치가 가득 차고(500) Mongo hit 0 → 전건 해소 → reconcileOnce 가 매번 BATCH_SIZE 반환 → 끝없이 drain 가능
-        Set<String> full = IntStream.range(0, 500).mapToObj(i -> "r" + i)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> full = fullDirtySet();
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(full);
         when(messageRepo.findLastByRooms(any())).thenReturn(Map.of());
 
@@ -121,12 +131,9 @@ class ReconcileWorkerTest {
     @Timeout(10)
     @DisplayName("full 배치 + 일부 UPDATE 실패라도 진전이 있으면 계속 drain (조기 종료 회귀)")
     void partialFailureStillDrainsWithinBudget() {
-        Set<String> full = IntStream.range(0, 500).mapToObj(i -> "r" + i)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> full = fullDirtySet();
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(full);
-        Map<String, LastMessage> docs = full.stream()
-                .collect(Collectors.toMap(r -> r, r -> new LastMessage("m", 1L, new Date())));
-        when(messageRepo.findLastByRooms(any())).thenReturn(docs);
+        when(messageRepo.findLastByRooms(any())).thenReturn(docsFor(full));
         // 방 r0 하나만 UPDATE 실패 → resolved=499(<500) 이지만 진전은 있음.
         doThrow(new RuntimeException("rdb hiccup"))
                 .when(roomRepo).updateLastMessageIfGreater(eq("r0"), any(), anyLong(), any());
@@ -141,12 +148,9 @@ class ReconcileWorkerTest {
     @Timeout(10)
     @DisplayName("full 배치라도 전건 실패(진전 0)면 1배치 후 백오프 — 죽은 DB 를 예산까지 두들기지 않음")
     void totalFailureBacksOffAfterOneBatch() {
-        Set<String> full = IntStream.range(0, 500).mapToObj(i -> "r" + i)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<String> full = fullDirtySet();
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(full);
-        Map<String, LastMessage> docs = full.stream()
-                .collect(Collectors.toMap(r -> r, r -> new LastMessage("m", 1L, new Date())));
-        when(messageRepo.findLastByRooms(any())).thenReturn(docs);
+        when(messageRepo.findLastByRooms(any())).thenReturn(docsFor(full));
         // 전건 UPDATE 실패 → resolved=0 → 진전 없음.
         doThrow(new RuntimeException("rdb down"))
                 .when(roomRepo).updateLastMessageIfGreater(any(), any(), anyLong(), any());

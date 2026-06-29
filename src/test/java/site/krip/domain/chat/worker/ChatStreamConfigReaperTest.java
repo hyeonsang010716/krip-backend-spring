@@ -22,6 +22,7 @@ class ChatStreamConfigReaperTest {
 
     @BeforeEach
     void setUp() {
+        // ChatProperties(fanoutMode, nodeId, dedupeRedisDatabase, wsSendTimeLimitMs, wsSendBufferBytes, deliverySessionMaxQueued)
         ChatProperties props = new ChatProperties("redis_stream", "self", 1, 60_000, 1 << 20, 1000);
         config = new ChatStreamConfig(mock(StringRedisTemplate.class), mock(NodeRegistry.class),
                 mock(FanoutService.class), props, new ObjectMapper());

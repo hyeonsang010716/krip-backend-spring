@@ -25,7 +25,7 @@ class AuthProfileE2eTest extends IntegrationTestSupport {
     @DisplayName("글로벌 Bearer 만 있고 유저 토큰 없음 → 401")
     void missingUserToken() throws Exception {
         mockMvc.perform(get("/api/auth/profile/me")
-                        .header("Authorization", bearer()))
+                        .with(bearerOnly()))
                 .andExpect(status().isUnauthorized());
     }
 

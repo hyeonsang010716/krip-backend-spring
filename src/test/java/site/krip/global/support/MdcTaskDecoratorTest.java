@@ -50,14 +50,15 @@ class MdcTaskDecoratorTest {
     @DisplayName("실행 후 MDC 를 이전 상태로 복원해 풀 스레드 재사용 누수를 막는다")
     void restoresAfterRun() throws Exception {
         // 워커 스레드가 직전 작업의 id 를 들고 있다가 새 작업(전파 없음)을 실행하는 상황 모사
-        Thread worker = new Thread(() -> {
+        AtomicReference<String> restored = new AtomicReference<>();
+        runOnFreshThread(() -> {
             MDC.put(MdcTaskDecorator.REQUEST_ID, "stale-from-prev-task");
             MdcTaskDecorator.wrap(() -> { /* 새 작업 */ }).run();
-            // 새 작업이 끝나면 워커의 원래 컨텍스트로 복원되어야 한다.
-            assertThat(MDC.get(MdcTaskDecorator.REQUEST_ID)).isEqualTo("stale-from-prev-task");
+            restored.set(MDC.get(MdcTaskDecorator.REQUEST_ID));
         });
-        worker.start();
-        worker.join();
+
+        // 새 작업이 끝나면 워커의 원래 컨텍스트로 복원되어야 한다 (메인 스레드에서 단언).
+        assertThat(restored.get()).isEqualTo("stale-from-prev-task");
     }
 
     @Test

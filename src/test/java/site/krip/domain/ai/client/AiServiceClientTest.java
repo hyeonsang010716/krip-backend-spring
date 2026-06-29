@@ -121,6 +121,7 @@ class AiServiceClientTest {
 
     /** circuitFailureThreshold 는 테스트 중 서킷이 열리지 않게 충분히 크게(=세마포어 동작만 격리 검증). */
     private AiProperties props(int maxConcurrency) {
+        // (enabled, serviceUrl, connectTimeoutMs, readTimeoutMs, circuitFailureThreshold, circuitOpenMs, maxConcurrency)
         return new AiProperties(true, "http://unused", 1000, 10000, 100, 30000, maxConcurrency);
     }
 

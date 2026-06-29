@@ -2,10 +2,16 @@ package site.krip.domain.tripmate;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.util.List;
+import java.util.stream.Stream;
+
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -162,41 +168,32 @@ class TripmatePostE2eTest extends TripmateTestSupport {
                 .andExpect(status().isNotFound());
     }
 
-    @Test
-    @DisplayName("제목 누락 등 유효성 위반 → 400")
-    void createValidationError() throws Exception {
+    /** 헬퍼(postBody) 접근을 위해 테스트 인스턴스를 받아 본문을 만든다. */
+    @FunctionalInterface
+    interface BodyFn {
+        String of(TripmatePostE2eTest t);
+    }
+
+    @ParameterizedTest(name = "{0} → 400")
+    @MethodSource("invalidPostBodies")
+    @DisplayName("단일 필드 유효성 위반 → 400")
+    void createInvalidBodyRejected(String label, BodyFn body) throws Exception {
         String userId = fixtures.createActiveUser();
-        // content 가 10자 미만 → @Size 위반
-        String body = postBody("제목", "짧음", "서울");
-        mockMvc.perform(post("/api/tripmate/posts")
+        mockMvc.perform(post(POSTS)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
+                        .content(body.of(this)))
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    @DisplayName("region 공백 → 400 (@NotBlank)")
-    void createBlankRegion() throws Exception {
-        String userId = fixtures.createActiveUser();
-        String body = postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "   ");
-        mockMvc.perform(post("/api/tripmate/posts")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("잘못된 enum 값(companion_type) → 400")
-    void createBadEnum() throws Exception {
-        String userId = fixtures.createActiveUser();
-        String body = postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울", "bogus", List.of());
-        mockMvc.perform(post("/api/tripmate/posts")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest());
+    static Stream<Arguments> invalidPostBodies() {
+        return Stream.of(
+                arguments("content 10자 미만(@Size)", (BodyFn) t ->
+                        t.postBody("제목", "짧음", "서울")),
+                arguments("region 공백(@NotBlank)", (BodyFn) t ->
+                        t.postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "   ")),
+                arguments("companion_type 잘못된 enum", (BodyFn) t ->
+                        t.postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울", "bogus", List.of())));
     }
 
     @Test

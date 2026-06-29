@@ -3,6 +3,8 @@ package site.krip.domain.chat.worker;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import site.krip.global.config.ChatProperties;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -14,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class ChatStreamConfigNodeIdGuardTest {
 
+    // ChatProperties(fanoutMode, nodeId, dedupeRedisDatabase, wsSendTimeLimitMs, wsSendBufferBytes, deliverySessionMaxQueued)
     private static ChatProperties props(String mode, String nodeId) {
         return new ChatProperties(mode, nodeId, 1, 60_000, 1 << 20, 1000);
     }
@@ -22,19 +25,13 @@ class ChatStreamConfigNodeIdGuardTest {
         return new ChatStreamConfig(null, null, null, props, new ObjectMapper());
     }
 
-    @Test
-    @DisplayName("redis_stream + 기본값 'node-local' → 부팅 실패")
-    void rejectsDefaultNodeIdInStreamMode() {
-        assertThatThrownBy(() -> construct(props("redis_stream", "node-local")))
+    @ParameterizedTest
+    @ValueSource(strings = {"node-local", "   "})
+    @DisplayName("redis_stream + 미설정 기본값('node-local')/공란 node-id → 부팅 실패")
+    void rejectsUnconfiguredNodeIdInStreamMode(String nodeId) {
+        assertThatThrownBy(() -> construct(props("redis_stream", nodeId)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("NODE_ID");
-    }
-
-    @Test
-    @DisplayName("redis_stream + 공란 node-id → 부팅 실패")
-    void rejectsBlankNodeIdInStreamMode() {
-        assertThatThrownBy(() -> construct(props("redis_stream", "   ")))
-                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test

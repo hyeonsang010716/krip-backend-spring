@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
 import java.time.Instant;
@@ -32,35 +34,19 @@ class JacksonConfigTest {
         return json.substring(1, json.length() - 1);
     }
 
-    @Test
-    @DisplayName("소수부가 0 인 Instant 는 Z 표기 + 소수부 없이 직렬화된다")
-    void zeroFractionInstant() throws Exception {
-        // 2026-07-03T12:34:56Z (마이크로초 0)
-        Instant instant = Instant.parse("2026-07-03T12:34:56Z");
-        assertThat(serializeInstant(instant)).isEqualTo("2026-07-03T12:34:56Z");
-    }
-
-    @Test
-    @DisplayName("마이크로초가 있는 Instant 는 6자리 소수부 + Z 로 직렬화된다")
-    void microsecondInstant() throws Exception {
-        // 0.789 sec = 789000 micros -> .789000
-        Instant instant = Instant.parse("2026-07-03T12:34:56.789Z");
-        assertThat(serializeInstant(instant)).isEqualTo("2026-07-03T12:34:56.789000Z");
-    }
-
-    @Test
-    @DisplayName("나노초 정밀도는 마이크로초(6자리)로 절삭된다")
-    void nanosecondsTruncatedToMicros() throws Exception {
-        // .123456789 -> truncate to micros -> .123456
-        Instant instant = Instant.parse("2026-07-03T12:34:56.123456789Z");
-        assertThat(serializeInstant(instant)).isEqualTo("2026-07-03T12:34:56.123456Z");
-    }
-
-    @Test
-    @DisplayName("마이크로초 1단위(1us)도 6자리로 표현된다")
-    void singleMicrosecond() throws Exception {
-        Instant instant = Instant.parse("2026-07-03T12:34:56.000001Z");
-        assertThat(serializeInstant(instant)).isEqualTo("2026-07-03T12:34:56.000001Z");
+    @ParameterizedTest(name = "{0} -> {1}")
+    @CsvSource({
+            // 소수부 0 → Z 표기 + 소수부 없음
+            "2026-07-03T12:34:56Z,            2026-07-03T12:34:56Z",
+            // 0.789s = 789000 micros → .789000 (6자리)
+            "2026-07-03T12:34:56.789Z,        2026-07-03T12:34:56.789000Z",
+            // 나노초 정밀도는 마이크로초(6자리)로 절삭
+            "2026-07-03T12:34:56.123456789Z,  2026-07-03T12:34:56.123456Z",
+            // 1us 단위도 6자리로 표현
+            "2026-07-03T12:34:56.000001Z,      2026-07-03T12:34:56.000001Z"})
+    @DisplayName("Instant 는 Z(UTC) + 마이크로초(6자리) ISO-8601 로 직렬화된다")
+    void instantSerializesAsMicrosUtc(String input, String expected) throws Exception {
+        assertThat(serializeInstant(Instant.parse(input))).isEqualTo(expected);
     }
 
     @Test

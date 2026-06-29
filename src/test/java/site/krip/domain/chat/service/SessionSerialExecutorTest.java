@@ -18,6 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 /**
  * {@link SessionSerialExecutor} 단위 테스트 — 순서 보존, reject 후 복구, 경합 시 무유실(strand 방지).
@@ -125,11 +126,8 @@ class SessionSerialExecutorTest {
         assertThat(finished.await(30, TimeUnit.SECONDS)).isTrue();
 
         // 수락된 작업이 전부 실행될 때까지 대기 — strand 면 영영 도달 못 해 타임아웃.
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
-        while (executed.get() < accepted.get() && System.nanoTime() < deadline) {
-            Thread.sleep(5);
-        }
-        assertThat(executed.get()).isEqualTo(accepted.get());
+        await().atMost(10, TimeUnit.SECONDS)
+                .untilAsserted(() -> assertThat(executed.get()).isEqualTo(accepted.get()));
         assertThat(accepted.get()).isEqualTo(threads * perThread);
 
         submitters.shutdownNow();

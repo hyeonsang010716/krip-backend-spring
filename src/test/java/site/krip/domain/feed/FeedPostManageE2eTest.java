@@ -2,8 +2,12 @@ package site.krip.domain.feed;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.http.MediaType;
 import site.krip.domain.feed.entity.FeedVisibility;
+
+import java.util.stream.Stream;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -16,6 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 캡션 길이는 코드포인트 기준이라 이모지 케이스를 PATCH(S3 미사용)로 검증한다.
  */
 class FeedPostManageE2eTest extends FeedTestSupport {
+
+    private static final int CAPTION_MAX = 100;
 
     // ──────────────────── 캡션 PATCH ────────────────────
 
@@ -48,17 +54,22 @@ class FeedPostManageE2eTest extends FeedTestSupport {
                 .andExpect(jsonPath("$.caption").doesNotExist());
     }
 
-    @Test
-    @DisplayName("캡션 101자(코드포인트) PATCH → 400")
-    void captionTooLong() throws Exception {
-        String owner = fixtures.createActiveUser("주인3");
+    // 한글/이모지 모두 코드포인트 101 초과 → 같은 검증 경로로 400.
+    private static Stream<String> overLimitCaptions() {
+        return Stream.of("가".repeat(CAPTION_MAX + 1), "😀".repeat(CAPTION_MAX + 1));
+    }
+
+    @ParameterizedTest
+    @MethodSource("overLimitCaptions")
+    @DisplayName("캡션 코드포인트 101 초과(한글/이모지) PATCH → 400")
+    void captionOverLimitRejected(String caption) throws Exception {
+        String owner = fixtures.createActiveUser();
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        String caption101 = "가".repeat(101);
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("caption", caption101)))
+                        .content(json("caption", caption)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -69,27 +80,13 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         // U+1F600 은 1 코드포인트지만 String.length()는 2 → 코드포인트 카운팅이면 100 으로 통과해야 함.
-        String emoji100 = "😀".repeat(100);
+        String emojiMax = "😀".repeat(CAPTION_MAX);
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("caption", emoji100)))
+                        .content(json("caption", emojiMax)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.caption").value(emoji100));
-    }
-
-    @Test
-    @DisplayName("이모지 101자(코드포인트 101) PATCH → 400")
-    void captionEmojiOverCodePoint() throws Exception {
-        String owner = fixtures.createActiveUser("주인5");
-        String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
-
-        String emoji101 = "😀".repeat(101);
-        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
-                        .with(auth(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("caption", emoji101)))
-                .andExpect(status().isBadRequest());
+                .andExpect(jsonPath("$.caption").value(emojiMax));
     }
 
     @Test

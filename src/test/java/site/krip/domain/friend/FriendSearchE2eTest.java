@@ -2,7 +2,6 @@ package site.krip.domain.friend;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.hamcrest.Matchers.hasItem;
@@ -10,8 +9,6 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -68,11 +65,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String target = fixtures.createActiveUser("관계타겟유저");
 
         // viewer → target 요청
-        mockMvc.perform(post("/api/friend/friendships/requests")
-                        .with(auth(viewer))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("addressee_id", target)))
-                .andExpect(status().isCreated());
+        sendFriendRequest(viewer, target);
 
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(viewer))
@@ -178,11 +171,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String viewer = fixtures.createActiveUser("상세관계뷰어");
         String target = fixtures.createActiveUser("상세관계타겟");
 
-        mockMvc.perform(post("/api/friend/friendships/requests")
-                        .with(auth(viewer))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("addressee_id", target)))
-                .andExpect(status().isCreated());
+        sendFriendRequest(viewer, target);
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
                         .with(auth(viewer)))

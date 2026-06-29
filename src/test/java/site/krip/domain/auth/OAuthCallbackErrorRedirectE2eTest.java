@@ -35,13 +35,19 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
         return new Cookie("oauth_state", issued.cookie().getValue());
     }
 
+    // 유효 state 발급 후 교환 단계에서 실패 주입 — 발급된 Issued 반환
+    private OAuthStateService.Issued stubFailure(String routing, Throwable t) {
+        OAuthStateService.Issued st = stateService.create(routing, "google");
+        when(callbackService.parseProvider("google")).thenReturn(OAuthProvider.GOOGLE);
+        when(callbackService.exchangeAndRegister(eq(OAuthProvider.GOOGLE), any(), eq("dummy-code")))
+                .thenThrow(t);
+        return st;
+    }
+
     @Test
     @DisplayName("웹 콜백 — Google 교환 실패 → status=provider_error 리다이렉트(500 아님)")
     void webProviderError() throws Exception {
-        OAuthStateService.Issued st = stateService.create("server", "google");
-        when(callbackService.parseProvider("google")).thenReturn(OAuthProvider.GOOGLE);
-        when(callbackService.exchangeAndRegister(eq(OAuthProvider.GOOGLE), any(), eq("dummy-code")))
-                .thenThrow(new RestClientException("google token endpoint down"));
+        OAuthStateService.Issued st = stubFailure("server", new RestClientException("google token endpoint down"));
 
         mockMvc.perform(get("/api/auth/login/callback")
                         .param("code", "dummy-code")
@@ -55,10 +61,7 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("웹 콜백 — 내부 예외 → status=error 리다이렉트(500 아님)")
     void webInternalError() throws Exception {
-        OAuthStateService.Issued st = stateService.create("server", "google");
-        when(callbackService.parseProvider("google")).thenReturn(OAuthProvider.GOOGLE);
-        when(callbackService.exchangeAndRegister(eq(OAuthProvider.GOOGLE), any(), eq("dummy-code")))
-                .thenThrow(new RuntimeException("db down"));
+        OAuthStateService.Issued st = stubFailure("server", new RuntimeException("db down"));
 
         mockMvc.perform(get("/api/auth/login/callback")
                         .param("code", "dummy-code")
@@ -71,10 +74,7 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("앱 콜백 — Google 교환 실패 → 딥링크 status=provider_error 리다이렉트")
     void appProviderError() throws Exception {
-        OAuthStateService.Issued st = stateService.create("app", "google");
-        when(callbackService.parseProvider("google")).thenReturn(OAuthProvider.GOOGLE);
-        when(callbackService.exchangeAndRegister(eq(OAuthProvider.GOOGLE), any(), eq("dummy-code")))
-                .thenThrow(new RestClientException("google userinfo down"));
+        OAuthStateService.Issued st = stubFailure("app", new RestClientException("google userinfo down"));
 
         mockMvc.perform(get("/api/auth/login/app/callback")
                         .param("code", "dummy-code")

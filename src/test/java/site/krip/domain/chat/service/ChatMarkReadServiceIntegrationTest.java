@@ -108,6 +108,8 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
         String room = roomService.createDirectRoom(a, b).chatRoomId();
 
         assertThatThrownBy(() -> roomService.markRead(stranger, "sess-x", room, 1))
-                .isInstanceOf(ApiException.class);
+                .isInstanceOf(ApiException.class)
+                .extracting(e -> ((ApiException) e).getStatus())
+                .isEqualTo(403);
     }
 }

@@ -1,15 +1,21 @@
 package site.krip.domain.tour;
 
+import com.mongodb.client.model.ReplaceOptions;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import site.krip.support.IntegrationTestSupport;
 
 import java.util.List;
+import java.util.stream.Stream;
 
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,56 +32,46 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
     @Autowired
     private MongoTemplate mongo;
 
-    /** place_id 로 최소 Place 문서를 시드(updateItem 은 장소 조회를 트랜잭션 밖에서 먼저 수행). */
+    /** 헬퍼(json) 접근을 위해 테스트 인스턴스를 받아 요청을 조립한다. */
+    @FunctionalInterface
+    interface Req {
+        MockHttpServletRequestBuilder build(TourUpdateValidationE2eTest t);
+    }
+
+    /** place_id 로 최소 Place 문서를 시드(updateItem 은 장소 조회를 트랜잭션 밖에서 먼저 수행). 멱등 — 반복 호출 무해. */
     private void seedPlace(String placeId) {
-        mongo.getCollection("place").insertOne(new Document()
-                .append("place_id", placeId)
-                .append("display_name", "시드장소")
-                .append("address", "서울")
-                .append("location", new Document("type", "Point")
-                        .append("coordinates", List.of(126.97688, 37.57594))));
+        mongo.getCollection("place").replaceOne(new Document("place_id", placeId),
+                new Document()
+                        .append("place_id", placeId)
+                        .append("display_name", "시드장소")
+                        .append("address", "서울")
+                        .append("location", new Document("type", "Point")
+                                .append("coordinates", List.of(126.97688, 37.57594))),
+                new ReplaceOptions().upsert(true));
     }
 
-    @Test
-    @DisplayName("PATCH 플랜: title 키 누락 → 400")
-    void updatePlanMissingTitleKey() throws Exception {
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("requiredKeyCases")
+    @DisplayName("수정 요청 필수 키 — 누락 → 400 / 값 null 은 검증 통과(미존재라 404)")
+    void requiredKeyValidation(String label, Req req, int expectedStatus) throws Exception {
         String userId = fixtures.createActiveUser();
-        mockMvc.perform(patch(NO_SUCH_PLAN)
-                        .contentType(MediaType.APPLICATION_JSON).content(json())
-                        .with(auth(userId)))
-                .andExpect(status().isBadRequest());
-    }
+        seedPlace("p1"); // visit_time=null 케이스가 장소 조회를 통과해 404 에 닿도록(타 케이스엔 무해).
 
-    @Test
-    @DisplayName("PATCH 플랜: title 키 존재(값 null) → 검증 통과, 미존재 플랜이라 404")
-    void updatePlanNullTitlePassesValidation() throws Exception {
-        String userId = fixtures.createActiveUser();
-        mockMvc.perform(patch(NO_SUCH_PLAN)
-                        .contentType(MediaType.APPLICATION_JSON).content(json("title", null))
-                        .with(auth(userId)))
-                .andExpect(status().isNotFound());
-    }
-
-    @Test
-    @DisplayName("PUT 카드: visit_time 키 누락 → 400")
-    void updateItemMissingVisitTimeKey() throws Exception {
-        String userId = fixtures.createActiveUser();
-        mockMvc.perform(put(NO_SUCH_ITEM)
-                        .contentType(MediaType.APPLICATION_JSON).content(json("place_id", "p1"))
-                        .with(auth(userId)))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("PUT 카드: visit_time 키 존재(값 null) → 검증 통과, 미존재 플랜이라 404")
-    void updateItemNullVisitTimePassesValidation() throws Exception {
-        String userId = fixtures.createActiveUser();
-        // updateItem 은 장소 조회(Mongo)를 먼저 하므로, 검증 통과 후 404(카드 미존재)에 도달하려면 place 존재 필요.
-        seedPlace("p1");
-        mockMvc.perform(put(NO_SUCH_ITEM)
+        mockMvc.perform(req.build(this)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("place_id", "p1", "visit_time", null))
                         .with(auth(userId)))
-                .andExpect(status().isNotFound());
+                .andExpect(status().is(expectedStatus));
+    }
+
+    static Stream<Arguments> requiredKeyCases() {
+        return Stream.of(
+                arguments("PATCH 플랜: title 키 누락 → 400",
+                        (Req) t -> patch(NO_SUCH_PLAN).content(t.json()), 400),
+                arguments("PATCH 플랜: title 키 존재(null) → 404",
+                        (Req) t -> patch(NO_SUCH_PLAN).content(t.json("title", null)), 404),
+                arguments("PUT 카드: visit_time 키 누락 → 400",
+                        (Req) t -> put(NO_SUCH_ITEM).content(t.json("place_id", "p1")), 400),
+                arguments("PUT 카드: visit_time 키 존재(null) → 404",
+                        (Req) t -> put(NO_SUCH_ITEM).content(t.json("place_id", "p1", "visit_time", null)), 404));
     }
 }

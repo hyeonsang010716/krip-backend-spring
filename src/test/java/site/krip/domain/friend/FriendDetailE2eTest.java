@@ -2,8 +2,6 @@ package site.krip.domain.friend;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import site.krip.domain.friend.service.UserBlockService;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.hamcrest.Matchers.nullValue;
@@ -17,9 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * FriendSearchE2eTest 가 무관계/PENDING(요청자)을 다루고, 본 테스트는 나머지 경계: 404/400/ACCEPTED/요청 수신(is_requester=false).
  */
 class FriendDetailE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private UserBlockService userBlockService;
 
     @Test
     @DisplayName("존재하지 않는 유저 상세 → 404")
@@ -49,9 +44,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         String viewer = fixtures.createActiveUser("상세친구뷰어");
         String target = fixtures.createActiveUser("상세친구타겟");
         String friendshipId = sendFriendRequest(viewer, target);
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .with(auth(target)))
-                .andExpect(status().isOk());
+        acceptFriendRequest(target, friendshipId);
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
                         .with(auth(viewer)))
@@ -103,7 +96,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     void detailHiddenWhenPeerBlockedViewer() throws Exception {
         String viewer = fixtures.createActiveUser("피차단뷰어");
         String peer = fixtures.createActiveUser("차단한상대");
-        userBlockService.blockUser(peer, viewer); // peer 가 viewer 를 차단
+        block(peer, viewer); // peer 가 viewer 를 차단
 
         mockMvc.perform(get("/api/friend/detail/{userId}", peer)
                         .with(auth(viewer)))
@@ -115,7 +108,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     void detailVisibleWhenViewerBlockedPeer() throws Exception {
         String viewer = fixtures.createActiveUser("차단한뷰어");
         String peer = fixtures.createActiveUser("내가차단한상대");
-        userBlockService.blockUser(viewer, peer); // viewer 가 peer 를 차단
+        block(viewer, peer); // viewer 가 peer 를 차단
 
         mockMvc.perform(get("/api/friend/detail/{userId}", peer)
                         .with(auth(viewer)))

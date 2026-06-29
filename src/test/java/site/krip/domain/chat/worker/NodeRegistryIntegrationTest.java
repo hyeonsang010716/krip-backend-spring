@@ -17,6 +17,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class NodeRegistryIntegrationTest extends IntegrationTestSupport {
 
+    private static final String DEAD_NODE = "dead-node";
+    private static final long STALE_PAST_MS = 60_000; // 만료시각(score) 을 과거로 둘 오프셋
+
     @Autowired
     private NodeRegistry nodeRegistry;
 
@@ -43,34 +46,34 @@ class NodeRegistryIntegrationTest extends IntegrationTestSupport {
     @DisplayName("만료시각이 지난 노드는 listActiveNodes 결과에서 제외된다")
     void staleNodeExcludedFromList() {
         // 만료시각(score)을 과거로 둔 죽은 노드를 직접 주입.
-        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, "dead-node",
-                System.currentTimeMillis() - 60_000);
+        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE,
+                System.currentTimeMillis() - STALE_PAST_MS);
 
-        assertThat(nodeRegistry.listActiveNodes()).doesNotContain("dead-node");
+        assertThat(nodeRegistry.listActiveNodes()).doesNotContain(DEAD_NODE);
     }
 
     @Test
     @DisplayName("listActiveNodes 는 읽기 전용 — 만료 노드를 결과에서 제외만 하고 ZSET 에서 삭제하지 않는다")
     void listActiveNodesDoesNotDelete() {
-        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, "dead-node",
-                System.currentTimeMillis() - 60_000);
+        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE,
+                System.currentTimeMillis() - STALE_PAST_MS);
 
         nodeRegistry.listActiveNodes();
 
         // 핫패스 조회는 쓰기를 하지 않으므로 ZSET 에는 여전히 남아 있어야 한다(청소는 주기 작업 몫).
-        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, "dead-node")).isNotNull();
+        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE)).isNotNull();
     }
 
     @Test
     @DisplayName("cleanupExpired 는 만료 노드만 ZSET 에서 삭제하고 활성 노드는 보존한다")
     void cleanupExpiredRemovesOnlyDead() {
-        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, "dead-node",
-                System.currentTimeMillis() - 60_000);
+        redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE,
+                System.currentTimeMillis() - STALE_PAST_MS);
         nodeRegistry.registerSelf(); // 미래 score 활성 노드
 
         nodeRegistry.cleanupExpired();
 
-        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, "dead-node")).isNull();
+        assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE)).isNull();
         assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, chatProperties.nodeId())).isNotNull();
     }
 

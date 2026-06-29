@@ -34,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class ChatWebSocketE2eTest extends IntegrationTestSupport {
 
     private static final String ALLOWED_ORIGIN = "https://krip.site";
+    /** WS 메시지/핸드셰이크 대기 상한(ms). */
+    private static final long WAIT_MS = 5000;
 
     @LocalServerPort
     private int port;
@@ -87,7 +89,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
 
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
 
-        JsonNode connected = awaitType(h, "connected", 5000);
+        JsonNode connected = awaitType(h, "connected", WAIT_MS);
         assertThat(connected.path("session_id").asText()).isNotBlank();
 
         session.close();
@@ -102,19 +104,19 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
 
         CollectingHandler h = new CollectingHandler();
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
-        awaitType(h, "connected", 5000);
+        awaitType(h, "connected", WAIT_MS);
 
         session.sendMessage(new TextMessage(json(
                 "op", "send", "room_id", room, "client_msg_id", "cm-1",
                 "content", "hello ws", "type", "text")));
-        JsonNode ack = awaitType(h, "message.sent", 5000);
+        JsonNode ack = awaitType(h, "message.sent", WAIT_MS);
         assertThat(ack.path("client_msg_id").asText()).isEqualTo("cm-1");
         long seq = ack.path("server_seq").asLong();
         assertThat(seq).isGreaterThan(0);
 
         session.sendMessage(new TextMessage(json(
                 "op", "read", "room_id", room, "up_to_server_seq", seq)));
-        JsonNode readAck = awaitType(h, "read_ack", 5000);
+        JsonNode readAck = awaitType(h, "read_ack", WAIT_MS);
         assertThat(readAck.path("up_to_server_seq").asLong()).isEqualTo(seq);
 
         session.close();
@@ -129,14 +131,14 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
 
         CollectingHandler h = new CollectingHandler();
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
-        awaitType(h, "connected", 5000);
+        awaitType(h, "connected", WAIT_MS);
 
         // room_id/client_msg_id/content 는 유효 — SYSTEM 가드에 도달하도록. 가드 없으면 message.sent 가 와 타임아웃 실패.
         session.sendMessage(new TextMessage(json(
                 "op", "send", "room_id", room, "client_msg_id", "cm-sys",
                 "content", "forged", "type", "system")));
 
-        JsonNode err = awaitType(h, "server_error", 5000);
+        JsonNode err = awaitType(h, "server_error", WAIT_MS);
         assertThat(err.path("reason").asText()).contains("system");
 
         session.close();
@@ -157,7 +159,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         String token = userToken(a);
         CollectingHandler h = new CollectingHandler();
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + token));
-        awaitType(h, "connected", 5000);
+        awaitType(h, "connected", WAIT_MS);
 
         // 이 토큰의 jti 를 폐기한 뒤 그 토큰으로 refresh 시도 → 재무장돼선 안 된다.
         String jti = jwtProvider.parse(token).jti();
@@ -166,6 +168,6 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         session.sendMessage(new TextMessage(json("op", "refresh", "token", token)));
 
         // revocation 체크가 빠지면 auth_expired 가 안 와 타임아웃으로 실패한다.
-        awaitType(h, "auth_expired", 5000);
+        awaitType(h, "auth_expired", WAIT_MS);
     }
 }

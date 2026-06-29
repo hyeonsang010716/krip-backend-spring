@@ -3,6 +3,8 @@ package site.krip.domain.publicshare;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.http.MediaType;
@@ -93,18 +95,12 @@ class PublicShareE2eTest extends IntegrationTestSupport {
 
     // ──────────────────── 오류 케이스 ────────────────────
 
-    @Test
-    @DisplayName("공개 endpoint — 손상된 토큰 → 400")
-    void invalidToken() throws Exception {
-        mockMvc.perform(get("/api/public/share/plan/not-a-valid-jwt"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("공개 endpoint — garbage(JWT 구조 흉내) 토큰 → 400")
-    void garbageToken() throws Exception {
-        // 점 3개로 JWT 형식만 흉내낸 가비지 → 서명 검증 실패 → 400
-        mockMvc.perform(get("/api/public/share/plan/aaaa.bbbb.cccc"))
+    @ParameterizedTest(name = "\"{0}\" -> 400")
+    // not-a-valid-jwt: 구조 자체 손상 / aaaa.bbbb.cccc: 점 3개로 JWT 형식만 흉내낸 가비지(서명 검증 실패)
+    @ValueSource(strings = {"not-a-valid-jwt", "aaaa.bbbb.cccc"})
+    @DisplayName("공개 endpoint — 손상/가비지 토큰 → 400")
+    void badToken(String token) throws Exception {
+        mockMvc.perform(get("/api/public/share/plan/{token}", token))
                 .andExpect(status().isBadRequest());
     }
 

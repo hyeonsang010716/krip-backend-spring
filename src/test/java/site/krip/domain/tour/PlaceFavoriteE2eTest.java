@@ -6,6 +6,7 @@ import org.springframework.http.MediaType;
 
 import java.util.List;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -39,7 +40,9 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.place_id").value(placeId))
-                .andExpect(jsonPath("$.display_name").value("덕수궁"));
+                .andExpect(jsonPath("$.display_name").value("덕수궁"))
+                // 즐겨찾기 미등록 → is_favorite 은 null
+                .andExpect(jsonPath("$.is_favorite").value(nullValue()));
     }
 
     @Test
@@ -53,7 +56,8 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
                         .param("lng", "-160.0")
                         .param("max_distance", "1000"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.places").isArray());
+                .andExpect(jsonPath("$.places").isArray())
+                .andExpect(jsonPath("$.places.length()").value(0));
     }
 
     @Test

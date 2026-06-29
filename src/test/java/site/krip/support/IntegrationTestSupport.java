@@ -172,6 +172,13 @@ public abstract class IntegrationTestSupport {
                 .andExpect(status().isOk());
     }
 
+    /** addressee 가 친구 요청을 수락(200) — ACCEPTED 상태가 precondition 일 때. */
+    protected void acceptFriendRequest(String addressee, String friendshipId) throws Exception {
+        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
+                        .with(auth(addressee)))
+                .andExpect(status().isOk());
+    }
+
     /** blocker 가 blocked 를 실제 차단 API 로 차단 — 차단 플로우의 부수효과까지 거쳐야 할 때 사용. */
     protected void blockViaApi(String blocker, String blocked) throws Exception {
         mockMvc.perform(post("/api/friend/blocks")

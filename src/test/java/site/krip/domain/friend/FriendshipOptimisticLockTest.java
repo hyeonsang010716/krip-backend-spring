@@ -2,10 +2,8 @@ package site.krip.domain.friend;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.OptimisticLockingFailureException;
 import site.krip.domain.friend.entity.Friendship;
-import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -16,24 +14,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class FriendshipOptimisticLockTest extends IntegrationTestSupport {
 
-    @Autowired
-    private FriendshipRepository friendshipRepo;
-
     @Test
     @DisplayName("stale 버전으로 수정 시 OptimisticLockingFailureException")
     void staleUpdateThrows() {
         String a = fixtures.createActiveUser("락A");
         String b = fixtures.createActiveUser("락B");
-        Friendship stale = friendshipRepo.saveAndFlush(new Friendship(a, b)); // version 0
+        Friendship stale = friendshipRepository.saveAndFlush(new Friendship(a, b)); // version 0
 
         // 다른 경로가 먼저 수락 → DB version 0→1
-        Friendship concurrent = friendshipRepo.findById(stale.getFriendshipId()).orElseThrow();
+        Friendship concurrent = friendshipRepository.findById(stale.getFriendshipId()).orElseThrow();
         concurrent.accept();
-        friendshipRepo.saveAndFlush(concurrent);
+        friendshipRepository.saveAndFlush(concurrent);
 
         // 보관해 둔 stale 핸들(version 0)로 수정 → 충돌
         stale.accept();
-        assertThatThrownBy(() -> friendshipRepo.saveAndFlush(stale))
+        assertThatThrownBy(() -> friendshipRepository.saveAndFlush(stale))
                 .isInstanceOf(OptimisticLockingFailureException.class);
     }
 }

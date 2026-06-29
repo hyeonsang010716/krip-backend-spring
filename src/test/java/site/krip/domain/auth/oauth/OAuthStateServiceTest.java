@@ -4,7 +4,12 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import site.krip.global.common.exception.ApiException;
+
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,13 +57,19 @@ class OAuthStateServiceTest {
                 .hasMessageContaining("CSRF");
     }
 
-    @Test
+    static Stream<Arguments> malformedStates() {
+        return Stream.of(
+                Arguments.of("nonce 세그먼트 누락", "server:google"),
+                Arguments.of("빈 nonce", "server:google:"),
+                Arguments.of("null state", null));
+    }
+
+    @ParameterizedTest(name = "[{index}] {0}")
+    @MethodSource("malformedStates")
     @DisplayName("state 포맷이 잘못되면(세그먼트 수·빈 nonce·null) 거부한다")
-    void rejectsMalformedState() {
-        HttpServletRequest req = requestWithCookie("nonce123");
-        assertThatThrownBy(() -> svc.verify("server:google", req)).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> svc.verify("server:google:", req)).isInstanceOf(ApiException.class);
-        assertThatThrownBy(() -> svc.verify(null, req)).isInstanceOf(ApiException.class);
+    void rejectsMalformedState(String desc, String state) {
+        assertThatThrownBy(() -> svc.verify(state, requestWithCookie("nonce123")))
+                .isInstanceOf(ApiException.class);
     }
 
     @Test

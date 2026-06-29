@@ -67,8 +67,9 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         String me = fixtures.createActiveUser("나");
         String t1 = fixtures.createActiveUser("차단1");
         String t2 = fixtures.createActiveUser("차단2");
-        userBlockRepository.saveAndFlush(new UserBlock(me, t1));
-        userBlockRepository.saveAndFlush(new UserBlock(me, t2));
+        block(me, t1);
+        block(me, t2);
+        userBlockRepository.flush();
 
         List<UserBlock> sorted = userBlockRepository.findBlocksFirstPage(me,
                 PageRequest.of(0, 30, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("blockId"))));

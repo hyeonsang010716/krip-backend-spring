@@ -29,6 +29,9 @@ import static org.mockito.Mockito.when;
  */
 class FcmPushGatingE2eTest extends IntegrationTestSupport {
 
+    private static final String BODY = "본문";
+    private static final String TITLE = "제목";
+
     @MockitoBean
     private FcmClient fcmClient;
 
@@ -86,7 +89,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         Group g = setupGroupWithTokens("rm");
         muteService.setRoomMute(g.b(), g.room(), true);
 
-        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), "본문", "제목");
+        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
         ArgumentCaptor<List<String>> cap = tokenCaptor();
         verify(fcmClient).sendMulticast(cap.capture(), anyString(), anyString(), anyMap());
@@ -99,7 +102,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         Group g = setupGroupWithTokens("gm");
         muteService.setGlobalMute(g.c(), true);
 
-        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), "본문", "제목");
+        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
         ArgumentCaptor<List<String>> cap = tokenCaptor();
         verify(fcmClient).sendMulticast(cap.capture(), anyString(), anyString(), anyMap());
@@ -116,7 +119,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         befriendViaApi(owner, e);
         String room = roomService.createGroupRoom(owner, "무토큰방", List.of(d, e)).chatRoomId();
 
-        int sent = fcmService.sendChatPush(List.of(d, e), room, owner, "본문", "제목");
+        int sent = fcmService.sendChatPush(List.of(d, e), room, owner, BODY, TITLE);
 
         assertThat(sent).isZero();
         verify(fcmClient, never()).sendMulticast(anyList(), anyString(), anyString(), anyMap());
@@ -129,7 +132,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         when(fcmClient.sendMulticast(anyList(), anyString(), anyString(), anyMap()))
                 .thenReturn(new FcmClient.SendResult(1, List.of(g.tokenC())));
 
-        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), "본문", "제목");
+        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
         assertThat(tokenRepo.findByToken(g.tokenC())).isEmpty();
         assertThat(tokenRepo.findByToken(g.tokenB())).isPresent();
@@ -145,7 +148,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
                     return new FcmClient.SendResult(1, List.of(g.tokenC()));
                 });
 
-        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), "본문", "제목");
+        fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
         assertThat(tokenRepo.findByToken(g.tokenC())).isPresent();
     }
@@ -156,7 +159,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         Group g = setupGroupWithTokens("dis");
         when(fcmClient.isEnabled()).thenReturn(false);
 
-        int sent = fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), "본문", "제목");
+        int sent = fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
         assertThat(sent).isZero();
         verify(fcmClient, never()).sendMulticast(anyList(), anyString(), anyString(), anyMap());

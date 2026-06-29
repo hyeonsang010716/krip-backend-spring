@@ -2,11 +2,10 @@ package site.krip.domain.feed;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 import site.krip.domain.feed.entity.FeedVisibility;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -21,11 +20,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
         String viewer = fixtures.createActiveUser("대기중친구");
 
         // owner → viewer 친구요청만 보내고 수락하지 않음 → PENDING
-        mockMvc.perform(post("/api/friend/friendships/requests")
-                        .with(auth(owner))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("addressee_id", viewer)))
-                .andExpect(status().isCreated());
+        sendFriendRequest(owner, viewer);
 
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
@@ -45,6 +40,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
 
         mockMvc.perform(get("/api/feed/posts/{friendsPost}/likes", friendsPost)
                         .with(auth(friend)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.post_id").value(friendsPost));
     }
 }

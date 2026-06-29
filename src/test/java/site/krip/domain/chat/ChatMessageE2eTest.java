@@ -3,6 +3,8 @@ package site.krip.domain.chat;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import site.krip.domain.chat.entity.MessageType;
@@ -12,6 +14,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -144,32 +147,18 @@ class ChatMessageE2eTest extends ChatTestSupport {
                 .andExpect(jsonPath("$.detail").exists());
     }
 
-    @Test
-    @DisplayName("limit 범위 밖(0) → 400")
-    void historyLimitTooLow() throws Exception {
-        String a = fixtures.createActiveUser("limit하a");
-        String b = fixtures.createActiveUser("limit하b");
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "201"})
+    @DisplayName("limit 범위 밖(0/201) → 400")
+    void historyLimitOutOfRange(String limit) throws Exception {
+        String a = fixtures.createActiveUser("limit경계a");
+        String b = fixtures.createActiveUser("limit경계b");
         String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a))
                         .param("before_server_seq", "10")
-                        .param("limit", "0"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.detail").exists());
-    }
-
-    @Test
-    @DisplayName("limit 범위 밖(201) → 400")
-    void historyLimitTooHigh() throws Exception {
-        String a = fixtures.createActiveUser("limit상a");
-        String b = fixtures.createActiveUser("limit상b");
-        String roomId = createDirectRoom(a, b);
-
-        mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .with(auth(a))
-                        .param("before_server_seq", "10")
-                        .param("limit", "201"))
+                        .param("limit", limit))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -258,16 +247,15 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("content 빈 문자열 편집 → 400 (검증)")
     void editEmptyContent() throws Exception {
+        // content="" 는 DB 조회 전 @NotBlank 검증에서 막히므로 방/메시지 시드 불필요(아무 id 나 가능).
         String a = fixtures.createActiveUser("빈편집a");
-        String b = fixtures.createActiveUser("빈편집b");
-        String roomId = createDirectRoom(a, b);
-        String messageId = seedMessage(roomId, 1, a, "원본");
 
-        mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
+        mockMvc.perform(patch("/api/chat/messages/{id}", "any-message-id")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("content", "")))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     // ──────────────────── 삭제 ────────────────────
@@ -290,7 +278,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
                         .param("before_server_seq", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages[0].deleted_at").exists())
-                .andExpect(jsonPath("$.messages[0].content").value(org.hamcrest.Matchers.nullValue()));
+                .andExpect(jsonPath("$.messages[0].content").value(nullValue()));
     }
 
     @Test

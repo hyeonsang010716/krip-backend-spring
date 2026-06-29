@@ -81,21 +81,26 @@ class S3ObjectStorageTest {
     }
 
     @Test
-    @DisplayName("deleteMany: 유효 키만 추려 deleteObjects 1회, 전부 무효면 호출 없음")
-    void deleteManyFiltersInvalid() {
+    @DisplayName("deleteMany: 유효/무효 혼재 시 유효 키만 추려 deleteObjects 1회, 무효 URL 은 실패 미보고")
+    void deleteManyFiltersInvalidFromMixed() {
         when(s3.deleteObjects(any(DeleteObjectsRequest.class)))
                 .thenReturn(DeleteObjectsResponse.builder().build()); // 에러 없음
 
         List<String> failed = storage.deleteMany(List.of(
                 "https://s3.test/mybucket/uploads/perm/u1/post/a.jpg",
                 "https://cdn.other.com/nope.jpg"));
+
         verify(s3, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
         // 파싱 불가 URL 은 S3 대상이 아니므로 실패로 보고하지 않는다(메타데이터 정리 진행).
         assertThat(failed).isEmpty();
+    }
 
+    @Test
+    @DisplayName("deleteMany: 전부 무효 URL 이면 SDK 미접근, 빈 결과")
+    void deleteManyAllInvalidSkipsSdk() {
         assertThat(storage.deleteMany(List.of("https://cdn.other.com/nope.jpg"))).isEmpty();
-        // 여전히 1회 — 전부 무효인 두 번째 호출은 SDK 미접근
-        verify(s3, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
+
+        verify(s3, never()).deleteObjects(any(DeleteObjectsRequest.class));
     }
 
     @Test

@@ -21,11 +21,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * 다중 노드 Stream fan-out 핵심 보장 검증 — {@link site.krip.domain.chat.worker.ChatStreamConfig} 와
- * 동일 소비 전략($→XREADGROUP >→ack)을 격리 스트림에서 재현해 ① 노드 다운 중 발행분도 복귀 시 전부
- * 수신(at-least-once) ② ack 후 커서 전진·유지를 결정론적으로 검증.
- */
+/** 다중 노드 Stream fan-out — 격리 스트림에서 at-least-once(다운 중 발행분도 복귀 시 전부 수신) + ack 커서 전진을 검증. */
 class ChatStreamFanoutMultiNodeIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

@@ -23,6 +23,11 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
 
     /** age min/max, 날짜 start/end 만 파라미터화한 유효 본문 베이스. */
     private String body(int ageMin, int ageMax, String start, String end) {
+        return body(ageMin, ageMax, start, end, List.of());
+    }
+
+    /** image_urls 까지 지정하는 본문. */
+    private String body(int ageMin, int ageMax, String start, String end, List<String> imageUrls) {
         return json(
                 "title", "동행 구해요",
                 "content", "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
@@ -33,7 +38,7 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
                 "travel_start_date", start,
                 "travel_end_date", end,
                 "companion_type", "friend",
-                "image_urls", List.of());
+                "image_urls", imageUrls);
     }
 
     @Test
@@ -94,19 +99,11 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
         List<String> urls = IntStream.range(0, 11)
                 .mapToObj(i -> "https://cdn.test/" + i + ".webp")
                 .toList();
-        String content = json(
-                "title", "동행 구해요",
-                "content", "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
-                "preferred_age_min", 20, "preferred_age_max", 35,
-                "preferred_gender", "any", "region", "부산",
-                "travel_start_date", "2026-09-01", "travel_end_date", "2026-09-07",
-                "companion_type", "friend",
-                "image_urls", urls);
 
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(content))
+                        .content(body(20, 35, "2026-09-01", "2026-09-07", urls)))
                 .andExpect(status().isBadRequest());
     }
 }

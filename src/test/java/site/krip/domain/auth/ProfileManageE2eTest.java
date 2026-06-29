@@ -11,6 +11,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -130,8 +131,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", token))
                 .andExpect(status().isOk())
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
-                        .header().exists("Set-Cookie"))
+                .andExpect(header().exists("Set-Cookie"))
                 .andExpect(jsonPath("$.message").exists());
 
         // 같은 토큰 재사용 → 폐기돼 401 (revoke 가 빠지면 이 단언이 깨진다)

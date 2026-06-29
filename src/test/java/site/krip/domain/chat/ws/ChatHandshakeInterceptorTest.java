@@ -2,6 +2,8 @@ package site.krip.domain.chat.ws;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.ServerHttpRequest;
@@ -36,12 +38,18 @@ class ChatHandshakeInterceptorTest {
     private final RegisteredCacheManager registeredCache = mock(RegisteredCacheManager.class);
     private final UserQueryPort userQuery = mock(UserQueryPort.class);
     private final TokenRevocationService revocation = mock(TokenRevocationService.class);
+    // 인터셉터 와이어링과 토큰 발급에 동일 JwtProvider 사용(같은 SECRET) — 서명 정합성 보장.
+    private final JwtProvider jwtProvider = newJwtProvider();
     private final ChatHandshakeInterceptor interceptor = newInterceptor();
+
+    private static JwtProvider newJwtProvider() {
+        AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
+        return new JwtProvider(new AuthProperties("dev-access-token", jwt, 300L), java.time.Clock.systemUTC());
+    }
 
     private ChatHandshakeInterceptor newInterceptor() {
         AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
         AuthProperties authProps = new AuthProperties("dev-access-token", jwt, 300L);
-        JwtProvider jwtProvider = new JwtProvider(authProps, java.time.Clock.systemUTC());
         CorsProperties corsProps = new CorsProperties(List.of(ALLOWED_ORIGIN), List.of(APP_ORIGIN));
         return new ChatHandshakeInterceptor(jwtProvider, revocation, authProps, corsProps,
                 registeredCache, userQuery);
@@ -59,11 +67,6 @@ class ChatHandshakeInterceptorTest {
         ServerHttpRequest request = mock(ServerHttpRequest.class);
         when(request.getHeaders()).thenReturn(headers);
         return request;
-    }
-
-    private JwtProvider tokenIssuer() {
-        AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
-        return new JwtProvider(new AuthProperties("dev-access-token", jwt, 300L), java.time.Clock.systemUTC());
     }
 
     @Test
@@ -93,7 +96,7 @@ class ChatHandshakeInterceptorTest {
     @Test
     @DisplayName("허용되지 않은 Origin → 403 거부 (모든 핸드셰이크 거부는 403 일관)")
     void disallowedOriginRejectedWith403() {
-        ServerHttpRequest request = requestWith("https://evil.test", "auth." + tokenIssuer().issue("USER_x"));
+        ServerHttpRequest request = requestWith("https://evil.test", "auth." + jwtProvider.issue("USER_x"));
         ServerHttpResponse response = mock(ServerHttpResponse.class);
 
         boolean ok = interceptor.beforeHandshake(request, response, null, new HashMap<>());
@@ -102,14 +105,15 @@ class ChatHandshakeInterceptorTest {
         verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }
 
-    @Test
-    @DisplayName("허용 Origin + 유효 토큰 + ACTIVE(캐시 hit) → 통과(true) + user attribute 주입")
-    void validTokenActiveUserAccepted() {
+    @ParameterizedTest
+    @ValueSource(strings = {ALLOWED_ORIGIN, APP_ORIGIN})
+    @DisplayName("유효 토큰 + ACTIVE — 웹/앱 화이트리스트 Origin 둘 다 통과(true) + user attribute 주입")
+    void validTokenActiveUserAccepted(String origin) {
         String userId = "USER_active";
-        String token = tokenIssuer().issue(userId);
+        String token = jwtProvider.issue(userId);
         when(registeredCache.exists(userId)).thenReturn(true);
 
-        ServerHttpRequest request = requestWith(ALLOWED_ORIGIN, "auth." + token);
+        ServerHttpRequest request = requestWith(origin, "auth." + token);
         ServerHttpResponse response = mock(ServerHttpResponse.class);
         Map<String, Object> attributes = new HashMap<>();
 
@@ -121,20 +125,19 @@ class ChatHandshakeInterceptorTest {
     }
 
     @Test
-    @DisplayName("네이티브 앱 Origin(capacitor) + 유효 토큰 + ACTIVE → 통과 (앱 origin 화이트리스트)")
-    void appOriginActiveUserAccepted() {
-        String userId = "USER_app";
-        String token = tokenIssuer().issue(userId);
-        when(registeredCache.exists(userId)).thenReturn(true);
+    @DisplayName("유효 토큰 + INACTIVE/미가입(캐시 miss + DB false) → 403 거부")
+    void inactiveUserRejectedWith403() {
+        String userId = "USER_inactive";
+        String token = jwtProvider.issue(userId);
+        when(registeredCache.exists(userId)).thenReturn(false);
+        when(userQuery.isActiveRegistered(userId)).thenReturn(false);
 
-        ServerHttpRequest request = requestWith(APP_ORIGIN, "auth." + token);
+        ServerHttpRequest request = requestWith(ALLOWED_ORIGIN, "auth." + token);
         ServerHttpResponse response = mock(ServerHttpResponse.class);
-        Map<String, Object> attributes = new HashMap<>();
 
-        boolean ok = interceptor.beforeHandshake(request, response, null, attributes);
+        boolean ok = interceptor.beforeHandshake(request, response, null, new HashMap<>());
 
-        assertThat(ok).isTrue();
-        assertThat(attributes).containsEntry(ChatHandshakeInterceptor.ATTR_WS_USER, userId);
-        verify(response, never()).setStatusCode(HttpStatus.FORBIDDEN);
+        assertThat(ok).isFalse();
+        verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }
 }

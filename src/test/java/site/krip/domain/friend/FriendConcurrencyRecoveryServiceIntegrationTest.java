@@ -3,9 +3,10 @@ package site.krip.domain.friend;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
+import site.krip.domain.friend.entity.Friendship;
 import site.krip.domain.friend.entity.FriendshipStatus;
-import site.krip.domain.friend.repository.FriendshipRepository;
-import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.domain.friend.service.FriendshipService;
 import site.krip.domain.friend.service.UserBlockService;
 import site.krip.global.common.exception.ApiException;
@@ -31,12 +32,6 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
 
     @Autowired
     private UserBlockService userBlockService;
-
-    @Autowired
-    private FriendshipRepository friendshipRepository;
-
-    @Autowired
-    private UserBlockRepository userBlockRepository;
 
     /** 두 작업을 최대한 동시에 출발시키고 (성공 수, 마지막 예외) 를 돌려준다. */
     private Result runConcurrently(Runnable op) throws InterruptedException {
@@ -75,9 +70,9 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
 
         assertThat(r.successCount()).isEqualTo(1);
         assertThat(r.lastError()).isInstanceOf(ApiException.class);
-        assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(400);
+        assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(friendshipRepository.findBetween(a, b)).isPresent()
-                .get().extracting(f -> f.getStatus()).isEqualTo(FriendshipStatus.PENDING);
+                .get().extracting(Friendship::getStatus).isEqualTo(FriendshipStatus.PENDING);
     }
 
     @Test
@@ -90,10 +85,9 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
 
         assertThat(r.successCount()).isEqualTo(1);
         assertThat(r.lastError()).isInstanceOf(ApiException.class);
-        assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(400);
+        assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(userBlockRepository.existsByBlockerIdAndBlockedId(a, b)).isTrue();
-        assertThat(userBlockRepository.findBlocksFirstPage(a,
-                org.springframework.data.domain.PageRequest.of(0, 30))).hasSize(1);
+        assertThat(userBlockRepository.findBlocksFirstPage(a, PageRequest.of(0, 30))).hasSize(1);
     }
 
     private record Result(int successCount, Throwable lastError) {

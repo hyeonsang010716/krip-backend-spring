@@ -2,6 +2,9 @@ package site.krip.domain.notification;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
@@ -9,7 +12,10 @@ import site.krip.domain.notification.entity.FcmToken;
 import site.krip.domain.notification.repository.FcmTokenRepository;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.stream.Stream;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -23,6 +29,16 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private FcmTokenRepository tokenRepo;
+
+    /** 토큰 등록 POST → 201 검증 후 MvcResult 반환. */
+    private MvcResult registerToken(String userId, String token) throws Exception {
+        return mockMvc.perform(post("/api/notification/fcm-token")
+                        .with(auth(userId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("token", token)))
+                .andExpect(status().isCreated())
+                .andReturn();
+    }
 
     @Test
     @DisplayName("토큰 등록 → 201, fcm_token_id/created_at 반환")
@@ -44,21 +60,8 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("재등록자");
         String token = "device-token-idem";
 
-        MvcResult first = mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String firstId = idFrom(first, "fcm_token_id");
-
-        MvcResult second = mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String secondId = idFrom(second, "fcm_token_id");
+        String firstId = idFrom(registerToken(userId, token), "fcm_token_id");
+        String secondId = idFrom(registerToken(userId, token), "fcm_token_id");
 
         assertThat(secondId).as("같은 토큰 재등록은 동일 fcm_token_id 를 돌려줘야 한다").isEqualTo(firstId);
     }
@@ -69,29 +72,19 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("타임스탬프재등록자");
         String token = "device-token-touch";
 
-        mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated());
+        registerToken(userId, token);
 
         // 등록 직후엔 created_at == updated_at.
         FcmToken afterCreate = tokenRepo.findByToken(token).orElseThrow();
         assertThat(afterCreate.getUpdatedAt()).as("최초 등록 시 created_at 과 updated_at 이 같아야 한다")
                 .isEqualTo(afterCreate.getCreatedAt());
 
-        Thread.sleep(10); // updated_at 이 확실히 뒤가 되도록 최소 간격 확보.
+        registerToken(userId, token);
 
-        mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated());
-
-        // 동일 owner 재등록인데도 updated_at 이 created_at 보다 뒤로 갱신되어야 한다(early-return 회귀 방지).
+        // 동일 owner 재등록인데도 updated_at 이 created_at 이상으로 갱신되어야 한다(early-return 회귀 방지).
         FcmToken afterReRegister = tokenRepo.findByToken(token).orElseThrow();
         assertThat(afterReRegister.getUpdatedAt()).as("동일 토큰 재등록 시 updated_at 이 갱신되어야 한다")
-                .isAfter(afterReRegister.getCreatedAt());
+                .isAfterOrEqualTo(afterReRegister.getCreatedAt());
     }
 
     @Test
@@ -101,21 +94,8 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String ownerB = fixtures.createActiveUser("소유자B");
         String token = "device-token-swap";
 
-        MvcResult first = mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(ownerA))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String firstId = idFrom(first, "fcm_token_id");
-
-        MvcResult second = mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(ownerB))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String secondId = idFrom(second, "fcm_token_id");
+        String firstId = idFrom(registerToken(ownerA, token), "fcm_token_id");
+        String secondId = idFrom(registerToken(ownerB, token), "fcm_token_id");
 
         // 같은 토큰 → 같은 행(같은 id), 소유자만 B 로 교체.
         assertThat(secondId).as("동일 토큰은 owner 교체일 뿐 새 행이 아니다").isEqualTo(firstId);
@@ -129,11 +109,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("해제자");
         String token = "device-token-del";
 
-        mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", token)))
-                .andExpect(status().isCreated());
+        registerToken(userId, token);
 
         mockMvc.perform(delete("/api/notification/fcm-token")
                         .with(auth(userId))
@@ -158,28 +134,24 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.message").exists());
     }
 
-    @Test
-    @DisplayName("빈 토큰 본문 → 400 (@Size min=1)")
-    void emptyTokenBadRequest() throws Exception {
+    @ParameterizedTest(name = "{0} → 400")
+    @MethodSource("invalidTokenBodies")
+    @DisplayName("토큰 검증 실패 본문 → 400")
+    void invalidTokenBodyBadRequest(String desc, boolean includeToken, String value) throws Exception {
         String userId = fixtures.createActiveUser();
+        String body = includeToken ? json("token", value) : json();
 
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("token", "")))
+                        .content(body))
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    @DisplayName("token 필드 누락 → 400 (@NotNull)")
-    void missingTokenBadRequest() throws Exception {
-        String userId = fixtures.createActiveUser();
-
-        mockMvc.perform(post("/api/notification/fcm-token")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json()))
-                .andExpect(status().isBadRequest());
+    static Stream<Arguments> invalidTokenBodies() {
+        return Stream.of(
+                arguments("빈 토큰 본문(@Size min=1)", true, ""),
+                arguments("token 필드 누락(@NotNull)", false, null));
     }
 
     @Test

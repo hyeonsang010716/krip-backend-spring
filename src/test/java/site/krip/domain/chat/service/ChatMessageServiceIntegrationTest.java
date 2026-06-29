@@ -61,8 +61,10 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
 
         assertThatThrownBy(() ->
                 messageService.sendMessage(a, "sess-a", room, "c11", MessageType.TEXT, "over"))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("속도 제한");
+                .isInstanceOfSatisfying(ApiException.class, ex -> {
+                    assertThat(ex.getStatus()).isEqualTo(400);
+                    assertThat(ex.getMessage()).contains("속도 제한");
+                });
     }
 
     @Test
@@ -123,8 +125,10 @@ class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
 
         assertThatThrownBy(() ->
                 messageService.sendMessage(b, "sess-b", room, "x1", MessageType.TEXT, "hi"))
-                .isInstanceOf(ApiException.class)
-                .hasMessageContaining("차단");
+                .isInstanceOfSatisfying(ApiException.class, ex -> {
+                    assertThat(ex.getStatus()).isEqualTo(403);
+                    assertThat(ex.getMessage()).contains("차단");
+                });
     }
 
     @Test

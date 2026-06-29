@@ -3,6 +3,7 @@ package site.krip.support;
 import site.krip.global.storage.ObjectStorage;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -48,7 +49,7 @@ public class FakeObjectStorage implements ObjectStorage {
 
     @Override
     public List<String> deleteMany(List<String> urls) {
-        List<String> failed = new java.util.ArrayList<>();
+        List<String> failed = new ArrayList<>();
         for (String url : urls) {
             if (failDeletion.contains(url)) {
                 failed.add(url); // 실패 시뮬레이션 — 객체를 남겨둔다
