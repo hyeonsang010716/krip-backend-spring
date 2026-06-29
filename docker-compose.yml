@@ -66,6 +66,7 @@ services:
     build: .
     restart: unless-stopped       # OOM/크래시 시 자가복구 (Dockerfile 의 ExitOnOutOfMemoryError 와 짝)
     mem_limit: 2g                  # 힙은 이 한도의 70% — 동거 중인 DB 컨테이너로의 호스트 OOM 전파 차단
+    stop_grace_period: 30s         # graceful drain(20s) 보다 길게 — Docker 기본 10s SIGKILL 로 드레인이 잘리는 것 방지
     depends_on:
       postgres:
         condition: service_healthy
