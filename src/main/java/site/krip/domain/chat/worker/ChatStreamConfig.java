@@ -112,7 +112,8 @@ public class ChatStreamConfig {
                 .consumer(Consumer.from(props.nodeId(), props.nodeId()))
                 .autoAcknowledge(true)
                 .cancelOnError(t -> false)
-                .errorHandler(t -> log.warn("stream 구독 오류 (계속 폴링): {}", t.toString()))
+                // 셧다운 중(container.stop() 이후) 닫힌 커넥션 경고는 정상 종료이므로 무시.
+                .errorHandler(t -> { if (container.isRunning()) log.warn("stream 구독 오류 (계속 폴링): {}", t.toString()); })
                 .build();
         container.register(request, this::onRecord);
         container.start();
