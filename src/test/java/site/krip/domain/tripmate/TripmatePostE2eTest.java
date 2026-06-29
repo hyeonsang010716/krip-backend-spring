@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.List;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -86,13 +88,11 @@ class TripmatePostE2eTest extends TripmateTestSupport {
                 .andExpect(jsonPath("$.posts").isArray())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
 
-        // 수정 (200)
-        String updateBody = postBody("부산 수정됨", "수정된 부산 여행 동행 모집 글입니다.", "부산")
-                .replace("\"region\": \"부산\"", "\"region\": \"제주\"");
+        // 수정 (200) — region 을 부산→제주 로 변경
         mockMvc.perform(put("/api/tripmate/posts/" + postId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(updateBody))
+                        .content(postBody("부산 수정됨", "수정된 부산 여행 동행 모집 글입니다.", "제주")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("부산 수정됨"))
                 .andExpect(jsonPath("$.region").value("제주"));
@@ -191,8 +191,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @DisplayName("잘못된 enum 값(companion_type) → 400")
     void createBadEnum() throws Exception {
         String userId = fixtures.createActiveUser();
-        String body = postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울")
-                .replace("\"companion_type\": \"friend\"", "\"companion_type\": \"bogus\"");
+        String body = postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울", "bogus", List.of());
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

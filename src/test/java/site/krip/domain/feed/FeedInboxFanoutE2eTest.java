@@ -2,13 +2,10 @@ package site.krip.domain.feed;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
 import site.krip.domain.feed.entity.FeedVisibility;
 
 import static org.hamcrest.Matchers.hasSize;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,26 +14,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 외부 액터 fan-out, self-skip, dedup(멱등), 댓글 preview 100자 절단을 인박스 목록으로 검증.
  */
 class FeedInboxFanoutE2eTest extends FeedTestSupport {
-
-    private void like(String liker, String postId) throws Exception {
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .with(auth(liker)))
-                .andExpect(status().isCreated());
-    }
-
-    private void unlike(String liker, String postId) throws Exception {
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
-                        .with(auth(liker)))
-                .andExpect(status().isOk());
-    }
-
-    private void comment(String commenter, String postId, String content) throws Exception {
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .with(auth(commenter))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("content", content)))
-                .andExpect(status().isCreated());
-    }
 
     @Test
     @DisplayName("외부 유저 좋아요 → 게시자 인박스에 feed_like 1건(actor=좋아요러)")

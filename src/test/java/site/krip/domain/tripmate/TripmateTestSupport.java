@@ -4,38 +4,41 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.List;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * tripmate E2E 공통 베이스 — 모집글 생성 본문/요청 헬퍼를 모은다.
- * 본문 포맷은 음수 테스트의 {@code .replace(...)} 와 호환되도록 필드 형식을 고정한다.
+ * tripmate E2E 공통 베이스 — 모집글 생성 본문/요청 헬퍼를 모은다(본문은 {@code json()} 으로 직렬화).
  */
 abstract class TripmateTestSupport extends IntegrationTestSupport {
 
     protected static final String POSTS = "/api/tripmate/posts";
 
-    /** canonical 모집글 본문 (image_urls=[]). */
+    /** canonical 모집글 본문 (이미지 없음). */
     protected String postBody(String title, String content, String region) {
-        return postBody(title, content, region, "[]");
+        return postBody(title, content, region, List.of());
     }
 
-    /** image_urls 까지 지정하는 본문. imageUrlsJson 예: {@code "[]"}, {@code "[\"https://...\"]"}. */
-    protected String postBody(String title, String content, String region, String imageUrlsJson) {
-        return """
-                {
-                  "title": "%s",
-                  "content": "%s",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 35,
-                  "preferred_gender": "any",
-                  "region": "%s",
-                  "travel_start_date": "2026-09-01",
-                  "travel_end_date": "2026-09-07",
-                  "companion_type": "friend",
-                  "image_urls": %s
-                }
-                """.formatted(title, content, region, imageUrlsJson);
+    /** image_urls 까지 지정하는 본문. */
+    protected String postBody(String title, String content, String region, List<String> imageUrls) {
+        return postBody(title, content, region, "friend", imageUrls);
+    }
+
+    /** companion_type 까지 제어하는 본문 — 잘못된 enum 등 음수 케이스용. */
+    protected String postBody(String title, String content, String region, String companionType, List<String> imageUrls) {
+        return json(
+                "title", title,
+                "content", content,
+                "preferred_age_min", 20,
+                "preferred_age_max", 35,
+                "preferred_gender", "any",
+                "region", region,
+                "travel_start_date", "2026-09-01",
+                "travel_end_date", "2026-09-07",
+                "companion_type", companionType,
+                "image_urls", imageUrls);
     }
 
     /** 기본 본문으로 모집글 생성 — 글 내용이 무관한(좋아요 등) 테스트용. */

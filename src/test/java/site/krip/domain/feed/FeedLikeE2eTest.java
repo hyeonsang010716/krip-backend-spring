@@ -95,10 +95,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
 
         // 31명 좋아요 — tight loop 라 created_at 이 겹쳐 (created_at, user_id) tiebreak 까지 검증된다.
         for (int i = 0; i < 31; i++) {
-            String liker = fixtures.createActiveUser("좋아요" + i);
-            mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                            .with(auth(liker)))
-                    .andExpect(status().isCreated());
+            like(fixtures.createActiveUser("좋아요" + i), postId);
         }
 
         // 첫 페이지 — 30명 + next_cursor 존재

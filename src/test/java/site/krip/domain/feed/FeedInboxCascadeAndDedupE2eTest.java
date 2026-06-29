@@ -10,7 +10,6 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,18 +18,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * feed 헬퍼(seedPost) 재사용을 위해 feed 패키지의 FeedTestSupport 를 상속.
  */
 class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
-
-    private void like(String liker, String postId) throws Exception {
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .with(auth(liker)))
-                .andExpect(status().isCreated());
-    }
-
-    private void unlike(String liker, String postId) throws Exception {
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
-                        .with(auth(liker)))
-                .andExpect(status().isOk());
-    }
 
     private void assertFeedLikeCount(String owner, int expected) throws Exception {
         mockMvc.perform(get("/api/notification/inbox")

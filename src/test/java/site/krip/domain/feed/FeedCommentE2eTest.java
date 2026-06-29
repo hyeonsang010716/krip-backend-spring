@@ -3,7 +3,6 @@ package site.krip.domain.feed;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.feed.entity.FeedVisibility;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -18,16 +17,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FeedCommentE2eTest extends FeedTestSupport {
 
-    private String createComment(String userId, String postId, String content) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("content", content)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return idFrom(res, "comment_id");
-    }
-
     @Test
     @DisplayName("댓글 작성(201)→목록→작성자 삭제(200)")
     void commentLifecycle() throws Exception {
@@ -36,7 +25,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         // 작성 (201)
-        String commentId = createComment(commenter, postId, "좋은 사진이네요");
+        String commentId = comment(commenter, postId, "좋은 사진이네요");
 
         mockMvc.perform(get("/api/feed/posts/" + postId + "/comments")
                         .with(auth(owner)))
@@ -84,7 +73,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("게시물주인");
         String commenter = fixtures.createActiveUser("댓글작성자");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
-        String commentId = createComment(commenter, postId, "내 댓글입니다");
+        String commentId = comment(commenter, postId, "내 댓글입니다");
 
         // 게시물 owner 라도 댓글 작성자가 아니면 삭제 불가 → 403
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/" + commentId)
@@ -99,7 +88,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String commenter = fixtures.createActiveUser("댓글러2");
         String postA = seedPost(owner, FeedVisibility.PUBLIC, null);
         String postB = seedPost(owner, FeedVisibility.PUBLIC, null);
-        String commentId = createComment(commenter, postA, "A 게시물 댓글");
+        String commentId = comment(commenter, postA, "A 게시물 댓글");
 
         // postB 경로로 postA 의 댓글 삭제 시도 → 댓글-게시물 불일치 404
         mockMvc.perform(delete("/api/feed/posts/" + postB + "/comments/" + commentId)
