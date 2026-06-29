@@ -14,10 +14,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 피드 E2E 공통 베이스 — S3 가 없는 환경이라 업로드 플로우를 못 타므로, 가시성/좋아요/댓글/삭제 검증에
- * 필요한 {@link FeedPost} 행을 리포지토리로 직접 시드한다. URL 3종은 NOT NULL 이므로 더미 값을 채운다.
- *
- * <p>친구/차단 시드는 {@link IntegrationTestSupport#makeFriends}/{@link IntegrationTestSupport#block} 사용.
+ * 피드 E2E 공통 베이스 — S3 없는 환경이라 {@link FeedPost} 를 리포지토리로 직접 시드한다(URL 3종은 NOT NULL 더미).
+ * 친구/차단 시드는 {@link IntegrationTestSupport#makeFriends}/{@link IntegrationTestSupport#block}.
  */
 abstract class FeedTestSupport extends IntegrationTestSupport {
 

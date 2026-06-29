@@ -9,10 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 헬스/레디니스 프로브 E2E. 모두 인증 필터 제외 경로 — 토큰 없이 접근 가능해야 한다(K8s liveness/readiness).
- *
- * <p>{@code /health}: 단순 liveness 핑. {@code /actuator/health/liveness}: 의존성 없는 liveness.
- * {@code /actuator/health/readiness}: readinessState + db + redis (Testcontainers 가 떠 있어 UP).
+ * 헬스/레디니스 프로브 E2E — 모두 인증 필터 제외라 토큰 없이 접근 가능해야 한다(K8s liveness/readiness).
  */
 class HealthControllerE2eTest extends IntegrationTestSupport {
 

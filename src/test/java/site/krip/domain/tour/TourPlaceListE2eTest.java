@@ -16,11 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 장소 목록 <b>비어있지 않은</b> $geoNear 결과 E2E — 기존 {@code PlaceFavoriteE2eTest} 가 geo 시드를 생략해
- * 검증하지 못하던 거리정렬·is_favorite 병합·커서 페이지네이션을 실제 데이터로 검증한다.
- *
- * <p>테스트 간 간섭을 피하려 keyword 정규식(고유 prefix)으로 자기 시드만 조회하고, 서울에서 먼 좌표(10,10)에
- * place 를 심는다. coordinates 는 [lng, lat] 순(GeoJSON).
+ * 비어있지 않은 $geoNear 결과로 거리정렬·is_favorite 병합·커서 페이지네이션을 검증하는 E2E.
+ * 간섭 회피를 위해 keyword prefix 로 자기 시드만 조회. coordinates 는 [lng, lat] 순(GeoJSON).
  */
 class TourPlaceListE2eTest extends IntegrationTestSupport {
 

@@ -19,11 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 채팅 메시지 히스토리/편집/삭제 REST E2E ({@code /api/chat/rooms/{id}/messages}, {@code /api/chat/messages}).
- *
- * <p>메시지 본문 생성은 평시 WS 핫패스(seq 채번 + Mongo insert)로 일어나므로, 히스토리/편집/삭제
- * 검증에 필요한 {@code chat_message} Mongo 도큐먼트를 {@link ChatMessageRepository} 로 직접 시드한다
- * (도큐먼트 형태는 {@code MessageService.baseDoc} 와 동일). 방/멤버십은 1:1 방 생성 REST 로 만든다.
+ * 채팅 메시지 히스토리/편집/삭제 REST E2E. 본문 생성은 평시 WS 핫패스라, 검증용 {@code chat_message}
+ * 도큐먼트를 {@link ChatMessageRepository} 로 직접 시드({@code MessageService.baseDoc} 형태)한다.
  */
 class ChatMessageE2eTest extends ChatTestSupport {
 

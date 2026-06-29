@@ -10,11 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 피드 가시성 매트릭스 E2E — PRIVATE/FRIENDS/PUBLIC × (owner/friend/stranger/blocked).
- * 단건 조회는 {@code GET /api/feed/posts/{postId}} 가 아니라 owner 전용이므로, 타 유저 가시성은
- * 좋아요 진입점({@code POST .../like})으로 검증한다(가시성 미충족·차단 모두 404).
- *
- * <p>owner 단건은 {@code /api/feed/posts/{postId}} 가 본인 글만 반환(loadOwnedPost)하고,
- * 타 유저 피드 목록은 {@code /api/feed/users/{ownerId}} 가 viewer 가시성 부분집합만 반환한다.
+ * 단건 조회는 owner 전용이라 타 유저 가시성은 좋아요 진입점으로 검증한다(미충족·차단 모두 404).
  */
 class FeedVisibilityE2eTest extends FeedTestSupport {
 

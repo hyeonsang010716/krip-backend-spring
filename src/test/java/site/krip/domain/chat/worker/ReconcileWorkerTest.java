@@ -32,10 +32,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link ReconcileWorker#reconcileOnce()} 단위 테스트 — at-least-once drain.
- *
- * <p>검증: ① 빈 dirty → no-op ② 정상 배치 → RDB 갱신 + 해소분 SREM ③ Mongo aggregate 실패 → set 유지(재시도)
- * ④ 방별 UPDATE 실패 → 실패분은 set 에 유지(다음 tick 재시도) ⑤ tick 배치 예산 상한.
+ * {@link ReconcileWorker} at-least-once drain 단위 테스트 — 정상 갱신·SREM, 실패 시 set 유지(재시도),
+ * tick 배치 예산 상한·진전 기반 백오프.
  */
 class ReconcileWorkerTest {
 

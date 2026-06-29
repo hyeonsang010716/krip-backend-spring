@@ -11,11 +11,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * process()→uploadInParallel 합성이 업로드 작업을 풀 워커에서 실행하는지 검증(회귀).
- *
- * <p>tripmate 가 이 합성을 쓰므로, uploadPool 포화(CallerRuns) 시에도 업로드가 요청(Tomcat) 스레드가
- * 아닌 img-* 풀 워커에서 돌아 스레드 격리가 유지된다. 직접 {@code uploadInParallel} 을 호출하면 CallerRuns
- * 가 호출 스레드에서 돌아 격리가 깨진다(이번 수정 이전의 tripmate Phase 2).
+ * process()→uploadInParallel 합성이 업로드를 풀 워커에서 실행하는지 검증(회귀).
+ * uploadPool 포화(CallerRuns) 시에도 요청(Tomcat) 스레드가 아닌 img-* 워커에서 돌아 스레드 격리가 유지돼야 한다.
  */
 class ImageUploadExecutorIsolationTest {
 

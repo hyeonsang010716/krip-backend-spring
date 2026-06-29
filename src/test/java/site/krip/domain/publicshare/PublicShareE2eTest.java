@@ -19,11 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 공개 share E2E — tour 의 공유 토큰 발급 → 공개 endpoint 라운드트립 검증.
- *
- * <p>공개 endpoint {@code GET /api/public/share/plan/{token}} 는 인증 헤더 없이 동작해야 한다
- * (세 인증 필터가 {@code /api/public} 화이트리스트). 응답에 소유자(user_id) 가 노출되지 않는다.
- * 토큰 무효/손상/만료 → 400, 디코드는 됐으나 plan 삭제됨 → 404. 요청/응답 JSON snake_case.
+ * 공개 share E2E — 공유 토큰 발급 → 인증 없이 공개 endpoint 라운드트립(소유자 user_id 미노출).
+ * 토큰 무효/손상/만료 → 400, 디코드됐으나 plan 삭제 → 404. JSON snake_case.
  */
 class PublicShareE2eTest extends IntegrationTestSupport {
 

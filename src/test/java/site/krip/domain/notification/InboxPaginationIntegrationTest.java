@@ -19,11 +19,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 인박스 keyset 커서 페이지네이션 회귀 테스트.
- *
- * <p>정렬은 (created_at DESC, _id DESC) 2키인데 커서가 created_at 단일키였던 버그를 검증한다 —
- * 동일 created_at 항목이 페이지 경계를 가로지르면 다음 페이지에서 형제 항목이 통째로 유실됐다.
- * keyset 커서 적용 후에는 경계의 모든 항목이 정확히 한 번씩 반환되어야 한다.
+ * 인박스 keyset 커서 페이지네이션 회귀 — 커서가 created_at 단일키였을 때 동일 created_at 항목이
+ * 페이지 경계에서 유실됐다. (created_at, _id) keyset 적용 후 전부 정확히 한 번씩 반환되어야 한다.
  */
 class InboxPaginationIntegrationTest extends IntegrationTestSupport {
 

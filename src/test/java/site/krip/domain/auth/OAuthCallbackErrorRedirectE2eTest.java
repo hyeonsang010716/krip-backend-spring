@@ -20,10 +20,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * OAuth 콜백 실패 경로 — 코드 교환/내부 실패가 JSON 500 이 아니라 FE 로 세분화된 {@code ?status=} 리다이렉트가
- * 되는지. 유효한 state 쿠키로 검증을 통과시킨 뒤 {@link OAuthCallbackService} 를 mock 해 실패를 주입한다.
- *
- * <p>{@code provider_error}: Google 교환·조회 실패(RestClient/IllegalState). {@code error}: 내부 예외.
+ * OAuth 콜백 실패 경로 — 코드 교환/내부 실패가 JSON 500 이 아니라 FE 로 {@code ?status=} 리다이렉트되는지.
+ * 유효 state 쿠키로 통과 후 {@link OAuthCallbackService} 를 mock 해 실패 주입(provider_error=교환실패, error=내부예외).
  */
 class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
 

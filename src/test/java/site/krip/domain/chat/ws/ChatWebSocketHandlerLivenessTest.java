@@ -24,10 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * WS liveness sweep — ping/pong 기반으로 도달 불가(half-open) 세션을 닫고 TTL 연장에서 제외하는지 검증(회귀).
- *
- * <p>sweep 가 도달성과 무관하게 TTL 을 무조건 연장하던 기존 동작에서는 좀비 세션이 TTL 자가청소를 회피해
- * 사용자별 세션 한도를 소진했다. pong 으로 생존이 확인된 세션만 연장하고, 타임아웃 세션은 닫는지 본다.
+ * WS liveness sweep 회귀 — pong 으로 생존 확인된 세션만 ping/TTL 연장, half-open(타임아웃) 세션은 닫는다.
+ * 과거엔 무조건 TTL 을 연장해 좀비 세션이 자가청소를 회피하고 세션 한도를 소진했다.
  */
 class ChatWebSocketHandlerLivenessTest extends IntegrationTestSupport {
 

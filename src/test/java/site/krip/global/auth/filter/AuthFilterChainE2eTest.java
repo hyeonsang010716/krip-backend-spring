@@ -15,10 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 전역 인증 필터 체인(Bearer / LoginAuth / RegisterCheck) E2E.
- *
- * <p>화이트리스트 우회와 419(탈퇴 유예) 동작까지 본다. 보호 엔드포인트로는
- * 로그인+가입확인이 모두 필요한 {@code GET /api/friend/friendships} 를 사용한다.
+ * 전역 인증 필터 체인(Bearer / LoginAuth / RegisterCheck) E2E — 화이트리스트 우회와 419(탈퇴 유예)까지 검증.
+ * 보호 엔드포인트로는 로그인+가입확인이 모두 필요한 {@code GET /api/friend/friendships} 를 쓴다.
  */
 class AuthFilterChainE2eTest extends IntegrationTestSupport {
 

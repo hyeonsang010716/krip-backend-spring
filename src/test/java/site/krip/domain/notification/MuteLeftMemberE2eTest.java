@@ -15,10 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 방별 mute — 떠난(left) 멤버 경계 E2E ({@code /api/notification/mute/rooms/{id}}).
- *
- * <p>{@link MuteE2eTest} 가 활성 멤버(정상)·비멤버(400)를 다룬다. 본 테스트는 "멤버 행은 있으나
- * 이미 퇴장(isLeft=true)" 인 별도 분기를 메운다 — 활성 멤버가 아니므로 400 이어야 한다.
+ * 방별 mute — 떠난(left) 멤버 경계 E2E. 멤버 행은 있으나 이미 퇴장(isLeft=true)인 분기는
+ * 활성 멤버가 아니므로 400 이어야 한다.
  */
 class MuteLeftMemberE2eTest extends IntegrationTestSupport {
 

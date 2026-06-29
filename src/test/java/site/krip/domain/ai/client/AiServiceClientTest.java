@@ -26,9 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * {@link AiServiceClient} bulkhead 단위 테스트 — 인메모리 HTTP 서버를 latch 로 블록시켜
- * "동시 호출 상한 도달 시 즉시 503", "슬롯 해제 후 재허용", "에러 경로에서도 permit 누수 없음"을
- * sleep 없이 결정적으로 검증한다.
+ * {@link AiServiceClient} bulkhead 단위 테스트 — latch 로 블록되는 인메모리 HTTP 서버로
+ * 상한 도달 시 503·슬롯 해제 후 재허용·에러 경로 permit 누수 없음을 sleep 없이 검증한다.
  */
 class AiServiceClientTest {
 

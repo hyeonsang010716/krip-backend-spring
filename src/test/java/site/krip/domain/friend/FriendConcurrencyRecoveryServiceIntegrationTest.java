@@ -21,12 +21,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 친구요청/차단의 <b>동시성 복구</b> 분기 통합 테스트.
- *
- * <p>두 스레드가 동시에 같은 INSERT 를 시도하면 canonical/unique 인덱스 경합이 발생한다. 한쪽은 성공,
- * 다른 쪽은 {@code DataIntegrityViolationException} → 서비스의 재조회 catch 로 <b>500 이 아닌 400</b> 으로
- * 변환되어야 한다. 어떤 분기(사전조회 vs 경합 catch)로 처리되든 "정확히 하나 성공 + 나머지 400 + 최종 1건"
- * 불변식을 검증한다.
+ * 친구요청/차단의 동시성 복구 분기 통합 — 같은 INSERT 경합 시 한쪽 성공, 다른 쪽은
+ * DataIntegrityViolation → 재조회 catch 로 500이 아닌 400. "정확히 하나 성공 + 나머지 400 + 최종 1건" 불변식 검증.
  */
 class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSupport {
 

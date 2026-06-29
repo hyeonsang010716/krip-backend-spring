@@ -21,10 +21,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 프로필 이미지 CRUD E2E — 인메모리 스토리지로 실제 업로드/삭제 검증.
- *
- * <p>add 201/중복 409, update 200(이전 객체 정리), delete 200(객체 제거)/미존재 404 를 본다.
- * S3 업로드를 DB 트랜잭션 밖에서 수행하는 동작도 함께 확인한다.
+ * 프로필 이미지 CRUD E2E — 인메모리 스토리지로 업로드/삭제 검증.
+ * add 201/중복 409, update 200(이전 객체 정리), delete 200/미존재 404, S3 업로드는 DB 트랜잭션 밖.
  */
 @Import(FakeStorageConfig.class)
 class ProfileImageE2eTest extends IntegrationTestSupport {

@@ -27,11 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * 실 WebSocket 핸드셰이크 + op E2E — {@code @SpringBootTest(RANDOM_PORT)} 로 임베디드 톰캣을 띄우고
- * JSR-356 클라이언트({@link StandardWebSocketClient})로 {@code /api/ws/chat} 에 실제 연결한다.
- *
- * <p>앱 채널 인증(쿠키 대신 {@code auth.<jwt>} 서브프로토콜) + Origin 화이트리스트를 통과해 connected →
- * send(ACK) → read(read_ack) 흐름과 무토큰 핸드셰이크 거부를 검증한다.
+ * 실 WebSocket 핸드셰이크 + op E2E — {@code @SpringBootTest(RANDOM_PORT)} 임베디드 톰캣에 JSR-356 클라이언트로
+ * {@code /api/ws/chat} 실제 연결. 인증은 쿠키 대신 {@code auth.<jwt>} 서브프로토콜 + Origin 화이트리스트.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class ChatWebSocketE2eTest extends IntegrationTestSupport {

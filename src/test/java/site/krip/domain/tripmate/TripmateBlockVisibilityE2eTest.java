@@ -12,9 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * tripmate 차단/숨김 가시성 E2E ({@code /api/tripmate/posts}).
- *
- * <p>차단 관계(방향 무관) 작성자의 글은 목록·검색·단건에서 제외되고, 숨김(display=false) 글은
- * 작성자 본인만 단건 조회할 수 있다(나머지는 404 로 존재 은닉).
+ * 차단(방향 무관) 작성자 글은 목록·검색·단건에서 제외, 숨김 글은 작성자만 단건 조회(나머지 404).
  */
 class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
 

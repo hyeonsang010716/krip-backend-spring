@@ -16,13 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 친구 검색/검색기록/상세 E2E.
- *
- * <ul>
- *   <li>검색: {@code /api/friend/search} — user_name/user_id ILIKE, 본인/차단 제외, 검색기록 저장(첫 페이지)</li>
- *   <li>검색기록: {@code /api/friend/search/history} — 목록/단건 삭제/전체 삭제 (Mongo)</li>
- *   <li>상세: {@code /api/friend/detail/{userId}} — 상대 공개 프로필 + 내 기준 관계</li>
- * </ul>
+ * 친구 검색/검색기록/상세 E2E — 검색(ILIKE, 본인/차단 제외, 기록 저장), 검색기록(목록/삭제, Mongo), 상세(공개 프로필 + 관계).
  */
 class FriendSearchE2eTest extends IntegrationTestSupport {
 

@@ -24,9 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * FCM 채팅 푸시 게이팅 E2E — 실 DB(방 멤버십/뮤트/토큰) + mock {@link FcmClient} 로
- * sendChatPush 의 게이팅 캐스케이드(방 뮤트 → 전역 뮤트 → 토큰 → multicast → 만료 정리)를 검증한다.
- * 실제 Firebase 발송은 mock 으로 대체.
+ * FCM 채팅 푸시 게이팅 E2E — 실 DB + mock {@link FcmClient} 로 sendChatPush 게이팅
+ * 캐스케이드(방 뮤트 → 전역 뮤트 → 토큰 → multicast → 만료 정리)를 검증한다.
  */
 class FcmPushGatingE2eTest extends IntegrationTestSupport {
 

@@ -13,10 +13,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 시스템 메시지 통합 테스트.
- *
- * <p>{@link MessageService#sendSystemMessage}: ① system 타입 메시지가 액션/타깃과 함께 Mongo 에 적재되고
- * ② unread 를 올리지 않는다(일반 텍스트는 올린다)는 두 핵심 불변식을 실 Redis/Mongo 로 검증한다.
+ * 시스템 메시지 통합 테스트 — {@link MessageService#sendSystemMessage} 가 ① action/target 과 함께 Mongo 적재
+ * ② unread 를 올리지 않음(일반 텍스트는 올림)을 실 Redis/Mongo 로 검증.
  */
 class ChatSystemMessageServiceIntegrationTest extends IntegrationTestSupport {
 

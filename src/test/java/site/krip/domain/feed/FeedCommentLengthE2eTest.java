@@ -9,11 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 댓글 길이 검증이 <b>코드포인트</b> 기준인지 확인하는 E2E.
- *
- * <p>길이 검사는 서비스(게시물 조회) 이전 컨트롤러 단계에서 수행되므로 실제 게시물이 없어도 검증된다:
- * 초과면 400, 한도 내면 검증 통과 후 미존재 게시물이라 404(=길이는 통과했다는 증거).
- * 이모지(비-BMP)는 UTF-16 으로 2 유닛이라 과거 {@code @Size}(코드유닛) 기준에선 과도 거부되던 경계를 본다.
+ * 댓글 길이 검증이 코드포인트 기준인지 확인하는 E2E — 컨트롤러 단계라 게시물 없이도 검증(한도 내면 404=통과 증거).
+ * 이모지(비-BMP)는 UTF-16 2 유닛이라 과거 코드유닛 기준에선 과도 거부되던 경계를 본다.
  */
 class FeedCommentLengthE2eTest extends IntegrationTestSupport {
 

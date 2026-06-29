@@ -9,9 +9,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 피드 업로드 <b>검증</b> E2E — S3 미사용 환경이라 성공 업로드는 검증하지 않고, S3 호출 전에 거절되는
- * 검증 경로만 본다. 경로: {@code POST /api/feed/posts} (multipart). 컨트롤러는 content-type → size →
- * caption 길이 검증을 S3/이미지 처리보다 먼저 수행하고, 이미지 디코드 실패는 처리기가 400 으로 거절한다.
+ * 피드 업로드 검증 E2E — S3 미사용이라 S3 도달 전 거절되는 경로만 본다({@code POST /api/feed/posts}).
+ * 컨트롤러는 content-type → size → caption 길이를 S3/이미지 처리보다 먼저 검증한다.
  */
 class FeedUploadValidationE2eTest extends IntegrationTestSupport {
 

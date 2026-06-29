@@ -18,11 +18,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 인박스 E2E — 경로 {@code /api/notification/inbox}. Mongo 단독. 인박스 항목은 {@link InboxRepository} 로
- * 직접 시드한다(static 팩토리: feedLike/feedComment/tripmateLike). 응답 JSON snake_case.
- *
- * <p>커버: 목록(200, 커서) / 미읽음 카운트(200) / hide(잘못된 ObjectId·미존재·타인 → 404) /
- * 첫 페이지 자동 read(응답은 read 전 상태) / 본인→본인 self-skip / 잘못된 커서 400.
+ * 인박스 E2E — 경로 {@code /api/notification/inbox}. Mongo 단독. 항목은 {@link InboxRepository}
+ * static 팩토리(feedLike 등)로 직접 시드. 응답 JSON snake_case.
  */
 class InboxE2eTest extends IntegrationTestSupport {
 

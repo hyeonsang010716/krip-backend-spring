@@ -15,11 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 채팅 방 생성/멤버십/조회 REST E2E ({@code /api/chat/rooms}).
- *
- * <p>친구/차단 관계는 리포지토리로 직접 시드(base 의 {@code makeFriends}/{@code block}).
- * (방/메시지 생성은 REST 로만 다루며 WS 실시간 경로는 별도.) 응답 JSON 은 snake_case,
- * room type 은 소문자 enum({@code direct/group}).
+ * 채팅 방 생성/멤버십/조회 REST E2E ({@code /api/chat/rooms}). 친구/차단은 리포지토리로 직접 시드,
+ * 응답 JSON 은 snake_case, room type 은 소문자 enum({@code direct/group}).
  */
 class ChatRoomE2eTest extends ChatTestSupport {
 

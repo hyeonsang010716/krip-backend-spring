@@ -24,11 +24,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * Stream 컨슈머 자가복구 검증 — 런타임에 consumer group 이 사라져도(일시 NOGROUP) 구독이 영구 취소되지
- * 않고, {@link ChatStreamConfig#ensureGroup()} 재생성 후 소비가 재개되는지.
- *
- * <p>{@code cancelOnError(false)} + heartbeat 의 group 재확인이 함께 동작함을 증명한다. 기본값
- * ({@code cancelOnError=true})이면 group 파괴 직후 폴링 오류로 구독이 죽어 이 테스트는 실패한다.
+ * Stream 컨슈머 자가복구 검증 — NOGROUP(런타임 group 파괴)에도 구독이 죽지 않고 {@link ChatStreamConfig#ensureGroup()}
+ * 재생성 후 소비 재개. {@code cancelOnError(false)} + heartbeat group 재확인 검증(true 면 폴링 오류로 구독이 죽어 실패).
  */
 @TestPropertySource(properties = {
         "krip.chat.fanout-mode=redis_stream",

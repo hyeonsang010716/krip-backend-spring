@@ -27,10 +27,8 @@ import java.util.concurrent.Future;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 프로필 이미지 동시 추가 — 행 잠금(findByIdForUpdate)으로 lost-update 가 사라졌는지 검증(회귀).
- *
- * <p>구버그: READ_COMMITTED 에서 두 동시 추가가 둘 다 null 을 읽고 각자 저장 → 나중 것이 덮어써
- * 고아 S3 객체 + 409 없음. 잠금으로 직렬화되면 하나만 성공, 나머지는 409 + 자기 업로드 정리.
+ * 프로필 이미지 동시 추가 — 행 잠금(findByIdForUpdate)으로 lost-update 회귀 방지 검증.
+ * 구버그: READ_COMMITTED 에서 둘 다 null 읽고 각자 저장 → 나중 것이 덮어써 고아 S3 + 409 없음. 잠금으로 하나만 성공·나머지 409.
  */
 @Import(FakeStorageConfig.class)
 class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
@@ -71,8 +69,7 @@ class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
         UserDetailInform detail = detailRepository.findById(userId).orElseThrow();
         assertThat(detail.getProfileImageUrl()).isEqualTo(winnerUrl);   // DB 엔 승자 URL
 
-        // 이 유저 prefix 의 살아있는 객체는 승자 1개뿐 — 패자가 자기 업로드를 정리(고아 없음).
-        // stored 는 컨텍스트 공유라 다른 테스트 객체가 섞이므로 이 유저 prefix 로 필터링.
+        // 이 유저 prefix 의 살아있는 객체는 승자 1개뿐(패자가 자기 업로드 정리). stored 는 공유 컨텍스트라 prefix 로 필터링.
         String userPrefix = userId + "/profile";
         assertThat(storage.stored.stream().filter(u -> u.contains(userPrefix)).count()).isEqualTo(1);
         assertThat(storage.stored).contains(winnerUrl);

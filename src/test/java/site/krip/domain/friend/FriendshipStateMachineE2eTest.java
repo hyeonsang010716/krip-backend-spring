@@ -15,16 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 친구 요청 상태머신 + 권한 가드 E2E ({@code /api/friend/friendships}).
- *
- * <p>{@link FriendshipE2eTest} 가 정상 흐름을 다룬다면, 본 테스트는 서비스가 enforce 하지만
- * 기존 E2E 가 비우고 있던 경계를 메운다:
- * <ul>
- *   <li>권한: 잘못된 당사자가 거절/취소/삭제 → 403</li>
- *   <li>상태머신: PENDING 이 아닌 요청의 수락/거절/취소, ACCEPTED 가 아닌 관계의 삭제 → 400</li>
- *   <li>차단 방향: 상대가 나를 차단한 상태에서 요청 → 400</li>
- *   <li>미존재 요청 / 미존재 유저 차단 → 400</li>
- * </ul>
+ * 친구 요청 상태머신 + 권한 가드 E2E (/api/friend/friendships).
+ * FriendshipE2eTest 의 정상 흐름 밖 경계: 잘못된 당사자 403, 비-PENDING/비-ACCEPTED 전이 400, 차단 방향/미존재 400.
  */
 class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
 

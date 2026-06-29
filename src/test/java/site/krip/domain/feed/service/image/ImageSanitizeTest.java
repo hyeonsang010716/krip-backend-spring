@@ -18,11 +18,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * ImageProcessor.sanitize 보안 보장 검증 — 단건 업로드(프로필·트립메이트 이미지)의 "항상 재인코딩"으로
- * 폴리글랏(이미지 + 트레일링 페이로드)을 무력화하고 원본 바이트를 버리는지 실 이미지 바이트로 확인한다.
- *
- * <p>기존엔 sanitize 가 단위 테스트에서 mock 되거나 비이미지 입력(디코드 실패)으로만 닿아, 재인코딩이
- * 빠지는 회귀를 잡지 못하는 false-green 이었다.
+ * ImageProcessor.sanitize 보안 검증 — "항상 재인코딩"으로 폴리글랏(이미지+트레일링 페이로드)을 무력화하는지 실 바이트로 확인.
+ * 기존엔 mock·비이미지 입력으로만 닿아 재인코딩 누락 회귀를 못 잡는 false-green 이었다.
  */
 class ImageSanitizeTest {
 

@@ -22,11 +22,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link UnreadService} 순수 단위 테스트.
- *
- * <p>캐시 miss 인 방은 단일 aggregate({@code countAfterSeqByRooms})로 배치 계산한다(콜드 동기화 N+1 제거).
- * 캐시 hit 은 배치를 우회하고, 미읽음 0 인 방은 aggregate 결과에 없어 호출측이 0 으로 채운다. 배치가
- * 실패하면 miss 방 전체를 skip 하고 캐시분만 반환한다(과거의 방별 격리에서 배치 all-or-nothing 으로 변경).
+ * {@link UnreadService} 순수 단위 테스트 — miss 방은 단일 aggregate 로 배치 계산(N+1 제거), 캐시 hit 은 우회,
+ * 미읽음 0 은 호출측이 채움, 배치 실패 시 miss 전체 skip(방별 격리 → all-or-nothing 변경).
  */
 class UnreadServiceTest {
 

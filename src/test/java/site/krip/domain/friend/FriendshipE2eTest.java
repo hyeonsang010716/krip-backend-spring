@@ -13,10 +13,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 친구 요청/수락/거절/취소/삭제 E2E ({@code /api/friend/friendships}).
- *
- * <p>모든 관계는 실제 API 엔드포인트로 생성한다(레포 직접 시드 지양). 응답 JSON 은 snake_case,
- * friendship status 는 소문자({@code pending/accepted/rejected}).
+ * 친구 요청/수락/거절/취소/삭제 E2E (/api/friend/friendships).
+ * 모든 관계는 실제 API 로 생성. 응답 JSON 은 snake_case, status 는 소문자(pending/accepted/rejected).
  */
 class FriendshipE2eTest extends IntegrationTestSupport {
 

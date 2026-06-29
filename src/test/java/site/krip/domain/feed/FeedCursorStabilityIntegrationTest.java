@@ -22,10 +22,8 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 피드 게시글/댓글 커서 안정성 — 페이지 경계 행이 삭제돼도 다음 페이지가 잘리지 않는지(회귀).
- *
- * <p>구버그: 커서가 id 만 담아 다음 페이지 쿼리가 그 행의 createdAt 을 서브쿼리로 재유도 → 경계 글/댓글이
- * 삭제되면 서브쿼리 NULL → 전 행 제외 → 빈 결과 → 잘림. 커서에 (createdAt, id)를 인코딩해 수정.
+ * 피드 게시글/댓글 커서 안정성 — 경계 행이 삭제돼도 다음 페이지가 잘리지 않는지(회귀).
+ * 구버그: 커서가 id 만 담아 경계 행 삭제 시 createdAt 서브쿼리가 NULL → 빈 결과로 잘림. (createdAt, id) 인코딩으로 수정.
  */
 class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
 

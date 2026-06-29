@@ -14,9 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * {@link ImageProcessor} 의 WEBP 알파 판정 / EXIF 회전 경로 단위 테스트.
- *
- * <p>ImageIO 로는 WEBP 인코딩·EXIF 기록이 불가하므로 Pillow 로 사전 생성한 픽스처(src/test/resources/images)를
- * 사용한다. 커버: 큰 불투명 WEBP→JPEG / 큰 투명 WEBP→PNG(알파 보존) / EXIF Orientation=6 → 회전 적용(치수 swap).
+ * ImageIO 로는 WEBP 인코딩·EXIF 기록이 불가해 Pillow 로 만든 픽스처(src/test/resources/images)를 쓴다.
  */
 class FeedImageEdgeCaseTest {
 

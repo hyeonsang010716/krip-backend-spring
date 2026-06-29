@@ -13,8 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 피드 게시물 관리 E2E — 캡션 PATCH(설정/삭제/길이검증), 가시성 PATCH, 삭제→삭제후 404.
- * 캡션 길이 검증은 컨트롤러가 <b>코드포인트</b> 기준으로 수행하므로 이모지 케이스를 PATCH 로 검증한다
- * (PATCH 는 S3 미사용 — 시드한 게시물을 그대로 변경). 경로: {@code /api/feed/posts/{postId}}.
+ * 캡션 길이는 코드포인트 기준이라 이모지 케이스를 PATCH(S3 미사용)로 검증한다.
  */
 class FeedPostManageE2eTest extends FeedTestSupport {
 

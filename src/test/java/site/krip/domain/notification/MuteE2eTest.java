@@ -21,9 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 알림 차단(mute) E2E — 경로 {@code /api/notification/mute}. 전역(유저) / 방별(멤버) 두 레벨.
  * 저장은 true 만, 해제는 NULL 정규화. 요청 JSON snake_case({@code muted}).
- *
- * <p>방별 mute 의 정상 경로는 활성 멤버 시드(@Autowired chat repository 로 직접 INSERT)가 필요하므로
- * 채팅방+멤버를 직접 만들어 검증한다. 비멤버/미존재방/필드누락 400 경로도 함께 커버.
  */
 class MuteE2eTest extends IntegrationTestSupport {
 

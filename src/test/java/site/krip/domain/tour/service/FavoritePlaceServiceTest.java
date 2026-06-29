@@ -25,11 +25,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 즐겨찾기 추가 경로 단위 테스트 — 동시 추가 race(UNIQUE 충돌)를 500 이 아닌 400 으로 매핑하는지 검증.
- *
- * <p>race 분기(existsBy 통과 후 INSERT 충돌)는 순차 HTTP 호출로 결정적으로 재현되지 않으므로,
- * saveAndFlush 가 {@link DataIntegrityViolationException} 을 던지는 상황을 mock 으로 주입해 확인한다.
- * 순차 중복(existsBy=true)·정상 흐름은 {@code PlaceFavoriteE2eTest} 가 E2E 로 커버한다.
+ * 즐겨찾기 추가 단위 테스트 — 동시 추가 race(UNIQUE 충돌)를 500 이 아닌 400 으로 매핑하는지 검증.
+ * race 는 순차 호출로 재현 불가하므로 saveAndFlush 의 {@link DataIntegrityViolationException} 을 mock 주입.
  */
 class FavoritePlaceServiceTest {
 

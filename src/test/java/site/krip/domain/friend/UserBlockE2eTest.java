@@ -12,10 +12,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 유저 차단/해제/목록 E2E ({@code /api/friend/blocks}).
- *
- * <p>차단 시 기존 friendship(방향 무관)이 정리되고, 검색에서 양방향 모두 제외된다. 모든 관계는
- * 실제 API 로 생성한다(base 의 {@code befriendViaApi}).
+ * 유저 차단/해제/목록 E2E (/api/friend/blocks).
+ * 차단 시 기존 friendship(방향 무관) 정리 + 검색에서 양방향 제외. 관계는 실제 API(befriendViaApi)로 생성.
  */
 class UserBlockE2eTest extends IntegrationTestSupport {
 

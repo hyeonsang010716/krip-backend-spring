@@ -22,12 +22,9 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 다중 노드 Stream fan-out 이 의존하는 핵심 보장 검증 — Pub/Sub 이 못 하던 부분.
- *
- * <p>{@link site.krip.domain.chat.worker.ChatStreamConfig} 와 동일한 소비 전략(group 을 {@code $} 에서
- * 생성 → {@code XREADGROUP >} → ack)을 격리된 스트림에서 재현해, ① 노드(consumer group)가 끊긴 동안
- * 발행된 이벤트도 복귀 시 모두 수신되고(at-least-once) ② 커서가 ack 후 전진·유지돼 갭 이벤트만 이어
- * 받는지를 결정론적으로 검증한다. 운영 {@code chat:stream}/reaper 와 무관한 전용 키를 써 간섭을 없앤다.
+ * 다중 노드 Stream fan-out 핵심 보장 검증 — {@link site.krip.domain.chat.worker.ChatStreamConfig} 와
+ * 동일 소비 전략($→XREADGROUP >→ack)을 격리 스트림에서 재현해 ① 노드 다운 중 발행분도 복귀 시 전부
+ * 수신(at-least-once) ② ack 후 커서 전진·유지를 결정론적으로 검증.
  */
 class ChatStreamFanoutMultiNodeIntegrationTest extends IntegrationTestSupport {
 

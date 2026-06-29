@@ -23,10 +23,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@code redis_stream} 모드 fan-out 단위 테스트 — 공유 Stream XADD 와 디스패처 로컬 전달.
- *
- * <p>실 컨텍스트 없이 협력자를 mock 해 검증: fanOutToRoom 이 단일 Stream 에 XADD / 수신 envelope(op=room) 의
- * 로컬 구독자 전달.
+ * {@code redis_stream} 모드 fan-out 단위 테스트 — mock 협력자로 fanOutToRoom 의 단일 Stream XADD,
+ * 수신 envelope(op=room) 의 로컬 구독자 전달을 검증.
  */
 class FanoutServiceStreamTest {
 

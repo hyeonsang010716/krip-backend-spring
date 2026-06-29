@@ -30,10 +30,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link FanoutService} 단위 테스트 (in_process 모드).
- * Redis/노드레지스트리 없이 로컬 메모리 직배송 경로만 검증한다(가짜 WS 세션으로 송신 캡처).
- *
- * <p>핵심: ① 발신자 자기-에코 skip(sender_session_id) ② 유저의 모든 세션 전달 ③ 닫힌 소켓 정리.
+ * {@link FanoutService} 단위 테스트 (in_process 모드) — Redis 없이 로컬 메모리 직배송만 검증:
+ * 자기-에코 skip, 유저 전 세션 전달, 닫힌 소켓 정리(가짜 WS 세션으로 송신 캡처).
  */
 class FanoutServiceTest {
 

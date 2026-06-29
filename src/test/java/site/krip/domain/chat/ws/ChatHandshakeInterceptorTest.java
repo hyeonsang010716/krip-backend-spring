@@ -24,10 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link ChatHandshakeInterceptor} 순수 단위 테스트.
- *
- * <p>WS 업그레이드는 accept() 전이라 RFC 6455 상 커스텀 close code 를 보낼 수 없으므로,
- * origin/auth/inactive 거부는 전부 <b>HTTP 403</b> 으로 일관되게 처리한다(토큰 없음/무효도 401 아닌 403).
+ * {@link ChatHandshakeInterceptor} 순수 단위 테스트 — accept() 전이라 RFC 6455 상 커스텀 close code 불가,
+ * origin/auth/inactive 거부는 전부 HTTP 403 으로 일관(토큰 없음/무효도 401 아닌 403).
  */
 class ChatHandshakeInterceptorTest {
 

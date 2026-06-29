@@ -16,16 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 프로필 수정/탐색목록/통계/로그아웃 E2E ({@code /api/auth/profile}, {@code /api/auth/logout}).
- *
- * <p>{@link AuthProfileE2eTest} 가 인증 3계층과 단건 조회만 다룬다. 본 테스트는 비어 있던
- * 변경/목록/로그아웃 엔드포인트를 메운다:
- * <ul>
- *   <li>PATCH /me — 부분 수정(이름·나이·여행스타일 교체) 반영</li>
- *   <li>PATCH /me — 잘못된 이메일 형식 → 400</li>
- *   <li>GET /all — 본인 제외, 타 ACTIVE 유저 노출</li>
- *   <li>GET /me/stats — 신규 유저 0/0</li>
- *   <li>POST /logout — 200 + Set-Cookie</li>
- * </ul>
+ * {@link AuthProfileE2eTest} 가 다루지 않는 변경/목록/로그아웃 엔드포인트를 메운다.
  */
 class ProfileManageE2eTest extends IntegrationTestSupport {
 

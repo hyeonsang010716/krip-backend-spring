@@ -26,10 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * tripmate 이미지 소유권 검증(IDOR 방지) E2E.
- *
- * <p>게시글 생성/수정·임시저장에 첨부하는 {@code image_urls} 는 본인이 업로드한 이미지여야 한다.
- * 타인 URL 주입을 막아, "타인 URL 을 넣었다 빼서 교차 삭제"하는 공격 체인의 출발점을 차단한다.
+ * tripmate 이미지 소유권 검증(IDOR 방지) E2E — 첨부 {@code image_urls} 는 본인 업로드만 허용.
+ * 타인 URL 주입을 막아 "넣었다 빼서 교차 삭제"하는 공격 체인의 출발점을 차단한다.
  */
 @Import(FakeStorageConfig.class)
 class TripmateImageOwnershipE2eTest extends TripmateTestSupport {

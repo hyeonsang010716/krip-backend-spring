@@ -24,10 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * {@link TripmateImageService} 고아 보상 단위 테스트.
- *
- * <p>업로드 저장 실패 시 S3 객체 보상 삭제(dangling S3 영구 누수 방지), 삭제는 DB-우선 후 best-effort
- * 스토리지 정리(스토리지 실패가 row 삭제를 막지 않음)를 검증한다.
+ * {@link TripmateImageService} 고아 보상 단위 테스트 — 업로드 저장 실패 시 S3 보상 삭제(누수 방지),
+ * 삭제는 DB-우선 후 best-effort 스토리지 정리를 검증한다.
  */
 class TripmateImageServiceTest {
 

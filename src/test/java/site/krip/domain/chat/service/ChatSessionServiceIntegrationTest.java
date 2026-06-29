@@ -20,9 +20,8 @@ import java.util.concurrent.Future;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 채팅 세션 서비스 통합 테스트 — 실 Redis 로 세션 생성/존재/종료, 세션 한도 eviction, 전체 revoke 검증.
- *
- * <p>SessionService 는 순수 Redis 연산이라 DB 유저 없이 임의 user_id 로 검증한다.
+ * 채팅 세션 서비스 통합 테스트 — 실 Redis 로 세션 생성/존재/종료, 한도 eviction, revoke 검증.
+ * SessionService 는 순수 Redis 연산이라 DB 유저 없이 임의 user_id 로 검증.
  */
 class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
 

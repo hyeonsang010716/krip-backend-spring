@@ -16,11 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * FCM 토큰 등록/해제 E2E — 경로 {@code /api/notification/fcm-token}. FCM 자격증명 미설정이라 발송은 no-op 이지만
- * 토큰 등록/해제 자체는 RDB 기준으로 정상 동작한다. 요청/응답 JSON snake_case.
- *
- * <p>커버: 등록(201) → 동일 토큰 재등록(멱등, 같은 fcm_token_id) → owner 교체(타 유저 재등록) →
- * 해제(200) → 미존재 토큰 해제(멱등 200) → 빈 토큰 본문(400).
+ * FCM 토큰 등록/해제 E2E — 경로 {@code /api/notification/fcm-token}. FCM 자격증명 미설정이라
+ * 발송은 no-op 이지만 등록/해제는 RDB 기준 정상 동작. 요청/응답 JSON snake_case.
  */
 class FcmTokenE2eTest extends IntegrationTestSupport {
 

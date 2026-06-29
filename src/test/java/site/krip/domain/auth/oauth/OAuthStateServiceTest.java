@@ -13,9 +13,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * OAuthStateService — state nonce ↔ 바인딩 쿠키 상수시간 비교(CSRF 방어) 검증.
- *
- * <p>기존 AuthLoginE2eTest 는 state 포맷 오류만 다뤘고, 실제 방어선인 nonce 비교(일치/불일치/쿠키부재)는
- * 미검증이었다 — 잘못된 필드 비교나 쿠키 검사 제거가 회귀해도 잡지 못했다.
+ * 실제 방어선인 nonce 비교(일치/불일치/쿠키부재) — 잘못된 필드 비교·쿠키 검사 제거 회귀를 잡는다.
  */
 class OAuthStateServiceTest {
 

@@ -8,15 +8,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 채팅 방 퇴장/강퇴 규칙 경계 E2E ({@code /api/chat/rooms}).
- *
- * <p>{@link ChatRoomE2eTest} 가 그룹 방의 정상 퇴장/강퇴(204)와 방장 권한(403)을 다룬다. 본 테스트는
- * 서비스가 enforce 하지만 비어 있던 경계를 메운다:
- * <ul>
- *   <li>DIRECT 방은 퇴장/강퇴 불가 → 400</li>
- *   <li>자기 자신 강퇴 → 400 (퇴장 API 사용해야 함)</li>
- *   <li>이미 떠난 멤버 강퇴 → 400</li>
- * </ul>
+ * 채팅 방 퇴장/강퇴 규칙 경계 E2E ({@code /api/chat/rooms}) — DIRECT 방·자기 강퇴·이미 떠난 멤버 강퇴는 모두 400.
  */
 class ChatRoomRulesE2eTest extends ChatTestSupport {
 

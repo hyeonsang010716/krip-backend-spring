@@ -23,11 +23,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * redis_stream fan-out — 자기 노드 로컬 세션에 전달되는지 검증.
- *
- * <p>fanOutToRoom 은 공유 Stream 에 XADD 하고, 자기 노드 consumer group 이 그걸 다시 읽어
- * dispatch → localDeliver 로 로컬 구독 세션에 도달한다. 활성 노드 ZSET 과 무관하게 전달돼야 하므로
- * 명단을 비운 상태에서 검증한다(전달은 Stream 소비 경로에만 의존).
+ * redis_stream fan-out — 자기 노드 로컬 세션 전달 검증. 활성 노드 ZSET 과 무관하게
+ * Stream 소비 경로(XADD → consumer group → localDeliver)로만 전달되므로 명단을 비운 채 검증.
  */
 @TestPropertySource(properties = {
         "krip.chat.fanout-mode=redis_stream",

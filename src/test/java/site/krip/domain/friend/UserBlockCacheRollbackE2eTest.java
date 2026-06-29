@@ -15,13 +15,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 
 /**
- * 차단 캐시 무효화 트랜잭션 경계 회귀 테스트.
- *
- * <p>{@code invalidateBlockCache} 는 차단 트랜잭션 <b>안(커밋 전)</b>에서 호출되므로, Redis 무효화가
- * 실패하면 예외가 전파돼 블록 INSERT + friendship 삭제까지 모두 롤백돼야 한다(fail-closed).
- *
- * <p>chat 의 {@link BlockCacheService}(= {@code BlockCachePort} 실제 구현)를 mock 으로 교체해
- * Redis 장애를 시뮬레이션한다.
+ * 차단 캐시 무효화 트랜잭션 경계 회귀 — invalidateBlockCache 는 커밋 전 호출이라 Redis 실패 시
+ * 예외 전파로 블록 INSERT + friendship 삭제까지 롤백돼야 한다(fail-closed). BlockCacheService mock 으로 Redis 장애 시뮬.
  */
 class UserBlockCacheRollbackE2eTest extends IntegrationTestSupport {
 

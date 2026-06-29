@@ -21,10 +21,8 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * OAuth 콜백 후 가입 상태 판정 — {@link SignupService#checkAndRegister} 4분기 직접 검증.
- *
- * <p>콜백 해피패스는 외부 Google 의존이라 E2E 불가하므로, 가입 핵심 로직을 서비스 레벨에서 결정적으로 덮는다.
- * 분기: 신규→NEW(생성) / INACTIVE→WITHDRAWAL_PENDING / detail 없음→IN_PROGRESS / detail 있음→COMPLETE.
+ * OAuth 콜백 후 가입 상태 판정 — {@link SignupService#checkAndRegister} 4분기 직접 검증(해피패스는 Google 의존이라 E2E 불가).
+ * 분기: 신규→NEW / INACTIVE→WITHDRAWAL_PENDING / detail 없음→IN_PROGRESS / detail 있음→COMPLETE.
  */
 @Transactional
 class SignupServiceIntegrationTest extends IntegrationTestSupport {

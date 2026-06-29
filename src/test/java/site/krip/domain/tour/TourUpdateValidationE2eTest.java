@@ -15,11 +15,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 플랜/카드 수정 요청의 <b>필수 키 존재</b> 검증 E2E.
- *
- * <p>{@code @JsonProperty(required=true)} 로 "키는 반드시 존재(값 null 허용)" 를 강제하는지 본다.
- * 키 누락이면 역직렬화 단계에서 400 이 떨어지고, 키가 있으면(값 null) 검증을 통과해 서비스로 진입 →
- * 미존재 플랜이라 404 가 된다(=검증은 통과했다는 증거).
+ * 플랜/카드 수정 요청의 필수 키 존재 검증 E2E — {@code @JsonProperty(required=true)} 가 키 누락이면 400,
+ * 키 존재(값 null)면 검증 통과 후 미존재 플랜이라 404 가 되는지 본다.
  */
 class TourUpdateValidationE2eTest extends IntegrationTestSupport {
 

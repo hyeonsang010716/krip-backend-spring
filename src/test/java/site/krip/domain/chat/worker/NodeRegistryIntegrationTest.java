@@ -12,10 +12,8 @@ import site.krip.support.IntegrationTestSupport;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 채팅 노드 레지스트리 통합 테스트 — 실 Redis(`chat:nodes` ZSET) 기준.
- *
- * <p>커버: 등록→활성 목록 노출 / 만료(과거 score) 노드는 목록에서 제외 / listActiveNodes 는 읽기 전용(삭제 안 함) /
- * cleanupExpired 가 실제 삭제 / ZSET 유실 후 heartbeat 가 자기 노드를 재등록(자가복구).
+ * 채팅 노드 레지스트리 통합 테스트 — 실 Redis(`chat:nodes` ZSET) 기준. 등록/활성 노출, 만료 노드 제외,
+ * listActiveNodes 읽기 전용, cleanupExpired 삭제, ZSET 유실 후 heartbeat 자가복구를 커버.
  */
 class NodeRegistryIntegrationTest extends IntegrationTestSupport {
 

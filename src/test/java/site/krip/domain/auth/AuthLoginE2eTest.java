@@ -10,11 +10,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * OAuth 로그인 진입/콜백 E2E — 경로 {@code /api/auth/login}, {@code /api/auth/login/app}.
- *
- * <p>진입(authorize URL 빌드)과 콜백 입력 검증은 외부 네트워크 없이 검증 가능하다. 콜백 실패는 JSON 이
- * 아니라 FE 로 {@code ?status=state_invalid} 리다이렉트해야 한다(브라우저가 Google 리다이렉트 중이므로).
- * 코드 교환 실패 경로는 {@code OAuthCallbackErrorRedirectE2eTest} 가 덮는다.
+ * OAuth 로그인 진입/콜백 E2E ({@code /api/auth/login}, {@code /api/auth/login/app}).
+ * 콜백 실패는 JSON 이 아니라 FE 로 {@code ?status=state_invalid} 리다이렉트(브라우저가 리다이렉트 중이므로).
  */
 class AuthLoginE2eTest extends IntegrationTestSupport {
 

@@ -21,13 +21,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * {@link ImageProcessor} 순수 Java 이미지 처리 단위 테스트 — S3/Spring 불필요.
- *
- * <p>java.awt/ImageIO 로 메모리 내 작은 이미지를 만들어 3종 변형(원본/small 240/medium 720)과
- * 1:1 center crop, 포맷 화이트리스트, 25MP cap, APNG/animated-WEBP 거절을 검증한다.
- *
- * <p>한계: TwelveMonkeys WEBP 플러그인은 디코드 전용이라 BufferedImage 로부터 실제 정지 WEBP
- * 바이트를 ImageIO 로 인코딩할 수 없다. 따라서 "정상 WEBP 처리" 케이스는 생략하고, animated WEBP
- * 는 컨테이너 헤더(VP8X ANIM 플래그)를 손으로 만들어 거절만 검증한다.
+ * 한계: WEBP 플러그인은 디코드 전용이라 정지 WEBP 인코딩 불가 → "정상 WEBP" 케이스는 생략, animated WEBP 는 헤더를 손으로 만들어 거절만 본다.
  */
 class FeedImageProcessorTest {
 
@@ -246,7 +240,7 @@ class FeedImageProcessorTest {
     private static byte[] pngWithPatchedDimensions(int newW, int newH) throws Exception {
         byte[] png = png(64, 64);
         // PNG sig(8) + IHDR length(4) + "IHDR"(4) -> width at offset 16, height at 20.
-        // IHDR data = 13 bytes; CRC over type+data starts at 12+? compute: CRC covers "IHDR"+13 data bytes.
+        // CRC covers "IHDR" type(4) + 13 data bytes.
         int ihdrTypeOff = 12;       // "IHDR"
         int widthOff = 16;          // first data byte
         int heightOff = 20;
