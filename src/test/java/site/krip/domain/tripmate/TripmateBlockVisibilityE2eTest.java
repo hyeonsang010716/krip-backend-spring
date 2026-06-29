@@ -1,12 +1,7 @@
 package site.krip.domain.tripmate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,38 +16,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>차단 관계(방향 무관) 작성자의 글은 목록·검색·단건에서 제외되고, 숨김(display=false) 글은
  * 작성자 본인만 단건 조회할 수 있다(나머지는 404 로 존재 은닉).
  */
-class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
+class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
 
-    private static final String POSTS = "/api/tripmate/posts";
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    private String createBody(String title, String content) {
-        return """
-                {
-                  "title": "%s",
-                  "content": "%s",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 35,
-                  "preferred_gender": "any",
-                  "region": "서울",
-                  "travel_start_date": "2026-09-01",
-                  "travel_end_date": "2026-09-07",
-                  "companion_type": "friend",
-                  "image_urls": []
-                }
-                """.formatted(title, content);
-    }
-
+    /** 서울 지역 모집글 생성 후 post_id 반환. */
     private String createPost(String userId, String title, String content) throws Exception {
-        MvcResult res = mockMvc.perform(post(POSTS)
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody(title, content)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("post_id").asText();
+        return createPost(userId, title, content, "서울");
     }
 
     private void hide(String owner, String postId) throws Exception {

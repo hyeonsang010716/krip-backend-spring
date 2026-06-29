@@ -1,7 +1,6 @@
 package site.krip.domain.publicshare;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,9 +27,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 토큰 무효/손상/만료 → 400, 디코드는 됐으나 plan 삭제됨 → 404. 요청/응답 JSON snake_case.
  */
 class PublicShareE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private MongoTemplate mongo;

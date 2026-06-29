@@ -1,13 +1,9 @@
 package site.krip.domain.tripmate;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,40 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 게시글 CRUD E2E — 생성→단건→목록→검색→수정→display 토글→삭제→삭제후 404 의 핵심 흐름과
  * 권한/유효성 에러 케이스 검증. 경로: {@code /api/tripmate/posts}, 요청/응답 JSON snake_case.
  */
-class TripmatePostE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    /** 유효한 게시글 생성 본문(snake_case) — 필드 일부를 덮어쓸 수 있도록 베이스를 제공. */
-    private static String createBody(String title, String content, String region) {
-        return """
-                {
-                  "title": "%s",
-                  "content": "%s",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 35,
-                  "preferred_gender": "any",
-                  "region": "%s",
-                  "travel_start_date": "2026-09-01",
-                  "travel_end_date": "2026-09-07",
-                  "companion_type": "friend",
-                  "image_urls": []
-                }
-                """.formatted(title, content, region);
-    }
-
-    /** 게시글 생성 후 post_id 반환 (다른 테스트의 선행 데이터 준비용). */
-    private String createPost(String userId, String title, String content, String region) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody(title, content, region)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        JsonNode body = objectMapper.readTree(res.getResponse().getContentAsString());
-        return body.get("post_id").asText();
-    }
+class TripmatePostE2eTest extends TripmateTestSupport {
 
     @Test
     @DisplayName("검색: 제목/내용에 없어도 작성자 닉네임 부분일치로 글이 검색된다")
@@ -88,7 +51,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         MvcResult created = mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("부산 같이 가실 분", "부산 여행 같이 떠나실 동행을 찾습니다.", "부산")))
+                        .content(postBody("부산 같이 가실 분", "부산 여행 같이 떠나실 동행을 찾습니다.", "부산")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.user_id").value(userId))
                 .andExpect(jsonPath("$.title").value("부산 같이 가실 분"))
@@ -125,7 +88,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
 
         // 수정 (200)
-        String updateBody = createBody("부산 수정됨", "수정된 부산 여행 동행 모집 글입니다.", "부산")
+        String updateBody = postBody("부산 수정됨", "수정된 부산 여행 동행 모집 글입니다.", "부산")
                 .replace("\"region\": \"부산\"", "\"region\": \"제주\"");
         mockMvc.perform(put("/api/tripmate/posts/" + postId)
                         .with(auth(userId))
@@ -173,7 +136,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tripmate/posts/" + postId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("뺏으려는 수정", "남의 글을 수정하려는 시도입니다.", "서울")))
+                        .content(postBody("뺏으려는 수정", "남의 글을 수정하려는 시도입니다.", "서울")))
                 .andExpect(status().isForbidden());
     }
 
@@ -196,7 +159,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/tripmate/posts/no-such-post")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("제목", "본문 내용은 충분히 길게 작성합니다.", "서울")))
+                        .content(postBody("제목", "본문 내용은 충분히 길게 작성합니다.", "서울")))
                 .andExpect(status().isNotFound());
     }
 
@@ -205,7 +168,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     void createValidationError() throws Exception {
         String userId = fixtures.createActiveUser();
         // content 가 10자 미만 → @Size 위반
-        String body = createBody("제목", "짧음", "서울");
+        String body = postBody("제목", "짧음", "서울");
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -217,7 +180,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     @DisplayName("region 공백 → 400 (@NotBlank)")
     void createBlankRegion() throws Exception {
         String userId = fixtures.createActiveUser();
-        String body = createBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "   ");
+        String body = postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "   ");
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -229,7 +192,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     @DisplayName("잘못된 enum 값(companion_type) → 400")
     void createBadEnum() throws Exception {
         String userId = fixtures.createActiveUser();
-        String body = createBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울")
+        String body = postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울")
                 .replace("\"companion_type\": \"friend\"", "\"companion_type\": \"bogus\"");
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(userId))
@@ -243,7 +206,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     void createUnauthenticated() throws Exception {
         mockMvc.perform(post("/api/tripmate/posts")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울")))
+                        .content(postBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울")))
                 .andExpect(status().isUnauthorized());
     }
 }

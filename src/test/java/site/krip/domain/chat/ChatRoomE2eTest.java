@@ -1,12 +1,10 @@
 package site.krip.domain.chat;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -20,34 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * (방/메시지 생성은 REST 로만 다루며 WS 실시간 경로는 별도.) 응답 JSON 은 snake_case,
  * room type 은 대문자 enum({@code DIRECT/GROUP}).
  */
-class ChatRoomE2eTest extends IntegrationTestSupport {
-
-    private final ObjectMapper om = new ObjectMapper();
-
-    private MvcResult createDirect(String me, String peer) throws Exception {
-        return mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(me))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + peer + "\"}"))
-                .andReturn();
-    }
-
-    private String createGroup(String me, String title, String... memberIds) throws Exception {
-        StringBuilder ids = new StringBuilder();
-        for (int i = 0; i < memberIds.length; i++) {
-            if (i > 0) {
-                ids.append(",");
-            }
-            ids.append("\"").append(memberIds[i]).append("\"");
-        }
-        MvcResult res = mockMvc.perform(post("/api/chat/rooms/group")
-                        .with(auth(me))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + title + "\",\"member_ids\":[" + ids + "]}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return om.readTree(res.getResponse().getContentAsString()).get("chat_room_id").asText();
-    }
+class ChatRoomE2eTest extends ChatTestSupport {
 
     // ──────────────────── 1:1 방 ────────────────────
 
@@ -59,7 +30,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
 
         MvcResult res = createDirect(a, b);
         org.junit.jupiter.api.Assertions.assertEquals(201, res.getResponse().getStatus());
-        JsonNode body = om.readTree(res.getResponse().getContentAsString());
+        JsonNode body = readJson(res);
         String roomId = body.get("chat_room_id").asText();
         org.junit.jupiter.api.Assertions.assertEquals("direct", body.get("type").asText());
         org.junit.jupiter.api.Assertions.assertEquals(b, body.get("peer").get("user_id").asText());
@@ -67,15 +38,11 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         // 재생성 → 같은 room_id (canonical UNIQUE 로 idempotent)
         MvcResult again = createDirect(a, b);
         org.junit.jupiter.api.Assertions.assertEquals(201, again.getResponse().getStatus());
-        String roomIdAgain = om.readTree(again.getResponse().getContentAsString())
-                .get("chat_room_id").asText();
-        org.junit.jupiter.api.Assertions.assertEquals(roomId, roomIdAgain);
+        org.junit.jupiter.api.Assertions.assertEquals(roomId, idFrom(again, "chat_room_id"));
 
         // 반대 방향(B→A)도 동일 방 (canonical 정렬)
         MvcResult reverse = createDirect(b, a);
-        String roomIdReverse = om.readTree(reverse.getResponse().getContentAsString())
-                .get("chat_room_id").asText();
-        org.junit.jupiter.api.Assertions.assertEquals(roomId, roomIdReverse);
+        org.junit.jupiter.api.Assertions.assertEquals(roomId, idFrom(reverse, "chat_room_id"));
     }
 
     @Test
@@ -327,8 +294,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String b = fixtures.createActiveUser("리스트b");
 
         MvcResult res = createDirect(a, b);
-        String roomId = om.readTree(res.getResponse().getContentAsString())
-                .get("chat_room_id").asText();
+        String roomId = idFrom(res, "chat_room_id");
 
         mockMvc.perform(get("/api/chat/rooms")
                         .with(auth(a)))
@@ -378,8 +344,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String outsider = fixtures.createActiveUser("외부자");
 
         MvcResult res = createDirect(a, b);
-        String roomId = om.readTree(res.getResponse().getContentAsString())
-                .get("chat_room_id").asText();
+        String roomId = idFrom(res, "chat_room_id");
 
         mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
                         .with(auth(outsider)))

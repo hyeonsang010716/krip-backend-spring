@@ -1,6 +1,5 @@
 package site.krip.domain.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +33,6 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private FakeObjectStorage storage;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     private MockMultipartFile jpeg() throws Exception {
         // 업로드 경로가 ImageProcessor.sanitize 로 실제 디코딩하므로 유효한 JPEG 를 만든다.

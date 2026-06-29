@@ -1,16 +1,12 @@
 package site.krip.domain.chat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.chat.entity.MessageType;
 import site.krip.domain.chat.repository.ChatMessageRepository;
-import site.krip.support.IntegrationTestSupport;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -19,7 +15,6 @@ import java.util.Date;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,25 +25,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 검증에 필요한 {@code chat_message} Mongo 도큐먼트를 {@link ChatMessageRepository} 로 직접 시드한다
  * (도큐먼트 형태는 {@code MessageService.baseDoc} 와 동일). 방/멤버십은 1:1 방 생성 REST 로 만든다.
  */
-class ChatMessageE2eTest extends IntegrationTestSupport {
-
-    private final ObjectMapper om = new ObjectMapper();
+class ChatMessageE2eTest extends ChatTestSupport {
 
     @Autowired
     private ChatMessageRepository messageRepo;
-
-    // ──────────────────── 헬퍼 ────────────────────
-
-    /** 1:1 방 생성 REST → room_id 반환 (a,b 양쪽 활성 멤버 + Redis 멤버셋 세팅). */
-    private String createDirectRoom(String a, String b) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(a))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + b + "\"}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return om.readTree(res.getResponse().getContentAsString()).get("chat_room_id").asText();
-    }
 
     /** chat_message Mongo 도큐먼트 시드 (MessageService.baseDoc 형태). createdAt 으로 5분 창 제어. */
     private String seedMessage(String roomId, long seq, String senderId, String content, Instant createdAt) {

@@ -1,7 +1,5 @@
 package site.krip.domain.tripmate;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,13 +32,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 타인 URL 주입을 막아, "타인 URL 을 넣었다 빼서 교차 삭제"하는 공격 체인의 출발점을 차단한다.
  */
 @Import(FakeStorageConfig.class)
-class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
+class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
 
     private static final String IMAGES = "/api/tripmate/images";
-    private static final String POSTS = "/api/tripmate/posts";
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private FakeObjectStorage storage;
@@ -65,23 +59,6 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
                 .get("images").get(0).get("image_url").asText();
     }
 
-    private String createBody(String imageUrlsJson) {
-        return """
-                {
-                  "title": "동행 모집",
-                  "content": "여행 같이 떠나실 분을 찾습니다.",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 35,
-                  "preferred_gender": "any",
-                  "region": "부산",
-                  "travel_start_date": "2026-09-01",
-                  "travel_end_date": "2026-09-07",
-                  "companion_type": "friend",
-                  "image_urls": %s
-                }
-                """.formatted(imageUrlsJson);
-    }
-
     private String draftBody(String imageUrlsJson) {
         return """
                 {
@@ -91,15 +68,9 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
                 """.formatted(imageUrlsJson);
     }
 
-    /** 게시글 생성 후 post_id 반환. */
+    /** 부산 지역 모집글을 image_urls 와 함께 생성 후 post_id 반환. */
     private String createPost(String userId, String imageUrlsJson) throws Exception {
-        MvcResult res = mockMvc.perform(post(POSTS)
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody(imageUrlsJson)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("post_id").asText();
+        return createPostRaw(userId, postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", imageUrlsJson));
     }
 
     @Test
@@ -112,7 +83,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post(POSTS)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("[\"" + victimUrl + "\"]")))
+                        .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
 
         // 주입이 막혔으므로 피해자 이미지는 그대로 살아있어야 한다.
@@ -131,7 +102,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         MvcResult created = mockMvc.perform(post(POSTS)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("[]")))
+                        .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[]")))
                 .andExpect(status().isCreated())
                 .andReturn();
         String postId = objectMapper.readTree(created.getResponse().getContentAsString())
@@ -141,7 +112,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put(POSTS + "/" + postId)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("[\"" + victimUrl + "\"]")))
+                        .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
 
         assertThat(storage.stored).contains(victimUrl);
@@ -173,7 +144,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post(POSTS)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("[\"" + ownUrl + "\"]")))
+                        .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[\"" + ownUrl + "\"]")))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(put(POSTS + "/draft")
@@ -194,7 +165,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post(POSTS)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("[\"" + ownUrl + "\",\"" + victimUrl + "\"]")))
+                        .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[\"" + ownUrl + "\",\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
 
         assertThat(imageRepository.findOwnedUrls(victim, Set.of(victimUrl))).contains(victimUrl);
@@ -233,7 +204,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put(POSTS + "/" + postId) // 게시글에서 이미지 제거(빈 배열)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody("[]")))
+                        .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[]")))
                 .andExpect(status().isOk());
 
         // 드래프트가 아직 참조 → 보존

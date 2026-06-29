@@ -1,12 +1,8 @@
 package site.krip.domain.chat;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -22,43 +18,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>이미 떠난 멤버 강퇴 → 400</li>
  * </ul>
  */
-class ChatRoomRulesE2eTest extends IntegrationTestSupport {
-
-    private final ObjectMapper om = new ObjectMapper();
-
-    private String createDirect(String me, String peer) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/chat/rooms/direct")
-                        .with(auth(me))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"peer_user_id\":\"" + peer + "\"}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return om.readTree(res.getResponse().getContentAsString()).get("chat_room_id").asText();
-    }
-
-    private String createGroup(String me, String title, String... memberIds) throws Exception {
-        StringBuilder ids = new StringBuilder();
-        for (int i = 0; i < memberIds.length; i++) {
-            if (i > 0) {
-                ids.append(",");
-            }
-            ids.append("\"").append(memberIds[i]).append("\"");
-        }
-        MvcResult res = mockMvc.perform(post("/api/chat/rooms/group")
-                        .with(auth(me))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"" + title + "\",\"member_ids\":[" + ids + "]}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return om.readTree(res.getResponse().getContentAsString()).get("chat_room_id").asText();
-    }
+class ChatRoomRulesE2eTest extends ChatTestSupport {
 
     @Test
     @DisplayName("DIRECT 방 퇴장 시도 → 400 (그룹 방만 퇴장 가능)")
     void leaveDirectRoomRejected() throws Exception {
         String a = fixtures.createActiveUser("다이렉트퇴장A");
         String b = fixtures.createActiveUser("다이렉트퇴장B");
-        String roomId = createDirect(a, b);
+        String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
                         .with(auth(a)))
@@ -70,7 +37,7 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
     void kickInDirectRoomRejected() throws Exception {
         String a = fixtures.createActiveUser("다이렉트강퇴A");
         String b = fixtures.createActiveUser("다이렉트강퇴B");
-        String roomId = createDirect(a, b);
+        String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(a))

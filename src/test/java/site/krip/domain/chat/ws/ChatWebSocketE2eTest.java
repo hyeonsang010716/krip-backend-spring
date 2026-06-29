@@ -1,7 +1,6 @@
 package site.krip.domain.chat.ws;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,8 +47,6 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
     @Autowired
     private TokenRevocationService revocation;
 
-    private final ObjectMapper om = new ObjectMapper();
-
     /** 수신 텍스트 메시지를 큐에 모으는 클라이언트 핸들러. */
     static class CollectingHandler extends TextWebSocketHandler {
         final BlockingQueue<String> messages = new LinkedBlockingQueue<>();
@@ -77,7 +74,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
             if (msg == null) {
                 break;
             }
-            JsonNode node = om.readTree(msg);
+            JsonNode node = objectMapper.readTree(msg);
             if (type.equals(node.path("type").asText())) {
                 return node;
             }

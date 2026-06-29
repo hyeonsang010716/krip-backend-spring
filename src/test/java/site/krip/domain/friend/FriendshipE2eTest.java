@@ -1,7 +1,5 @@
 package site.krip.domain.friend;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -23,8 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FriendshipE2eTest extends IntegrationTestSupport {
 
-    private final ObjectMapper om = new ObjectMapper();
-
     /** A → B 친구 요청 생성(201), 생성된 friendship_id 반환. */
     private String sendRequest(String requester, String addressee) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
@@ -36,8 +32,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.is_requester").value(true))
                 .andExpect(jsonPath("$.peer.user_id").value(addressee))
                 .andReturn();
-        JsonNode body = om.readTree(res.getResponse().getContentAsString());
-        return body.get("friendship_id").asText();
+        return idFrom(res, "friendship_id");
     }
 
     @Test

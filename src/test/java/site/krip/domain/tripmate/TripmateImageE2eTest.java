@@ -1,7 +1,6 @@
 package site.krip.domain.tripmate;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,9 +42,6 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private FakeObjectStorage storage;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private MongoTemplate mongo;

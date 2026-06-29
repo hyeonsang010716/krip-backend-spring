@@ -1,6 +1,5 @@
 package site.krip.domain.tour;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,9 +26,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * "더 먼저 만든 플랜의 day 를 삭제하면 그 플랜이 목록 맨 앞으로 올라온다"로 갱신 여부를 행위로 검증한다.
  */
 class TourRemoveDayTouchE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private MongoTemplate mongo;

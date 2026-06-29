@@ -1,6 +1,5 @@
 package site.krip.domain.tour;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,9 +33,6 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private FavoritePlaceService favoriteService;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     /** lng 를 i*0.001 씩 키워 center(10,10)에서 거리순이 i 순서가 되도록 심는다. */
     private void seedPlace(String placeId, String displayName, int i) {

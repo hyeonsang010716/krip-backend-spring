@@ -1,7 +1,5 @@
 package site.krip.domain.friend;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,8 +26,6 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Autowired
     private UserBlockService userBlockService;
 
-    private final ObjectMapper om = new ObjectMapper();
-
     private String sendRequest(String requester, String addressee) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
@@ -37,7 +33,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
                         .content("{\"addressee_id\":\"" + addressee + "\"}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return om.readTree(res.getResponse().getContentAsString()).get("friendship_id").asText();
+        return idFrom(res, "friendship_id");
     }
 
     @Test

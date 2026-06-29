@@ -1,7 +1,6 @@
 package site.krip.domain.tour;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,9 +29,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 테스트 시작 시 최소 Place 문서를 MongoDB {@code place} 컬렉션에 BSON 으로 직접 시드한다.
  */
 class TourPlanE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private MongoTemplate mongo;

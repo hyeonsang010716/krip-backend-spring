@@ -1,9 +1,7 @@
 package site.krip.domain.feed;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import site.krip.domain.feed.entity.FeedVisibility;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -17,9 +15,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 경로: {@code /api/feed/posts/{postId}/like[s]}. 게시물은 리포지토리로 직접 시드(S3 우회).
  */
 class FeedLikeE2eTest extends FeedTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Test
     @DisplayName("좋아요 추가(201)→중복(400)→목록→취소(200)→재취소(400)")

@@ -1,7 +1,6 @@
 package site.krip.domain.notification;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,9 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 해제(200) → 미존재 토큰 해제(멱등 200) → 빈 토큰 본문(400).
  */
 class FcmTokenE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private FcmTokenRepository tokenRepo;

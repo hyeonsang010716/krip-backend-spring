@@ -1,11 +1,7 @@
 package site.krip.domain.tripmate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,36 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 좋아요 → notification 인박스 fan-out E2E (소스 도메인 관점).
  * 외부 유저 좋아요는 게시자 인박스로 fan-out 되고, 본인 좋아요는 skip 되는지 검증한다.
  */
-class TripmateLikeInboxFanoutE2eTest extends IntegrationTestSupport {
-
-    private final ObjectMapper om = new ObjectMapper();
-
-    private static String createBody() {
-        return """
-                {
-                  "title": "좋아요 fan-out 테스트",
-                  "content": "인박스 fan-out 검증을 위한 게시글 본문입니다.",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 40,
-                  "preferred_gender": "any",
-                  "region": "서울",
-                  "travel_start_date": "2026-10-01",
-                  "travel_end_date": "2026-10-05",
-                  "companion_type": "friend",
-                  "image_urls": []
-                }
-                """;
-    }
-
-    private String createPost(String userId) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody()))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return om.readTree(res.getResponse().getContentAsString()).get("post_id").asText();
-    }
+class TripmateLikeInboxFanoutE2eTest extends TripmateTestSupport {
 
     private void like(String liker, String postId) throws Exception {
         mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")

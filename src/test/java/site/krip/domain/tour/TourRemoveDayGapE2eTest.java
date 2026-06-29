@@ -1,7 +1,6 @@
 package site.krip.domain.tour;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -26,9 +25,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * day 항목을 비워도 travel_days 는 그대로 두고(gap 보존), 이후 add_day 는 max+1 을 부여하는지 검증한다.
  */
 class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @Autowired
     private MongoTemplate mongo;

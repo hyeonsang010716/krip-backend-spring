@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MongoDBContainer;
@@ -20,6 +21,8 @@ import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.auth.jwt.JwtProvider;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.jayway.jsonpath.JsonPath;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -98,6 +101,9 @@ public abstract class IntegrationTestSupport {
     @Autowired
     protected UserBlockRepository userBlockRepository;
 
+    @Autowired
+    protected ObjectMapper objectMapper;
+
     /** 글로벌 Bearer 토큰 헤더 값 ({@code Authorization: Bearer ...} 에 그대로 사용). */
     protected String bearer() {
         return "Bearer " + ACCESS_TOKEN;
@@ -158,5 +164,15 @@ public abstract class IntegrationTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"target_user_id\":\"" + blocked + "\"}"))
                 .andExpect(status().isCreated());
+    }
+
+    /** 응답 본문을 JsonNode 로 파싱. */
+    protected JsonNode readJson(MvcResult result) throws Exception {
+        return objectMapper.readTree(result.getResponse().getContentAsString());
+    }
+
+    /** 응답 본문에서 지정 필드를 문자열로 추출 (생성 응답의 id 추출용). */
+    protected String idFrom(MvcResult result, String field) throws Exception {
+        return readJson(result).get(field).asText();
     }
 }

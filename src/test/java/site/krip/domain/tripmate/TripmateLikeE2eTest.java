@@ -1,12 +1,7 @@
 package site.krip.domain.tripmate;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -18,37 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 좋아요 E2E — 추가(201)→중복추가(400)→좋아요 유저 목록→취소(200)→재취소(400).
  * 본인→본인 좋아요는 서비스에서 허용(fan-out만 skip)되므로 self-like 가 성공함을 검증.
  */
-class TripmateLikeE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
-
-    private static String createBody() {
-        return """
-                {
-                  "title": "좋아요 테스트 글",
-                  "content": "좋아요 동작 검증을 위한 게시글 본문입니다.",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 40,
-                  "preferred_gender": "any",
-                  "region": "서울",
-                  "travel_start_date": "2026-10-01",
-                  "travel_end_date": "2026-10-05",
-                  "companion_type": "friend",
-                  "image_urls": []
-                }
-                """;
-    }
-
-    private String createPost(String userId) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(createBody()))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("post_id").asText();
-    }
+class TripmateLikeE2eTest extends TripmateTestSupport {
 
     @Test
     @DisplayName("좋아요 추가(201)→중복추가(400)→유저목록→취소(200)→재취소(400)")

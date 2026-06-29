@@ -1,10 +1,8 @@
 package site.krip.domain.feed;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.feed.entity.FeedVisibility;
@@ -20,9 +18,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 경로: {@code /api/feed/posts/{postId}/comments}. 게시물은 리포지토리로 직접 시드(S3 우회).
  */
 class FeedCommentE2eTest extends FeedTestSupport {
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     private static String body(String content) {
         return "{\"content\": \"" + content + "\"}";
