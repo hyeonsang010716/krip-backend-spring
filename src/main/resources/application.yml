@@ -47,6 +47,12 @@ spring:
       hibernate:
         jdbc.time_zone: UTC
         format_sql: false
+        # 배치 INSERT/UPDATE 묶음 처리 — PK 직접 할당(IdGenerator)이라 즉시 적용 가능.
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        # @BatchSize 미지정 lazy 컬렉션의 N+1 안전망 (IN 일괄 로딩).
+        default_batch_fetch_size: 100
     show-sql: false
 
   # ──────────────────── Flyway (스키마 마이그레이션) ────────────────────
