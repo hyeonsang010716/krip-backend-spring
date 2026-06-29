@@ -5,32 +5,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import site.krip.domain.chat.service.FanoutService;
 import site.krip.global.chat.ChatRedisKeys;
-import site.krip.support.IntegrationTestSupport;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-/**
- * redis_stream fan-out — 자기 노드 로컬 세션 전달 검증. 활성 노드 ZSET 과 무관하게
- * Stream 소비 경로(XADD → consumer group → localDeliver)로만 전달되므로 명단을 비운 채 검증.
- */
+/** redis_stream fan-out — 활성 노드 ZSET 이 비어도 Stream 소비 경로로 자기 노드 로컬 세션엔 전달된다. */
 @TestPropertySource(properties = {
         "krip.chat.fanout-mode=redis_stream",
         "krip.chat.node-id=test-node-1" // redis_stream 부팅 가드 충족 — 기본 'node-local' 은 fail-fast 거부됨
 })
-class FanoutSelfDeliveryIntegrationTest extends IntegrationTestSupport {
+class FanoutSelfDeliveryIntegrationTest extends ChatTestSupport {
 
     @Autowired
     private FanoutService fanout;
@@ -42,17 +32,8 @@ class FanoutSelfDeliveryIntegrationTest extends IntegrationTestSupport {
     @DisplayName("활성 노드 명단이 비어도 로컬 구독 세션은 fan-out 을 받는다")
     void deliversToLocalSessionWhenNodeListEmpty() throws Exception {
         CountDownLatch delivered = new CountDownLatch(1);
-        WebSocketSession ws = mock(WebSocketSession.class);
-        when(ws.isOpen()).thenReturn(true);
-        Map<String, Object> attrs = new ConcurrentHashMap<>();
-        attrs.put(FanoutService.ATTR_SESSION_ID, "sess-self");
-        attrs.put(FanoutService.ATTR_USER_ID, "user-self");
-        attrs.put(FanoutService.ATTR_ROOMS, ConcurrentHashMap.<String>newKeySet());
-        when(ws.getAttributes()).thenReturn(attrs);
-        doAnswer(inv -> {
-            delivered.countDown();
-            return null;
-        }).when(ws).sendMessage(any(TextMessage.class));
+        WebSocketSession ws = mockWsSession("sess-self", "user-self");
+        latchOnSend(ws, delivered);
 
         String roomId = "room-self-delivery";
         fanout.registerSession(ws);

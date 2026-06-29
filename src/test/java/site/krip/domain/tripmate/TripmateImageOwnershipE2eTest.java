@@ -3,24 +3,16 @@ package site.krip.domain.tripmate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.tripmate.repository.TripmateImageRepository;
 import site.krip.support.FakeObjectStorage;
-import site.krip.support.FakeStorageConfig;
-import site.krip.support.IntegrationTestSupport;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -29,33 +21,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 이미지 소유권 검증(IDOR 방지) E2E — 첨부 {@code image_urls} 는 본인 업로드만 허용.
  * 타인 URL 주입을 막아 "넣었다 빼서 교차 삭제"하는 공격 체인의 출발점을 차단한다.
  */
-@Import(FakeStorageConfig.class)
-class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
-
-    private static final String IMAGES = "/api/tripmate/images";
+class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
 
     @Autowired
     private FakeObjectStorage storage;
 
     @Autowired
     private TripmateImageRepository imageRepository;
-
-    private MockMultipartFile jpeg(String name) throws Exception {
-        BufferedImage img = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        ImageIO.write(img, "jpg", buf);
-        return new MockMultipartFile("files", name, "image/jpeg", buf.toByteArray());
-    }
-
-    /** 이미지 1건 업로드 후 image_url 반환. */
-    private String uploadImage(String userId, String name) throws Exception {
-        MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg(name))
-                        .with(auth(userId)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return readJson(res)
-                .get("images").get(0).get("image_url").asText();
-    }
 
     private String draftBody(List<String> imageUrls) {
         return json("title", "임시 제목", "image_urls", imageUrls);

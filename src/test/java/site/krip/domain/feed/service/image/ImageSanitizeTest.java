@@ -3,19 +3,19 @@ package site.krip.domain.feed.service.image;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import site.krip.global.common.exception.ApiException;
 import site.krip.global.common.image.ImageProcessor;
 import site.krip.global.common.image.ProcessedVariant;
 
 import javax.imageio.ImageIO;
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static site.krip.domain.feed.service.image.ImageTestSupport.indexOf;
+import static site.krip.domain.feed.service.image.ImageTestSupport.realJpeg;
 
 /**
  * ImageProcessor.sanitize 보안 검증 — "항상 재인코딩"으로 폴리글랏(이미지+트레일링 페이로드)을 무력화하는지 실 바이트로 확인.
@@ -30,19 +30,6 @@ class ImageSanitizeTest {
     @BeforeAll
     static void noDiskCache() {
         ImageIO.setUseCache(false);
-    }
-
-    private static byte[] realJpeg() throws Exception {
-        BufferedImage img = new BufferedImage(64, 64, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g = img.createGraphics();
-        for (int y = 0; y < 64; y += 8) {
-            g.setColor(new Color((y * 7) % 255, (y * 3) % 255, (y * 5) % 255));
-            g.fillRect(0, y, 64, 8);
-        }
-        g.dispose();
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        ImageIO.write(img, "jpg", buf);
-        return buf.toByteArray();
     }
 
     @Test
@@ -82,19 +69,6 @@ class ImageSanitizeTest {
     @DisplayName("이미지가 아닌 입력은 포맷 화이트리스트로 거부한다")
     void rejectsNonImage() {
         assertThatThrownBy(() -> processor.sanitize(new byte[]{1, 2, 3, 4, 5}))
-                .isInstanceOf(RuntimeException.class);
-    }
-
-    private static int indexOf(byte[] haystack, byte[] needle) {
-        outer:
-        for (int i = 0; i <= haystack.length - needle.length; i++) {
-            for (int j = 0; j < needle.length; j++) {
-                if (haystack[i + j] != needle[j]) {
-                    continue outer;
-                }
-            }
-            return i;
-        }
-        return -1;
+                .isInstanceOf(ApiException.class);
     }
 }

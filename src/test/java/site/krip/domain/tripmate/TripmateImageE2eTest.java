@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -14,12 +13,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder;
 import site.krip.domain.tripmate.document.TripmateImage;
 import site.krip.support.FakeObjectStorage;
-import site.krip.support.FakeStorageConfig;
-import site.krip.support.IntegrationTestSupport;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -35,10 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 여행메이트 이미지 업로드/정리 E2E
  * — 인메모리 스토리지로 다건 업로드·검증·고아정리(참조 합집합 차집합)를 검증한다.
  */
-@Import(FakeStorageConfig.class)
-class TripmateImageE2eTest extends IntegrationTestSupport {
-
-    private static final String IMAGES = "/api/tripmate/images";
+class TripmateImageE2eTest extends TripmateImageTestSupport {
 
     @Autowired
     private FakeObjectStorage storage;
@@ -54,13 +45,6 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
                 TripmateImage.class);
     }
 
-    private MockMultipartFile jpeg(String name) throws Exception {
-        BufferedImage img = new BufferedImage(8, 8, BufferedImage.TYPE_INT_RGB);
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        ImageIO.write(img, "jpg", buf);
-        return new MockMultipartFile("files", name, "image/jpeg", buf.toByteArray());
-    }
-
     @Test
     @DisplayName("다건 업로드 → 201, 응답 URL 들이 스토리지에 적재된다")
     void uploadStoresAllFiles() throws Exception {
@@ -72,7 +56,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.images.length()").value(2))
                 .andReturn();
 
-        for (JsonNode img : objectMapper.readTree(res.getResponse().getContentAsString()).get("images")) {
+        for (JsonNode img : readJson(res).get("images")) {
             assertThat(storage.stored).contains(img.get("image_url").asText());
         }
     }
@@ -141,7 +125,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isCreated())
                 .andReturn();
         List<String> urls = new ArrayList<>();
-        objectMapper.readTree(res.getResponse().getContentAsString()).get("images")
+        readJson(res).get("images")
                 .forEach(img -> urls.add(img.get("image_url").asText()));
 
         // 방금 올린(유예기간 내) 이미지는 작성 중일 수 있어 보호된다 — 즉시 정리해도 0건.
@@ -177,7 +161,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
                 .andExpect(status().isCreated())
                 .andReturn();
         List<String> urls = new ArrayList<>();
-        objectMapper.readTree(res.getResponse().getContentAsString()).get("images")
+        readJson(res).get("images")
                 .forEach(img -> urls.add(img.get("image_url").asText()));
         ageImages(userId);
 

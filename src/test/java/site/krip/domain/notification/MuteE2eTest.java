@@ -4,14 +4,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import site.krip.domain.auth.entity.User;
 import site.krip.domain.auth.repository.UserRepository;
-import site.krip.domain.chat.entity.ChatRoom;
 import site.krip.domain.chat.entity.ChatRoomMember;
 import site.krip.domain.chat.entity.ChatRoomMemberId;
-import site.krip.domain.chat.repository.ChatRoomMemberRepository;
-import site.krip.domain.chat.repository.ChatRoomRepository;
-import site.krip.support.IntegrationTestSupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -22,16 +19,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 알림 차단(mute) E2E — 경로 {@code /api/notification/mute}. 전역(유저) / 방별(멤버) 두 레벨.
  * 저장은 true 만, 해제는 NULL 정규화. 요청 JSON snake_case({@code muted}).
  */
-class MuteE2eTest extends IntegrationTestSupport {
+class MuteE2eTest extends MuteTestSupport {
 
     @Autowired
     private UserRepository userRepo;
 
     @Autowired
-    private ChatRoomRepository roomRepo;
+    private JdbcTemplate jdbcTemplate;
 
-    @Autowired
-    private ChatRoomMemberRepository memberRepo;
+    /** 유저 전역 mute 의 raw 컬럼 값(NULL/true/false 구분) — getter 는 NULL 과 false 를 구분 못 함. */
+    private Boolean rawGlobalMute(String userId) {
+        return jdbcTemplate.queryForObject(
+                "SELECT notification_muted FROM users WHERE user_id = ?", Boolean.class, userId);
+    }
 
     // ──────────────────── 전역 mute ────────────────────
 
@@ -40,10 +40,7 @@ class MuteE2eTest extends IntegrationTestSupport {
     void globalMuteTruePersists() throws Exception {
         String userId = fixtures.createActiveUser("전역차단자");
 
-        mockMvc.perform(put("/api/notification/mute/global")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
+        putGlobalMute(userId, true)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -56,22 +53,10 @@ class MuteE2eTest extends IntegrationTestSupport {
     void globalMuteFalseClearsToNull() throws Exception {
         String userId = fixtures.createActiveUser("전역해제자");
 
-        // 먼저 차단.
-        mockMvc.perform(put("/api/notification/mute/global")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
-                .andExpect(status().isOk());
+        putGlobalMute(userId, true).andExpect(status().isOk());   // 먼저 차단
+        putGlobalMute(userId, false).andExpect(status().isOk());  // 해제
 
-        // 해제.
-        mockMvc.perform(put("/api/notification/mute/global")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", false)))
-                .andExpect(status().isOk());
-
-        User user = userRepo.findById(userId).orElseThrow();
-        assertThat(user.isNotificationMuted()).as("해제 후 mute 가 false 여야 한다").isFalse();
+        assertThat(rawGlobalMute(userId)).as("해제는 NULL 로 정규화되어야 한다").isNull();
     }
 
     @Test
@@ -95,10 +80,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String peerId = fixtures.createActiveUser("상대방");
         String roomId = seedRoomWithMember(userId, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
+        putRoomMute(userId, roomId, true)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -113,17 +95,8 @@ class MuteE2eTest extends IntegrationTestSupport {
         String peerId = fixtures.createActiveUser("상대방2");
         String roomId = seedRoomWithMember(userId, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", false)))
-                .andExpect(status().isOk());
+        putRoomMute(userId, roomId, true).andExpect(status().isOk());
+        putRoomMute(userId, roomId, false).andExpect(status().isOk());
 
         ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(roomId, userId)).orElseThrow();
         assertThat(member.getNotificationMuted()).as("해제는 NULL 로 정규화되어야 한다").isNull();
@@ -137,11 +110,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String outsider = fixtures.createActiveUser("외부인");
         String roomId = seedRoomWithMember(memberUser, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
-                        .with(auth(outsider))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
-                .andExpect(status().isBadRequest());
+        putRoomMute(outsider, roomId, true).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -149,11 +118,7 @@ class MuteE2eTest extends IntegrationTestSupport {
     void roomMuteNonExistentRoomBadRequest() throws Exception {
         String userId = fixtures.createActiveUser();
 
-        mockMvc.perform(put("/api/notification/mute/rooms/no-such-room")
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
-                .andExpect(status().isBadRequest());
+        putRoomMute(userId, "no-such-room", true).andExpect(status().isBadRequest());
     }
 
     @Test
@@ -168,14 +133,5 @@ class MuteE2eTest extends IntegrationTestSupport {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json()))
                 .andExpect(status().isBadRequest());
-    }
-
-    /** 그룹 채팅방 + userId 활성 멤버를 RDB 에 직접 시드하고 room_id 반환. */
-    private String seedRoomWithMember(String userId, String peerId) {
-        ChatRoom room = roomRepo.saveAndFlush(ChatRoom.group(userId, "테스트 방"));
-        String roomId = room.getChatRoomId();
-        memberRepo.saveAndFlush(new ChatRoomMember(roomId, userId, 0L));
-        memberRepo.saveAndFlush(new ChatRoomMember(roomId, peerId, 0L));
-        return roomId;
     }
 }

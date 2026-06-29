@@ -8,8 +8,6 @@ import site.krip.global.common.image.ImageProcessor;
 import site.krip.global.common.image.ProcessedImageSet;
 
 import javax.imageio.ImageIO;
-import java.awt.Color;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -18,6 +16,9 @@ import java.util.zip.CRC32;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static site.krip.domain.feed.service.image.ImageTestSupport.encode;
+import static site.krip.domain.feed.service.image.ImageTestSupport.indexOf;
+import static site.krip.domain.feed.service.image.ImageTestSupport.makeImage;
 
 /**
  * {@link ImageProcessor} 순수 Java 이미지 처리 단위 테스트 — S3/Spring 불필요.
@@ -47,24 +48,6 @@ class FeedImageProcessorTest {
 
     private static byte[] pngWithAlpha(int w, int h) throws Exception {
         return encode(makeImage(w, h, BufferedImage.TYPE_INT_ARGB), "png");
-    }
-
-    private static BufferedImage makeImage(int w, int h, int type) {
-        BufferedImage img = new BufferedImage(w, h, type);
-        Graphics2D g = img.createGraphics();
-        // 비단색(대각 그라데이션 느낌) — JPEG 인코딩이 균일색을 거부하지 않도록.
-        for (int y = 0; y < h; y += 8) {
-            g.setColor(new Color((y * 7) % 255, (y * 3) % 255, (y * 5) % 255));
-            g.fillRect(0, y, w, 8);
-        }
-        g.dispose();
-        return img;
-    }
-
-    private static byte[] encode(BufferedImage img, String fmt) throws Exception {
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        assertThat(ImageIO.write(img, fmt, buf)).as("ImageIO should encode " + fmt).isTrue();
-        return buf.toByteArray();
     }
 
     private static int[] dims(byte[] jpegBytes) throws Exception {
@@ -303,19 +286,6 @@ class FeedImageProcessorTest {
         out.write(chunk.toByteArray());
         out.write(png, insertAt, png.length - insertAt);
         return out.toByteArray();
-    }
-
-    private static int indexOf(byte[] haystack, byte[] needle) {
-        outer:
-        for (int i = 0; i <= haystack.length - needle.length; i++) {
-            for (int j = 0; j < needle.length; j++) {
-                if (haystack[i + j] != needle[j]) {
-                    continue outer;
-                }
-            }
-            return i;
-        }
-        return -1;
     }
 
     /** 정상 PNG 에 IHDR 직후 acTL 청크를 삽입해 APNG 로 만든다(첫 프레임 디코드는 정상). */

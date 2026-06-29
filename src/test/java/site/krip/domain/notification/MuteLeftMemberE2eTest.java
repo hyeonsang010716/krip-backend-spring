@@ -3,28 +3,15 @@ package site.krip.domain.notification;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.transaction.support.TransactionTemplate;
-import site.krip.domain.chat.entity.ChatRoom;
-import site.krip.domain.chat.entity.ChatRoomMember;
-import site.krip.domain.chat.repository.ChatRoomMemberRepository;
-import site.krip.domain.chat.repository.ChatRoomRepository;
-import site.krip.support.IntegrationTestSupport;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 방별 mute — 떠난(left) 멤버 경계 E2E. 멤버 행은 있으나 이미 퇴장(isLeft=true)인 분기는
  * 활성 멤버가 아니므로 400 이어야 한다.
  */
-class MuteLeftMemberE2eTest extends IntegrationTestSupport {
-
-    @Autowired
-    private ChatRoomRepository roomRepo;
-
-    @Autowired
-    private ChatRoomMemberRepository memberRepo;
+class MuteLeftMemberE2eTest extends MuteTestSupport {
 
     @Autowired
     private TransactionTemplate txTemplate;
@@ -34,18 +21,11 @@ class MuteLeftMemberE2eTest extends IntegrationTestSupport {
     void leftMemberRoomMuteRejected() throws Exception {
         String userId = fixtures.createActiveUser("퇴장한멤버");
         String peerId = fixtures.createActiveUser("남은멤버");
+        String roomId = seedRoomWithMember(userId, peerId);
 
-        ChatRoom room = roomRepo.saveAndFlush(ChatRoom.group(userId, "퇴장테스트 방"));
-        String roomId = room.getChatRoomId();
-        memberRepo.saveAndFlush(new ChatRoomMember(roomId, userId, 0L));
         // @Modifying 쿼리라 tx 필요 — 생산(RoomService.leave/kick)과 동일하게 txTemplate 로 감싼다.
         txTemplate.execute(s -> memberRepo.markLeftIfActive(roomId, userId));
-        memberRepo.saveAndFlush(new ChatRoomMember(roomId, peerId, 0L));
 
-        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
-                        .with(auth(userId))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("muted", true)))
-                .andExpect(status().isBadRequest());
+        putRoomMute(userId, roomId, true).andExpect(status().isBadRequest());
     }
 }

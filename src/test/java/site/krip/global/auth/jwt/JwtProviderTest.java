@@ -3,14 +3,12 @@ package site.krip.global.auth.jwt;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import site.krip.global.config.AuthProperties;
+import site.krip.support.TokenTestSupport;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.Date;
 
@@ -30,11 +28,6 @@ class JwtProviderTest {
         AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, expirationDays, "access_token");
         AuthProperties props = new AuthProperties("dev-access-token", jwt, 300L);
         return new JwtProvider(props, java.time.Clock.systemUTC());
-    }
-
-    private static SecretKey deriveKey(String secret) throws Exception {
-        byte[] digest = MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
-        return Keys.hmacShaKeyFor(digest);
     }
 
     @Test
@@ -61,13 +54,7 @@ class JwtProviderTest {
     @DisplayName("서명을 변조한 토큰은 JwtException 을 던진다")
     void tamperedSignatureThrows() {
         JwtProvider provider = provider(30);
-        String token = provider.issue("USER_x");
-        // 서명부 첫 문자(상위 6비트 모두 유효)를 변조한다. 마지막 문자는 base64url 미사용 비트가
-        // 있어 a↔b 치환이 같은 바이트로 디코딩될 수 있어(서명 유효 유지) flaky 하므로 첫 문자를 바꾼다.
-        int sigStart = token.lastIndexOf('.') + 1;
-        char first = token.charAt(sigStart);
-        char swapped = first == 'a' ? 'b' : 'a';
-        String tampered = token.substring(0, sigStart) + swapped + token.substring(sigStart + 1);
+        String tampered = TokenTestSupport.tamperSignature(provider.issue("USER_x"));
 
         assertThatThrownBy(() -> provider.parse(tampered))
                 .isInstanceOf(JwtException.class);
@@ -75,9 +62,9 @@ class JwtProviderTest {
 
     @Test
     @DisplayName("다른 secret 으로 서명한 토큰은 JwtException 을 던진다")
-    void wrongKeyThrows() throws Exception {
+    void wrongKeyThrows() {
         JwtProvider provider = provider(30);
-        SecretKey otherKey = deriveKey("completely-different-login-secret");
+        SecretKey otherKey = TokenTestSupport.deriveKey("completely-different-login-secret");
         String foreign = Jwts.builder()
                 .claim("user_id", "USER_x")
                 .issuedAt(Date.from(Instant.now()))
@@ -91,9 +78,9 @@ class JwtProviderTest {
 
     @Test
     @DisplayName("만료된 토큰은 ExpiredJwtException 을 던진다")
-    void expiredTokenThrows() throws Exception {
+    void expiredTokenThrows() {
         JwtProvider provider = provider(30);
-        SecretKey key = deriveKey(SECRET);
+        SecretKey key = TokenTestSupport.deriveKey(SECRET);
         Instant past = Instant.now().minusSeconds(3600);
         String expired = Jwts.builder()
                 .claim("user_id", "USER_x")

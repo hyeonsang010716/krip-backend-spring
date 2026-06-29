@@ -1,15 +1,15 @@
 package site.krip.global.share;
 
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import site.krip.global.config.ShareProperties;
+import site.krip.support.TokenTestSupport;
 
 import javax.crypto.SecretKey;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Date;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -24,13 +24,12 @@ class ShareTokenProviderTest {
     private static final String SECRET = "test-share-secret-for-unit-tests";
 
     private static ShareTokenProvider provider(int expirationDays) {
-        // ShareProperties(secret, expirationDays)
-        return new ShareTokenProvider(new ShareProperties(SECRET, expirationDays), java.time.Clock.systemUTC());
+        return provider(expirationDays, Clock.systemUTC());
     }
 
-    private static SecretKey deriveKey(String secret) throws Exception {
-        byte[] digest = MessageDigest.getInstance("SHA-256").digest(secret.getBytes(StandardCharsets.UTF_8));
-        return Keys.hmacShaKeyFor(digest);
+    private static ShareTokenProvider provider(int expirationDays, Clock clock) {
+        // ShareProperties(secret, expirationDays)
+        return new ShareTokenProvider(new ShareProperties(SECRET, expirationDays), clock);
     }
 
     @Test
@@ -46,19 +45,17 @@ class ShareTokenProviderTest {
     }
 
     @Test
-    @DisplayName("Issued.expiresAt 은 발급 시각 + expirationSeconds 근처이다")
+    @DisplayName("Issued.expiresAt 은 발급 시각 + expirationSeconds 이다")
     void issuedExpiresAtMatchesExpirationWindow() {
         int days = 7;
-        ShareTokenProvider provider = provider(days);
-        Instant before = Instant.now();
+        Instant fixed = Instant.parse("2026-01-01T00:00:00Z");
+        // 고정 Clock 주입 — 오차 허용 없이 결정적으로 검증(TokenRevocationServiceTest 패턴).
+        ShareTokenProvider provider = provider(days, Clock.fixed(fixed, ZoneOffset.UTC));
 
         ShareTokenProvider.Issued issued = provider.encode("TP_x");
 
         long expectedSeconds = (long) days * 24 * 60 * 60;
-        // 발급 직후 now+expectedSeconds 와 1초 오차 내.
-        assertThat(issued.expiresAt())
-                .isBetween(before.plusSeconds(expectedSeconds - 2),
-                        Instant.now().plusSeconds(expectedSeconds + 2));
+        assertThat(issued.expiresAt()).isEqualTo(fixed.plusSeconds(expectedSeconds));
     }
 
     @Test
@@ -82,14 +79,7 @@ class ShareTokenProviderTest {
     @DisplayName("서명을 변조한 토큰은 ShareTokenException 을 던진다")
     void tamperedSignatureThrows() {
         ShareTokenProvider provider = provider(7);
-        String token = provider.encode("TP_abc").token();
-
-        // 서명부 첫 문자(상위 6비트 모두 유효)를 변조한다. 마지막 문자는 base64url 미사용 비트가
-        // 있어 a↔b 치환이 같은 바이트로 디코딩될 수 있어(서명 유효 유지) flaky 하므로 첫 문자를 바꾼다.
-        int sigStart = token.lastIndexOf('.') + 1;
-        char first = token.charAt(sigStart);
-        char swapped = first == 'a' ? 'b' : 'a';
-        String tampered = token.substring(0, sigStart) + swapped + token.substring(sigStart + 1);
+        String tampered = TokenTestSupport.tamperSignature(provider.encode("TP_abc").token());
 
         assertThatThrownBy(() -> provider.decode(tampered))
                 .isInstanceOf(ShareTokenException.class);
@@ -97,9 +87,9 @@ class ShareTokenProviderTest {
 
     @Test
     @DisplayName("다른 secret 으로 서명한 토큰은 ShareTokenException 을 던진다")
-    void wrongKeyThrows() throws Exception {
+    void wrongKeyThrows() {
         ShareTokenProvider provider = provider(7);
-        SecretKey otherKey = deriveKey("a-totally-different-secret-value");
+        SecretKey otherKey = TokenTestSupport.deriveKey("a-totally-different-secret-value");
         String foreign = Jwts.builder()
                 .claim("plan_id", "TP_x")
                 .issuedAt(Date.from(Instant.now()))
@@ -113,9 +103,9 @@ class ShareTokenProviderTest {
 
     @Test
     @DisplayName("만료된 토큰은 ShareTokenException(만료 메시지) 을 던진다")
-    void expiredTokenThrows() throws Exception {
+    void expiredTokenThrows() {
         ShareTokenProvider provider = provider(7);
-        SecretKey key = deriveKey(SECRET);
+        SecretKey key = TokenTestSupport.deriveKey(SECRET);
         Instant past = Instant.now().minusSeconds(3600);
         String expired = Jwts.builder()
                 .claim("plan_id", "TP_x")
@@ -131,9 +121,9 @@ class ShareTokenProviderTest {
 
     @Test
     @DisplayName("plan_id 클레임이 없는 유효 서명 토큰은 ShareTokenException 을 던진다")
-    void missingPlanIdClaimThrows() throws Exception {
+    void missingPlanIdClaimThrows() {
         ShareTokenProvider provider = provider(7);
-        SecretKey key = deriveKey(SECRET);
+        SecretKey key = TokenTestSupport.deriveKey(SECRET);
         String noPlan = Jwts.builder()
                 .claim("other", "value")
                 .issuedAt(Date.from(Instant.now()))
