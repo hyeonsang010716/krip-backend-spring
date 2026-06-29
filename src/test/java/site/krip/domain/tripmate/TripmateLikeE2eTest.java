@@ -23,32 +23,32 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
         String postId = createPost(author);
 
         // 추가 (201)
-        mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.like_count").value(1));
 
         // 중복 추가 (400)
-        mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isBadRequest());
 
         // 좋아요 누른 유저 목록 — liker 포함
-        mockMvc.perform(get("/api/tripmate/posts/" + postId + "/likes")
+        mockMvc.perform(get("/api/tripmate/posts/{postId}/likes", postId)
                         .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.user_ids[?(@ == '" + liker + "')]").exists());
 
         // 취소 (200)
-        mockMvc.perform(delete("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(delete("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.like_count").value(0));
 
         // 재취소 (400)
-        mockMvc.perform(delete("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(delete("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isBadRequest());
     }
@@ -59,7 +59,7 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
         String author = fixtures.createActiveUser("셀프좋아요");
         String postId = createPost(author);
 
-        mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(author)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.like_count").value(1));
@@ -72,11 +72,11 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
         String liker = fixtures.createActiveUser("좋아요L");
         String postId = createPost(author);
 
-        mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get("/api/tripmate/posts/" + postId)
+        mockMvc.perform(get("/api/tripmate/posts/{postId}", postId)
                         .with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.like_count").value(1))

@@ -22,7 +22,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     }
 
     private void hide(String owner, String postId) throws Exception {
-        mockMvc.perform(patch(POSTS + "/" + postId + "/display")
+        mockMvc.perform(patch(POSTS + "/{postId}/display", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is_displayed").value(false));
@@ -78,11 +78,11 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
 
         blockViaApi(a, b);
 
-        mockMvc.perform(get(POSTS + "/" + postB)
+        mockMvc.perform(get(POSTS + "/{postB}", postB)
                         .with(auth(a)))
                 .andExpect(status().isNotFound());
 
-        mockMvc.perform(get(POSTS + "/" + postA)
+        mockMvc.perform(get(POSTS + "/{postA}", postA)
                         .with(auth(b)))
                 .andExpect(status().isNotFound());
     }
@@ -96,11 +96,11 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
 
         hide(owner, postId);
 
-        mockMvc.perform(get(POSTS + "/" + postId)
+        mockMvc.perform(get(POSTS + "/{postId}", postId)
                         .with(auth(other)))
                 .andExpect(status().isNotFound());
 
-        mockMvc.perform(get(POSTS + "/" + postId)
+        mockMvc.perform(get(POSTS + "/{postId}", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
@@ -114,7 +114,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
         String viewer = fixtures.createActiveUser("tmbvOkViewer");
         String postId = createPost(owner, "정상 노출 글", "정상적으로 노출되는 본문 충분히 깁니다.");
 
-        mockMvc.perform(get(POSTS + "/" + postId)
+        mockMvc.perform(get(POSTS + "/{postId}", postId)
                         .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId));
@@ -133,13 +133,13 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
         String postId = createPost(owner, "차단 글", "차단 관계 좋아요 게이트 테스트 본문입니다.");
         blockViaApi(owner, viewer);
 
-        mockMvc.perform(post(POSTS + "/" + postId + "/like")
+        mockMvc.perform(post(POSTS + "/{postId}/like", postId)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(get(POSTS + "/" + postId + "/likes")
+        mockMvc.perform(get(POSTS + "/{postId}/likes", postId)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(delete(POSTS + "/" + postId + "/like")
+        mockMvc.perform(delete(POSTS + "/{postId}/like", postId)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
@@ -152,10 +152,10 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
         String postId = createPost(owner, "숨김 글", "숨김 글 좋아요 게이트 테스트 본문입니다.");
         hide(owner, postId);
 
-        mockMvc.perform(post(POSTS + "/" + postId + "/like")
+        mockMvc.perform(post(POSTS + "/{postId}/like", postId)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(get(POSTS + "/" + postId + "/likes")
+        mockMvc.perform(get(POSTS + "/{postId}/likes", postId)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }

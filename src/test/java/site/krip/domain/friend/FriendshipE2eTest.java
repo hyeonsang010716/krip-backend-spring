@@ -240,7 +240,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(json()))
                 .andExpect(status().isBadRequest());
     }
 

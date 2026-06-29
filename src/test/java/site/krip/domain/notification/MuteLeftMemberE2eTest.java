@@ -42,7 +42,7 @@ class MuteLeftMemberE2eTest extends IntegrationTestSupport {
         txTemplate.execute(s -> memberRepo.markLeftIfActive(roomId, userId));
         memberRepo.saveAndFlush(new ChatRoomMember(roomId, peerId, 0L));
 
-        mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
+        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("muted", true)))

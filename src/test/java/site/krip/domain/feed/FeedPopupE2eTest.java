@@ -23,7 +23,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
-        mockMvc.perform(get("/api/feed/popup/" + owner)
+        mockMvc.perform(get("/api/feed/popup/{owner}", owner)
                         .with(auth(stranger)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(owner))
@@ -43,7 +43,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
-        mockMvc.perform(get("/api/feed/popup/" + owner)
+        mockMvc.perform(get("/api/feed/popup/{owner}", owner)
                         .with(auth(friend)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.feed.items[?(@.post_id == '" + pub + "')]").exists())
@@ -58,7 +58,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         String blockedViewer = fixtures.createActiveUser("차단된이");
         block(owner, blockedViewer);
 
-        mockMvc.perform(get("/api/feed/popup/" + owner)
+        mockMvc.perform(get("/api/feed/popup/{owner}", owner)
                         .with(auth(blockedViewer)))
                 .andExpect(status().isNotFound());
     }

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -21,7 +22,8 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
 
         mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
                         .with(auth(a)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     @Test
@@ -35,7 +37,8 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("user_id", b)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     @Test
@@ -50,7 +53,8 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("user_id", owner)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
     }
 
     @Test
@@ -71,6 +75,7 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("user_id", member)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").exists());
     }
 }

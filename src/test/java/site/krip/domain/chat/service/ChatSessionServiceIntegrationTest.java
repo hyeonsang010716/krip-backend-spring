@@ -57,12 +57,12 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     void sessionLimitEvictsOldest() {
         String u = randomUser();
         List<String> ids = new ArrayList<>();
-        for (int i = 0; i < 11; i++) {
+        for (int i = 0; i < ChatRedisKeys.MAX_SESSIONS_PER_USER + 1; i++) {
             ids.add(sessionService.createSession(u, "jti-" + i));
         }
 
         long alive = ids.stream().filter(sessionService::sessionExists).count();
-        assertThat(alive).isEqualTo(10);
+        assertThat(alive).isEqualTo((long) ChatRedisKeys.MAX_SESSIONS_PER_USER);
         // 가장 최근 세션은 살아있다.
         assertThat(sessionService.sessionExists(ids.get(ids.size() - 1))).isTrue();
     }

@@ -24,32 +24,32 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         // 추가 (201)
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.like_count").value(1));
 
         // 중복 추가 (400)
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isBadRequest());
 
         // 좋아요 목록 (200) — liker 포함
-        mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{postId}/likes", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.users[?(@.user_id == '" + liker + "')]").exists());
 
         // 취소 (200)
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(delete("/api/feed/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.like_count").value(0));
 
         // 재취소 (400)
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(delete("/api/feed/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isBadRequest());
     }
@@ -60,7 +60,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("자기좋아요");
         String postId = seedPost(owner, FeedVisibility.PRIVATE, null);
 
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(owner)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.like_count").value(1));
@@ -73,7 +73,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String stranger = fixtures.createActiveUser("낯선이");
         String postId = seedPost(owner, FeedVisibility.FRIENDS, null);
 
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(stranger)))
                 .andExpect(status().isNotFound());
     }
@@ -99,7 +99,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         }
 
         // 첫 페이지 — 30명 + next_cursor 존재
-        String body = mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
+        String body = mockMvc.perform(get("/api/feed/posts/{postId}/likes", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users.length()").value(30))
@@ -108,7 +108,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String cursor = objectMapper.readTree(body).get("next_cursor").asText();
 
         // 다음 페이지 — 남은 1명 + next_cursor null(마지막 페이지)
-        mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{postId}/likes", postId)
                         .param("cursor", cursor)
                         .with(auth(owner)))
                 .andExpect(status().isOk())

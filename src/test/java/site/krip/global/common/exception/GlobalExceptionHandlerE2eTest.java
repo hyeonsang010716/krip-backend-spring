@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.List;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -18,20 +20,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
 
     private String tripmateBody(String content, String companionType) {
-        return """
-                {
-                  "title": "예외 테스트",
-                  "content": "%s",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 40,
-                  "preferred_gender": "any",
-                  "region": "서울",
-                  "travel_start_date": "2026-10-01",
-                  "travel_end_date": "2026-10-05",
-                  "companion_type": "%s",
-                  "image_urls": []
-                }
-                """.formatted(content, companionType);
+        return json(
+                "title", "예외 테스트",
+                "content", content,
+                "preferred_age_min", 20,
+                "preferred_age_max", 40,
+                "preferred_gender", "any",
+                "region", "서울",
+                "travel_start_date", "2026-10-01",
+                "travel_end_date", "2026-10-05",
+                "companion_type", companionType,
+                "image_urls", List.of());
     }
 
     @Test

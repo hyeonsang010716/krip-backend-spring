@@ -107,7 +107,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
+                        .content(json()))
                 .andExpect(status().isBadRequest());
     }
 

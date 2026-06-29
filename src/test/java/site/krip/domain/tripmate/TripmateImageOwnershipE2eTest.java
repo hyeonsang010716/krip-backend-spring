@@ -101,7 +101,7 @@ class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
         String postId = idFrom(created, "post_id");
 
         // 수정 시 피해자 URL 주입 시도 → 403
-        mockMvc.perform(put(POSTS + "/" + postId)
+        mockMvc.perform(put(POSTS + "/{postId}", postId)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", List.of(victimUrl))))
@@ -171,7 +171,7 @@ class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
         String p1 = createPost(owner, List.of(sharedUrl));
         createPost(owner, List.of(sharedUrl)); // P2 도 같은 이미지 사용
 
-        mockMvc.perform(delete(POSTS + "/" + p1)
+        mockMvc.perform(delete(POSTS + "/{p1}", p1)
                         .with(auth(owner)))
                 .andExpect(status().isOk());
 
@@ -193,7 +193,7 @@ class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
                         .content(draftBody(List.of(sharedUrl))))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(put(POSTS + "/" + postId) // 게시글에서 이미지 제거(빈 배열)
+        mockMvc.perform(put(POSTS + "/{postId}", postId) // 게시글에서 이미지 제거(빈 배열)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", List.of())))
@@ -211,7 +211,7 @@ class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
         String soloUrl = uploadImage(owner, "solo.jpg");
         String postId = createPost(owner, List.of(soloUrl));
 
-        mockMvc.perform(delete(POSTS + "/" + postId)
+        mockMvc.perform(delete(POSTS + "/{postId}", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk());
 

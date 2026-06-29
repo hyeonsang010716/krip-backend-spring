@@ -25,7 +25,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         for (String postId : new String[]{priv, friends, pub}) {
-            mockMvc.perform(get("/api/feed/posts/" + postId)
+            mockMvc.perform(get("/api/feed/posts/{postId}", postId)
                             .with(auth(owner)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.post_id").value(postId))
@@ -58,7 +58,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(get("/api/feed/users/" + owner)
+        mockMvc.perform(get("/api/feed/users/{owner}", owner)
                         .with(auth(friend)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + fr + "')]").exists())
@@ -78,7 +78,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(get("/api/feed/users/" + owner)
+        mockMvc.perform(get("/api/feed/users/{owner}", owner)
                         .with(auth(stranger)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + pub + "')]").exists())
@@ -95,7 +95,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String stranger = fixtures.createActiveUser("낯선이2");
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
 
-        mockMvc.perform(get("/api/feed/posts/" + fr + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{fr}/likes", fr)
                         .with(auth(stranger)))
                 .andExpect(status().isNotFound());
     }
@@ -107,7 +107,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String stranger = fixtures.createActiveUser("낯선이3");
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
-        mockMvc.perform(get("/api/feed/posts/" + priv + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{priv}/likes", priv)
                         .with(auth(stranger)))
                 .andExpect(status().isNotFound());
     }
@@ -119,7 +119,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String stranger = fixtures.createActiveUser("낯선이4");
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(get("/api/feed/posts/" + pub + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{pub}/likes", pub)
                         .with(auth(stranger)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(pub));
@@ -133,7 +133,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         block(owner, blockedViewer); // owner 가 viewer 를 단방향 차단 (가시성 체크는 차단 방향 무관)
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(get("/api/feed/posts/" + pub + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{pub}/likes", pub)
                         .with(auth(blockedViewer)))
                 .andExpect(status().isNotFound());
     }

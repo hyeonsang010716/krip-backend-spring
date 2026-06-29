@@ -27,14 +27,14 @@ class FeedCommentE2eTest extends FeedTestSupport {
         // 작성 (201)
         String commentId = comment(commenter, postId, "좋은 사진이네요");
 
-        mockMvc.perform(get("/api/feed/posts/" + postId + "/comments")
+        mockMvc.perform(get("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.comments[?(@.comment_id == '" + commentId + "')]").exists())
                 .andExpect(jsonPath("$.comments[?(@.content == '좋은 사진이네요')]").exists());
 
         // 작성자 본인 삭제 (200)
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/" + commentId)
+        mockMvc.perform(delete("/api/feed/posts/{postId}/comments/{commentId}", postId, commentId)
                         .with(auth(commenter)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -47,7 +47,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         // "   " 는 @Size(min=1) 통과 후 서비스 strip 에서 400.
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
+        mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("content", "   ")))
@@ -60,7 +60,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("작성자3");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
+        mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("content", "")))
@@ -76,7 +76,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String commentId = comment(commenter, postId, "내 댓글입니다");
 
         // 게시물 owner 라도 댓글 작성자가 아니면 삭제 불가 → 403
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/" + commentId)
+        mockMvc.perform(delete("/api/feed/posts/{postId}/comments/{commentId}", postId, commentId)
                         .with(auth(owner)))
                 .andExpect(status().isForbidden());
     }
@@ -91,7 +91,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String commentId = comment(commenter, postA, "A 게시물 댓글");
 
         // postB 경로로 postA 의 댓글 삭제 시도 → 댓글-게시물 불일치 404
-        mockMvc.perform(delete("/api/feed/posts/" + postB + "/comments/" + commentId)
+        mockMvc.perform(delete("/api/feed/posts/{postB}/comments/{commentId}", postB, commentId)
                         .with(auth(commenter)))
                 .andExpect(status().isNotFound());
     }
@@ -102,7 +102,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인2");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/no-such-comment")
+        mockMvc.perform(delete("/api/feed/posts/{postId}/comments/no-such-comment", postId)
                         .with(auth(owner)))
                 .andExpect(status().isNotFound());
     }
@@ -114,7 +114,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String stranger = fixtures.createActiveUser("낯선이");
         String postId = seedPost(owner, FeedVisibility.PRIVATE, null);
 
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
+        mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(stranger))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("content", "숨겨진 글 댓글")))

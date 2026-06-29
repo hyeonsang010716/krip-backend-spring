@@ -29,7 +29,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
 
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
-        mockMvc.perform(get("/api/feed/posts/" + friendsPost + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{friendsPost}/likes", friendsPost)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
@@ -43,7 +43,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
 
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
-        mockMvc.perform(get("/api/feed/posts/" + friendsPost + "/likes")
+        mockMvc.perform(get("/api/feed/posts/{friendsPost}/likes", friendsPost)
                         .with(auth(friend)))
                 .andExpect(status().isOk());
     }

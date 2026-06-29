@@ -25,7 +25,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("caption", "새로운 캡션")))
@@ -40,7 +40,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인2");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, "지울 캡션");
 
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("caption", "   ")))
@@ -55,7 +55,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         String caption101 = "가".repeat(101);
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("caption", caption101)))
@@ -70,7 +70,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
 
         // U+1F600 은 1 코드포인트지만 String.length()는 2 → 코드포인트 카운팅이면 100 으로 통과해야 함.
         String emoji100 = "😀".repeat(100);
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("caption", emoji100)))
@@ -85,7 +85,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         String emoji101 = "😀".repeat(101);
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("caption", emoji101)))
@@ -99,7 +99,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String other = fixtures.createActiveUser("타인");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("caption", "뺏으려는 캡션")))
@@ -114,7 +114,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인7");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/visibility", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("visibility", "private")))
@@ -129,14 +129,14 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인7b");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/visibility", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("visibility", "private")))
                 .andExpect(status().isOk());
 
         // 별도 요청(새 트랜잭션)으로 재조회 — DB 영속 확인
-        mockMvc.perform(get("/api/feed/posts/" + postId)
+        mockMvc.perform(get("/api/feed/posts/{postId}", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.visibility").value("private"));
@@ -148,7 +148,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인8");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
+        mockMvc.perform(patch("/api/feed/posts/{postId}/visibility", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("visibility", "bogus")))
@@ -163,12 +163,12 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String owner = fixtures.createActiveUser("주인9");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(delete("/api/feed/posts/" + postId)
+        mockMvc.perform(delete("/api/feed/posts/{postId}", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
-        mockMvc.perform(get("/api/feed/posts/" + postId)
+        mockMvc.perform(get("/api/feed/posts/{postId}", postId)
                         .with(auth(owner)))
                 .andExpect(status().isNotFound());
     }
@@ -180,7 +180,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String other = fixtures.createActiveUser("타인2");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
-        mockMvc.perform(delete("/api/feed/posts/" + postId)
+        mockMvc.perform(delete("/api/feed/posts/{postId}", postId)
                         .with(auth(other)))
                 .andExpect(status().isNotFound());
     }

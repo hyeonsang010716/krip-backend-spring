@@ -16,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class TripmateLikeInboxFanoutE2eTest extends TripmateTestSupport {
 
     private void like(String liker, String postId) throws Exception {
-        mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isCreated());
     }

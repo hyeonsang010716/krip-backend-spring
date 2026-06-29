@@ -46,7 +46,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String userId = fixtures.createActiveUser();
         String planId = createPlan(userId, seedPlace("장소"));
 
-        mockMvc.perform(patch(PLANS + "/" + planId)
+        mockMvc.perform(patch(PLANS + "/{planId}", planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("title", "   ")))
@@ -62,7 +62,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String other = fixtures.createActiveUser("플랜타인1");
         String planId = createPlan(owner, seedPlace("장소"));
 
-        mockMvc.perform(patch(PLANS + "/" + planId)
+        mockMvc.perform(patch(PLANS + "/{planId}", planId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("title", "가로채기")))
@@ -76,7 +76,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String other = fixtures.createActiveUser("플랜타인2");
         String planId = createPlan(owner, seedPlace("장소"));
 
-        mockMvc.perform(post(PLANS + "/" + planId + "/days")
+        mockMvc.perform(post(PLANS + "/{planId}/days", planId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
@@ -88,7 +88,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String other = fixtures.createActiveUser("플랜타인3");
         String planId = createPlan(owner, seedPlace("장소"));
 
-        mockMvc.perform(delete(PLANS + "/" + planId + "/days/1")
+        mockMvc.perform(delete(PLANS + "/{planId}/days/1", planId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
@@ -101,7 +101,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String planId = createPlan(owner, seedPlace("장소"));
         String itemId = firstItemId(owner, planId);
 
-        mockMvc.perform(delete(PLANS + "/" + planId + "/items/" + itemId)
+        mockMvc.perform(delete(PLANS + "/{planId}/items/{itemId}", planId, itemId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
@@ -115,7 +115,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String planId = createPlan(owner, placeId);
         String itemId = firstItemId(owner, planId);
 
-        mockMvc.perform(put(PLANS + "/" + planId + "/items/" + itemId)
+        mockMvc.perform(put(PLANS + "/{planId}/items/{itemId}", planId, itemId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("place_id", placeId, "visit_time", "11:00")))
@@ -130,7 +130,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String userId = fixtures.createActiveUser();
         String planId = createPlan(userId, seedPlace("장소"));
 
-        mockMvc.perform(delete(PLANS + "/" + planId + "/days/99")
+        mockMvc.perform(delete(PLANS + "/{planId}/days/99", planId)
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
@@ -142,7 +142,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String planId = createPlan(userId, seedPlace("장소"));
         String itemId = firstItemId(userId, planId);
 
-        mockMvc.perform(put(PLANS + "/" + planId + "/items/" + itemId)
+        mockMvc.perform(put(PLANS + "/{planId}/items/{itemId}", planId, itemId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("place_id", "no-such-place", "visit_time", "11:00")))
@@ -156,7 +156,7 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
         String placeId = seedPlace("장소");
         String planId = createPlan(userId, placeId);
 
-        mockMvc.perform(put(PLANS + "/" + planId + "/items/no-such-item")
+        mockMvc.perform(put(PLANS + "/{planId}/items/no-such-item", planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("place_id", placeId, "visit_time", "11:00")))

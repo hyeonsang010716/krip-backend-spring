@@ -44,7 +44,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
         like(liker, post);
         assertFeedLikeCount(owner, 1);
 
-        mockMvc.perform(delete("/api/feed/posts/" + post)
+        mockMvc.perform(delete("/api/feed/posts/{post}", post)
                         .with(auth(owner)))
                 .andExpect(status().isOk());
 
@@ -62,7 +62,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
         assertFeedLikeCount(owner, 1);
 
         String itemId = firstInboxItemId(owner);
-        mockMvc.perform(patch("/api/notification/inbox/" + itemId + "/hide")
+        mockMvc.perform(patch("/api/notification/inbox/{itemId}/hide", itemId)
                         .with(auth(owner)))
                 .andExpect(status().isOk());
         assertFeedLikeCount(owner, 0);

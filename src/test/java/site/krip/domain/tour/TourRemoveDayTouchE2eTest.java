@@ -34,7 +34,7 @@ class TourRemoveDayTouchE2eTest extends TourTestSupport {
                 .andExpect(jsonPath("$.plans[1].plan_id").value(planA));
 
         // A 의 day 1 삭제 → A.updated_at 이 B 생성 시점보다 뒤로 갱신돼야 함
-        mockMvc.perform(delete(PLANS + "/" + planA + "/days/{day}", 1)
+        mockMvc.perform(delete(PLANS + "/{planA}/days/{day}", planA, 1)
                         .with(auth(user)))
                 .andExpect(status().isOk());
 

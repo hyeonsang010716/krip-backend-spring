@@ -173,7 +173,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String actor = fixtures.createActiveUser("숨김행위자");
         InboxItem item = seedFeedLike(recipient, actor, "post-hide-1");
 
-        mockMvc.perform(patch("/api/notification/inbox/" + item.getId() + "/hide")
+        mockMvc.perform(patch("/api/notification/inbox/{itemId}/hide", item.getId())
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -212,7 +212,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String other = fixtures.createActiveUser("타인");
         InboxItem item = seedFeedLike(recipient, actor, "post-nonowner-1");
 
-        mockMvc.perform(patch("/api/notification/inbox/" + item.getId() + "/hide")
+        mockMvc.perform(patch("/api/notification/inbox/{itemId}/hide", item.getId())
                         .with(auth(other)))
                 .andExpect(status().isNotFound());
     }

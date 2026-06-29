@@ -65,7 +65,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
         String postId = idFrom(created, "post_id");
 
         // 단건 (200)
-        mockMvc.perform(get("/api/tripmate/posts/" + postId)
+        mockMvc.perform(get("/api/tripmate/posts/{postId}", postId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
@@ -89,7 +89,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
 
         // 수정 (200) — region 을 부산→제주 로 변경
-        mockMvc.perform(put("/api/tripmate/posts/" + postId)
+        mockMvc.perform(put("/api/tripmate/posts/{postId}", postId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(postBody("부산 수정됨", "수정된 부산 여행 동행 모집 글입니다.", "제주")))
@@ -98,20 +98,20 @@ class TripmatePostE2eTest extends TripmateTestSupport {
                 .andExpect(jsonPath("$.region").value("제주"));
 
         // display 토글 (200) — true→false
-        mockMvc.perform(patch("/api/tripmate/posts/" + postId + "/display")
+        mockMvc.perform(patch("/api/tripmate/posts/{postId}/display", postId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.is_displayed").value(false));
 
         // 삭제 (200)
-        mockMvc.perform(delete("/api/tripmate/posts/" + postId)
+        mockMvc.perform(delete("/api/tripmate/posts/{postId}", postId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 삭제 후 단건 → 404
-        mockMvc.perform(get("/api/tripmate/posts/" + postId)
+        mockMvc.perform(get("/api/tripmate/posts/{postId}", postId)
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
@@ -132,7 +132,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
         String other = fixtures.createActiveUser("타인");
         String postId = createPost(author, "원본 글", "원본 글 본문 내용입니다.", "서울");
 
-        mockMvc.perform(put("/api/tripmate/posts/" + postId)
+        mockMvc.perform(put("/api/tripmate/posts/{postId}", postId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(postBody("뺏으려는 수정", "남의 글을 수정하려는 시도입니다.", "서울")))
@@ -146,7 +146,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
         String other = fixtures.createActiveUser("타인2");
         String postId = createPost(author, "삭제대상 글", "삭제 권한 테스트용 본문입니다.", "대구");
 
-        mockMvc.perform(delete("/api/tripmate/posts/" + postId)
+        mockMvc.perform(delete("/api/tripmate/posts/{postId}", postId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
     }

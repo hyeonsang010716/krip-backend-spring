@@ -29,12 +29,12 @@ class TourRemoveDayGapE2eTest extends TourTestSupport {
         addItem(planId, user, 3, placeId);
 
         // day2 삭제
-        mockMvc.perform(delete(PLANS + "/" + planId + "/days/{day}", 2)
+        mockMvc.perform(delete(PLANS + "/{planId}/days/{day}", planId, 2)
                         .with(auth(user)))
                 .andExpect(status().isOk());
 
         // travel_days 불변(3), day2 항목만 사라지고 day1/day3 유지(gap 보존)
-        mockMvc.perform(get(PLANS + "/" + planId)
+        mockMvc.perform(get(PLANS + "/{planId}", planId)
                         .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.travel_days").value(3))
@@ -43,11 +43,11 @@ class TourRemoveDayGapE2eTest extends TourTestSupport {
                 .andExpect(jsonPath("$.items[?(@.day_number==3)]", hasSize(1)));
 
         // add_day → travel_days = max+1 = 4 (gap 재사용 안 함)
-        mockMvc.perform(post(PLANS + "/" + planId + "/days")
+        mockMvc.perform(post(PLANS + "/{planId}/days", planId)
                         .with(auth(user)))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(get(PLANS + "/" + planId)
+        mockMvc.perform(get(PLANS + "/{planId}", planId)
                         .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.travel_days").value(4));

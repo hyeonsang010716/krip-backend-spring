@@ -37,21 +37,21 @@ abstract class FeedTestSupport extends IntegrationTestSupport {
 
     /** liker 가 게시물에 좋아요(201). */
     protected void like(String liker, String postId) throws Exception {
-        mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isCreated());
     }
 
     /** liker 가 좋아요 취소(200). */
     protected void unlike(String liker, String postId) throws Exception {
-        mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
+        mockMvc.perform(delete("/api/feed/posts/{postId}/like", postId)
                         .with(auth(liker)))
                 .andExpect(status().isOk());
     }
 
     /** commenter 가 댓글 작성(201) 후 comment_id 반환. */
     protected String comment(String commenter, String postId, String content) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
+        MvcResult res = mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(commenter))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("content", content)))

@@ -35,7 +35,7 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("덕수궁");
 
-        mockMvc.perform(get("/api/tour/places/" + placeId)
+        mockMvc.perform(get("/api/tour/places/{placeId}", placeId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.place_id").value(placeId))
@@ -97,13 +97,13 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
                 .andExpect(jsonPath("$.favorites[0].place.place_id").value(placeId));
 
         // 단건 조회 시 is_favorite=true 반영
-        mockMvc.perform(get("/api/tour/places/" + placeId)
+        mockMvc.perform(get("/api/tour/places/{placeId}", placeId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is_favorite").value(true));
 
         // 삭제 (200)
-        mockMvc.perform(delete("/api/tour/places/favorites/" + placeId)
+        mockMvc.perform(delete("/api/tour/places/favorites/{placeId}", placeId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -131,7 +131,7 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     void removeFavoriteNotRegistered() throws Exception {
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("종묘");
-        mockMvc.perform(delete("/api/tour/places/favorites/" + placeId)
+        mockMvc.perform(delete("/api/tour/places/favorites/{placeId}", placeId)
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }

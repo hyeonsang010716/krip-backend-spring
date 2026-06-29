@@ -8,6 +8,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import site.krip.support.IntegrationTestSupport;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -47,10 +48,13 @@ abstract class TourTestSupport extends IntegrationTestSupport {
 
     /** day1 카드 1개를 가진 플랜 생성 본문. */
     protected String planBody(String title, int travelDays, String placeId, int dayNumber, String visitTime) {
-        return """
-                { "title": "%s", "travel_days": %d,
-                  "items": [ { "day_number": %d, "place_id": "%s", "visit_time": "%s" } ] }
-                """.formatted(title, travelDays, dayNumber, placeId, visitTime);
+        return json(
+                "title", title,
+                "travel_days", travelDays,
+                "items", List.of(Map.of(
+                        "day_number", dayNumber,
+                        "place_id", placeId,
+                        "visit_time", visitTime)));
     }
 
     /** 기본 본문으로 플랜 생성 — 플랜 내용이 무관한 테스트용. */
@@ -71,7 +75,7 @@ abstract class TourTestSupport extends IntegrationTestSupport {
 
     /** 지정 day 끝에 카드 추가(201) 후 item_id 반환. */
     protected String addItem(String planId, String userId, int day, String placeId) throws Exception {
-        MvcResult res = mockMvc.perform(post(PLANS + "/" + planId + "/items")
+        MvcResult res = mockMvc.perform(post(PLANS + "/{planId}/items", planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("day_number", day, "place_id", placeId, "visit_time", "11:00")))
@@ -82,7 +86,7 @@ abstract class TourTestSupport extends IntegrationTestSupport {
 
     /** day1 첫 카드의 item_id. */
     protected String firstItemId(String userId, String planId) throws Exception {
-        MvcResult res = mockMvc.perform(get(PLANS + "/" + planId)
+        MvcResult res = mockMvc.perform(get(PLANS + "/{planId}", planId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andReturn();

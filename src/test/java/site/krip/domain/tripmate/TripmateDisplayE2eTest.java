@@ -26,7 +26,7 @@ class TripmateDisplayE2eTest extends TripmateTestSupport {
         String other = fixtures.createActiveUser("토글타인");
         String postId = createPost(owner, "토글 권한 글");
 
-        mockMvc.perform(patch("/api/tripmate/posts/" + postId + "/display")
+        mockMvc.perform(patch("/api/tripmate/posts/{postId}/display", postId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
@@ -49,7 +49,7 @@ class TripmateDisplayE2eTest extends TripmateTestSupport {
         String postId = createPost(owner, "곧 숨길 글");
 
         // 토글 → display=false
-        mockMvc.perform(patch("/api/tripmate/posts/" + postId + "/display")
+        mockMvc.perform(patch("/api/tripmate/posts/{postId}/display", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is_displayed").value(false));

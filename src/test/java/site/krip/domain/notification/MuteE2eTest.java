@@ -95,7 +95,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String peerId = fixtures.createActiveUser("상대방");
         String roomId = seedRoomWithMember(userId, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
+        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("muted", true)))
@@ -113,13 +113,13 @@ class MuteE2eTest extends IntegrationTestSupport {
         String peerId = fixtures.createActiveUser("상대방2");
         String roomId = seedRoomWithMember(userId, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
+        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("muted", true)))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
+        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("muted", false)))
@@ -137,7 +137,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String outsider = fixtures.createActiveUser("외부인");
         String roomId = seedRoomWithMember(memberUser, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
+        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(outsider))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json("muted", true)))
@@ -163,7 +163,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String peerId = fixtures.createActiveUser("상대방4");
         String roomId = seedRoomWithMember(userId, peerId);
 
-        mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
+        mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))

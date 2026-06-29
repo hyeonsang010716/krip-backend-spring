@@ -59,7 +59,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
 
     /** 공유 토큰 발급(POST /plans/{id}/share, 201) 후 share_token 반환. */
     private String issueShareToken(String userId, String planId) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/tour/plans/" + planId + "/share")
+        MvcResult res = mockMvc.perform(post("/api/tour/plans/{planId}/share", planId)
                         .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.share_token").exists())
@@ -79,7 +79,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
         String token = issueShareToken(userId, planId);
 
         // 공개 endpoint — Authorization/X-Auth-Token 헤더 없이 호출
-        mockMvc.perform(get("/api/public/share/plan/" + token))
+        mockMvc.perform(get("/api/public/share/plan/{token}", token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan_id").value(planId))
                 .andExpect(jsonPath("$.title").value("공유용 플랜"))
@@ -117,12 +117,12 @@ class PublicShareE2eTest extends IntegrationTestSupport {
         String token = issueShareToken(userId, planId);
 
         // 소유자가 플랜 삭제
-        mockMvc.perform(delete("/api/tour/plans/" + planId)
+        mockMvc.perform(delete("/api/tour/plans/{planId}", planId)
                         .with(auth(userId)))
                 .andExpect(status().isOk());
 
         // 토큰 디코드는 성공하지만 plan 이 사라져 → 404
-        mockMvc.perform(get("/api/public/share/plan/" + token))
+        mockMvc.perform(get("/api/public/share/plan/{token}", token))
                 .andExpect(status().isNotFound());
     }
 
@@ -134,7 +134,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, placeId);
         String token = issueShareToken(userId, planId);
 
-        mockMvc.perform(get("/api/public/share/plan/" + token)
+        mockMvc.perform(get("/api/public/share/plan/{token}", token)
                         .with(bearerOnly()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan_id").value(planId));
