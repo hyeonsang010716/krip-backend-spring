@@ -36,10 +36,6 @@ class MuteE2eTest extends IntegrationTestSupport {
     @Autowired
     private ChatRoomMemberRepository memberRepo;
 
-    private static String body(boolean muted) {
-        return "{\"muted\": %s}".formatted(muted);
-    }
-
     // ──────────────────── 전역 mute ────────────────────
 
     @Test
@@ -50,7 +46,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/global")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(true)))
+                        .content(json("muted", true)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -67,14 +63,14 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/global")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(true)))
+                        .content(json("muted", true)))
                 .andExpect(status().isOk());
 
         // 해제.
         mockMvc.perform(put("/api/notification/mute/global")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(false)))
+                        .content(json("muted", false)))
                 .andExpect(status().isOk());
 
         User user = userRepo.findById(userId).orElseThrow();
@@ -105,7 +101,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(true)))
+                        .content(json("muted", true)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -123,13 +119,13 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(true)))
+                        .content(json("muted", true)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(false)))
+                        .content(json("muted", false)))
                 .andExpect(status().isOk());
 
         ChatRoomMember member = memberRepo.findById(new ChatRoomMemberId(roomId, userId)).orElseThrow();
@@ -147,7 +143,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
                         .with(auth(outsider))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(true)))
+                        .content(json("muted", true)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -159,7 +155,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put("/api/notification/mute/rooms/no-such-room")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(true)))
+                        .content(json("muted", true)))
                 .andExpect(status().isBadRequest());
     }
 

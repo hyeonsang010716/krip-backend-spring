@@ -95,8 +95,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.places.length()").value(30))
                 .andExpect(jsonPath("$.next_cursor").exists())
                 .andReturn();
-        String cursor = objectMapper.readTree(first.getResponse().getContentAsString())
-                .get("next_cursor").asText();
+        String cursor = idFrom(first, "next_cursor");
 
         mockMvc.perform(get(PLACES).param("keyword", "ZZCUR").param("cursor", cursor)
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))

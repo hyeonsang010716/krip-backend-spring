@@ -147,6 +147,17 @@ public abstract class IntegrationTestSupport {
         userBlockRepository.save(new UserBlock(blocker, blocked));
     }
 
+    /** A → B 친구 요청을 실제 API 로 생성(201) 후 friendship_id 반환 — PENDING 상태가 precondition 일 때. */
+    protected String sendFriendRequest(String requester, String addressee) throws Exception {
+        MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
+                        .with(auth(requester))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json("addressee_id", addressee)))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return idFrom(res, "friendship_id");
+    }
+
     /** 친구 요청→수락을 실제 API 로 수행 — 친구 플로우 자체의 부수효과(알림 등)까지 거쳐야 할 때 사용. */
     protected void befriendViaApi(String a, String b) throws Exception {
         String res = mockMvc.perform(post("/api/friend/friendships/requests")

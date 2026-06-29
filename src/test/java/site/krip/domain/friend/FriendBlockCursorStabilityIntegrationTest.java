@@ -12,8 +12,6 @@ import site.krip.domain.friend.dto.response.UserBlockResponse;
 import site.krip.domain.friend.entity.Friendship;
 import site.krip.domain.friend.entity.FriendshipStatus;
 import site.krip.domain.friend.entity.UserBlock;
-import site.krip.domain.friend.repository.FriendshipRepository;
-import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.domain.friend.service.FriendshipService;
 import site.krip.domain.friend.service.UserBlockService;
 import site.krip.global.support.KeysetCursor;
@@ -34,11 +32,7 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
     @Autowired
     private FriendshipService friendshipService;
     @Autowired
-    private FriendshipRepository friendshipRepository;
-    @Autowired
     private UserBlockService userBlockService;
-    @Autowired
-    private UserBlockRepository userBlockRepository;
 
     @Test
     @DisplayName("친구 목록 — 경계 친구가 나를 끊어 행이 삭제돼도 다음 페이지가 안 잘린다")
@@ -46,8 +40,8 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         String me = fixtures.createActiveUser("나");
         String f1 = fixtures.createActiveUser("친구1");
         String f2 = fixtures.createActiveUser("친구2");
-        saveAccepted(me, f1);
-        saveAccepted(me, f2);
+        makeFriends(me, f1);
+        makeFriends(me, f2);
 
         // 서비스와 동일 정렬로 정렬해 1페이지 경계(첫 행)/그 다음 행을 정한다.
         List<Friendship> sorted = friendshipRepository.findFriendsFirstPage(me, FriendshipStatus.ACCEPTED,
@@ -94,11 +88,5 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
                 .isNotEmpty()
                 .extracting(UserBlockResponse::blockId)
                 .contains(next.getBlockId());
-    }
-
-    private void saveAccepted(String requesterId, String addresseeId) {
-        Friendship f = new Friendship(requesterId, addresseeId);
-        f.accept();
-        friendshipRepository.saveAndFlush(f);
     }
 }

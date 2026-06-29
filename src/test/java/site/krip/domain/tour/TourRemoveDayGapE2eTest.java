@@ -1,6 +1,5 @@
 package site.krip.domain.tour;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -70,7 +69,7 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String planId = objectMapper.readTree(res.getResponse().getContentAsString()).get("plan_id").asText();
+        String planId = idFrom(res, "plan_id");
 
         // day2, day3 에 항목 추가
         addItem(planId, user, 2, placeId);

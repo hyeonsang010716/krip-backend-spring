@@ -1,6 +1,5 @@
 package site.krip.domain.tour;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -69,7 +68,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                         .content(createPlanBody(title, travelDays, placeId, 1, "10:00")))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("plan_id").asText();
+        return idFrom(res, "plan_id");
     }
 
     // ──────────────────── 전체 흐름 ────────────────────
@@ -98,8 +97,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.items[0].display_name").value("경복궁"))
                 .andExpect(jsonPath("$.items[0].visit_time").value("09:00"))
                 .andReturn();
-        String planId = objectMapper.readTree(created.getResponse().getContentAsString())
-                .get("plan_id").asText();
+        String planId = idFrom(created, "plan_id");
 
         // 단건 조회 (200)
         mockMvc.perform(get("/api/tour/plans/" + planId)
@@ -140,8 +138,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.day_number").value(1))
                 .andExpect(jsonPath("$.rating").value(4.5))
                 .andReturn();
-        String itemBId = objectMapper.readTree(addedItem.getResponse().getContentAsString())
-                .get("item_id").asText();
+        String itemBId = idFrom(addedItem, "item_id");
 
         // day1 두번째 카드 추가 → 이동 검증용 placeC
         MvcResult addedItemC = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
@@ -150,8 +147,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                         .content(json("day_number", 1, "place_id", placeC, "visit_time", "15:00")))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String itemCId = objectMapper.readTree(addedItemC.getResponse().getContentAsString())
-                .get("item_id").asText();
+        String itemCId = idFrom(addedItemC, "item_id");
 
         // 조회 → day1 응답 순서: placeA(첫 생성) → placeB → placeC (position 단조 증가)
         mockMvc.perform(get("/api/tour/plans/" + planId)
@@ -240,7 +236,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andReturn();
-        String itemId = objectMapper.readTree(plan.getResponse().getContentAsString())
+        String itemId = readJson(plan)
                 .get("items").get(0).get("item_id").asText();
 
         // day1 내에 존재하지 않는 after_item_id 로 이동 → dayItems(자기 제외=1개)에서 못 찾아 computePosition 400
@@ -350,7 +346,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
                         .content(json("day_number", 1, "place_id", placeId, "visit_time", "10:00")))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("item_id").asText();
+        return idFrom(res, "item_id");
     }
 
     @Test

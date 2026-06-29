@@ -4,7 +4,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.friend.entity.UserBlock;
 import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.support.IntegrationTestSupport;
@@ -32,17 +31,6 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     @Autowired
     private UserBlockRepository blockRepo;
 
-    /** A → B 친구 요청 생성(201), friendship_id 반환. */
-    private String sendRequest(String requester, String addressee) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
-                        .with(auth(requester))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("addressee_id", addressee)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return idFrom(res, "friendship_id");
-    }
-
     private void accept(String addressee, String friendshipId) throws Exception {
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
                         .with(auth(addressee)))
@@ -56,7 +44,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void rejectByWrongParty() throws Exception {
         String a = fixtures.createActiveUser("거절권한A");
         String b = fixtures.createActiveUser("거절권한B");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         // 거절은 addressee(B) 만 가능 — requester(A) 가 시도 → 403
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
@@ -69,7 +57,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void cancelByNonRequester() throws Exception {
         String a = fixtures.createActiveUser("취소권한A");
         String b = fixtures.createActiveUser("취소권한B");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         // 취소는 requester(A) 만 가능 — addressee(B) 가 시도 → 403
         mockMvc.perform(delete("/api/friend/friendships/requests/{id}", friendshipId)
@@ -83,7 +71,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("삭제당사자A");
         String b = fixtures.createActiveUser("삭제당사자B");
         String outsider = fixtures.createActiveUser("삭제제3자");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
         accept(b, friendshipId);
 
         mockMvc.perform(delete("/api/friend/friendships/{id}", friendshipId)
@@ -98,7 +86,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void acceptNonPending() throws Exception {
         String a = fixtures.createActiveUser("재수락A");
         String b = fixtures.createActiveUser("재수락B");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
         accept(b, friendshipId);
 
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
@@ -112,7 +100,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void rejectNonPending() throws Exception {
         String a = fixtures.createActiveUser("수락후거절A");
         String b = fixtures.createActiveUser("수락후거절B");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
         accept(b, friendshipId);
 
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
@@ -125,7 +113,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void cancelNonPending() throws Exception {
         String a = fixtures.createActiveUser("수락후취소A");
         String b = fixtures.createActiveUser("수락후취소B");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
         accept(b, friendshipId);
 
         mockMvc.perform(delete("/api/friend/friendships/requests/{id}", friendshipId)
@@ -138,7 +126,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void removePendingFriendship() throws Exception {
         String a = fixtures.createActiveUser("대기삭제A");
         String b = fixtures.createActiveUser("대기삭제B");
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         mockMvc.perform(delete("/api/friend/friendships/{id}", friendshipId)
                         .with(auth(a)))
@@ -168,7 +156,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void acceptBlockedByAddressee() throws Exception {
         String requester = fixtures.createActiveUser("수락차단요청자");
         String addressee = fixtures.createActiveUser("수락차단상대");
-        String friendshipId = sendRequest(requester, addressee);
+        String friendshipId = sendFriendRequest(requester, addressee);
 
         // 경합으로 friendship 이 정리되지 않은 채 차단만 들어간 상태를 직접 재현(repo 직삽입)
         blockRepo.save(new UserBlock(addressee, requester));
@@ -184,7 +172,7 @@ class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
     void acceptBlockedByRequester() throws Exception {
         String requester = fixtures.createActiveUser("역방향차단요청자");
         String addressee = fixtures.createActiveUser("역방향차단상대");
-        String friendshipId = sendRequest(requester, addressee);
+        String friendshipId = sendFriendRequest(requester, addressee);
 
         blockRepo.save(new UserBlock(requester, addressee));
 

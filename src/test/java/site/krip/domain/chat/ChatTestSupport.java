@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * 채팅 E2E 공통 베이스 — 방 생성 REST 헬퍼를 모은다. 응답 JSON 은 snake_case,
- * room type 은 대문자 enum({@code DIRECT/GROUP}).
+ * room type 은 소문자 enum({@code direct/group}).
  */
 abstract class ChatTestSupport extends IntegrationTestSupport {
 

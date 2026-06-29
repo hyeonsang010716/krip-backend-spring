@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>친구/차단 관계는 리포지토리로 직접 시드(base 의 {@code makeFriends}/{@code block}).
  * (방/메시지 생성은 REST 로만 다루며 WS 실시간 경로는 별도.) 응답 JSON 은 snake_case,
- * room type 은 대문자 enum({@code DIRECT/GROUP}).
+ * room type 은 소문자 enum({@code direct/group}).
  */
 class ChatRoomE2eTest extends ChatTestSupport {
 
@@ -54,7 +54,6 @@ class ChatRoomE2eTest extends ChatTestSupport {
         String a = fixtures.createActiveUser("찰리");
         String b = fixtures.createActiveUser("데이브");
 
-        createDirect(a, b).getResponse();
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -107,16 +107,16 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
         awaitType(h, "connected", 5000);
 
-        session.sendMessage(new TextMessage(
-                "{\"op\":\"send\",\"room_id\":\"" + room + "\",\"client_msg_id\":\"cm-1\","
-                        + "\"content\":\"hello ws\",\"type\":\"text\"}"));
+        session.sendMessage(new TextMessage(json(
+                "op", "send", "room_id", room, "client_msg_id", "cm-1",
+                "content", "hello ws", "type", "text")));
         JsonNode ack = awaitType(h, "message.sent", 5000);
         assertThat(ack.path("client_msg_id").asText()).isEqualTo("cm-1");
         long seq = ack.path("server_seq").asLong();
         assertThat(seq).isGreaterThan(0);
 
-        session.sendMessage(new TextMessage(
-                "{\"op\":\"read\",\"room_id\":\"" + room + "\",\"up_to_server_seq\":" + seq + "}"));
+        session.sendMessage(new TextMessage(json(
+                "op", "read", "room_id", room, "up_to_server_seq", seq)));
         JsonNode readAck = awaitType(h, "read_ack", 5000);
         assertThat(readAck.path("up_to_server_seq").asLong()).isEqualTo(seq);
 
@@ -135,9 +135,9 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         awaitType(h, "connected", 5000);
 
         // room_id/client_msg_id/content 는 유효 — SYSTEM 가드에 도달하도록. 가드 없으면 message.sent 가 와 타임아웃 실패.
-        session.sendMessage(new TextMessage(
-                "{\"op\":\"send\",\"room_id\":\"" + room + "\",\"client_msg_id\":\"cm-sys\","
-                        + "\"content\":\"forged\",\"type\":\"system\"}"));
+        session.sendMessage(new TextMessage(json(
+                "op", "send", "room_id", room, "client_msg_id", "cm-sys",
+                "content", "forged", "type", "system")));
 
         JsonNode err = awaitType(h, "server_error", 5000);
         assertThat(err.path("reason").asText()).contains("system");
@@ -166,7 +166,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         String jti = jwtProvider.parse(token).jti();
         revocation.revoke(jti, Instant.now().plusSeconds(3600));
 
-        session.sendMessage(new TextMessage("{\"op\":\"refresh\",\"token\":\"" + token + "\"}"));
+        session.sendMessage(new TextMessage(json("op", "refresh", "token", token)));
 
         // revocation 체크가 빠지면 auth_expired 가 안 와 타임아웃으로 실패한다.
         awaitType(h, "auth_expired", 5000);

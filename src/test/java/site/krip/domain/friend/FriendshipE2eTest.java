@@ -3,7 +3,6 @@ package site.krip.domain.friend;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -21,18 +20,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FriendshipE2eTest extends IntegrationTestSupport {
 
-    /** A → B 친구 요청 생성(201), 생성된 friendship_id 반환. */
-    private String sendRequest(String requester, String addressee) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
-                        .with(auth(requester))
+    @Test
+    @DisplayName("친구 요청 생성 → 201, status=pending·is_requester=true·peer 노출")
+    void createRequestReturnsPendingShape() throws Exception {
+        String a = fixtures.createActiveUser("요청생성자");
+        String b = fixtures.createActiveUser("요청대상");
+
+        mockMvc.perform(post("/api/friend/friendships/requests")
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("addressee_id", addressee)))
+                        .content(json("addressee_id", b)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("pending"))
                 .andExpect(jsonPath("$.is_requester").value(true))
-                .andExpect(jsonPath("$.peer.user_id").value(addressee))
-                .andReturn();
-        return idFrom(res, "friendship_id");
+                .andExpect(jsonPath("$.peer.user_id").value(b));
     }
 
     @Test
@@ -41,7 +42,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("앨리스");
         String b = fixtures.createActiveUser("밥");
 
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         // B 의 받은 요청 목록에 노출 (B 기준 is_requester=false, peer=A)
         mockMvc.perform(get("/api/friend/friendships/requests/received")
@@ -93,7 +94,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("정한");
         String b = fixtures.createActiveUser("준");
 
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
                         .with(auth(b)))
                 .andExpect(status().isOk());
@@ -121,7 +122,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("리쿠");
         String b = fixtures.createActiveUser("샤오");
 
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
                         .with(auth(b)))
@@ -147,7 +148,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("호시");
         String b = fixtures.createActiveUser("원우");
 
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         mockMvc.perform(delete("/api/friend/friendships/requests/{id}", friendshipId)
                         .with(auth(a)))
@@ -167,7 +168,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String b = fixtures.createActiveUser("민규");
 
         // A→B 요청 후 B 거절(REJECTED 로 잔존)
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
                         .with(auth(b)))
                 .andExpect(status().isOk());
@@ -209,7 +210,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("버논");
         String b = fixtures.createActiveUser("도겸");
 
-        sendRequest(a, b);
+        sendFriendRequest(a, b);
 
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
@@ -225,7 +226,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("우지");
         String b = fixtures.createActiveUser("에스쿱스");
 
-        String friendshipId = sendRequest(a, b);
+        String friendshipId = sendFriendRequest(a, b);
 
         // requester(A) 가 자기 요청을 수락 시도 → addressee 만 가능하므로 403
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)

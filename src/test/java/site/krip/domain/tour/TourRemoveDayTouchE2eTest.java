@@ -57,7 +57,7 @@ class TourRemoveDayTouchE2eTest extends IntegrationTestSupport {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("plan_id").asText();
+        return idFrom(res, "plan_id");
     }
 
     @Test

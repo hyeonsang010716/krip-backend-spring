@@ -1,6 +1,5 @@
 package site.krip.domain.notification;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,10 +27,6 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @Autowired
     private FcmTokenRepository tokenRepo;
 
-    private static String body(String token) {
-        return "{\"token\": \"%s\"}".formatted(token);
-    }
-
     @Test
     @DisplayName("토큰 등록 → 201, fcm_token_id/created_at 반환")
     void register() throws Exception {
@@ -40,7 +35,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("device-token-aaa")))
+                        .content(json("token", "device-token-aaa")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.fcm_token_id").exists())
                 .andExpect(jsonPath("$.created_at").exists());
@@ -55,20 +50,18 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         MvcResult first = mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String firstId = objectMapper.readTree(first.getResponse().getContentAsString())
-                .get("fcm_token_id").asText();
+        String firstId = idFrom(first, "fcm_token_id");
 
         MvcResult second = mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String secondId = objectMapper.readTree(second.getResponse().getContentAsString())
-                .get("fcm_token_id").asText();
+        String secondId = idFrom(second, "fcm_token_id");
 
         assertThat(secondId).as("같은 토큰 재등록은 동일 fcm_token_id 를 돌려줘야 한다").isEqualTo(firstId);
     }
@@ -82,7 +75,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated());
 
         // 등록 직후엔 created_at == updated_at.
@@ -95,7 +88,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated());
 
         // 동일 owner 재등록인데도 updated_at 이 created_at 보다 뒤로 갱신되어야 한다(early-return 회귀 방지).
@@ -114,20 +107,18 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         MvcResult first = mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(ownerA))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String firstId = objectMapper.readTree(first.getResponse().getContentAsString())
-                .get("fcm_token_id").asText();
+        String firstId = idFrom(first, "fcm_token_id");
 
         MvcResult second = mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(ownerB))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String secondId = objectMapper.readTree(second.getResponse().getContentAsString())
-                .get("fcm_token_id").asText();
+        String secondId = idFrom(second, "fcm_token_id");
 
         // 같은 토큰 → 같은 행(같은 id), 소유자만 B 로 교체.
         assertThat(secondId).as("동일 토큰은 owner 교체일 뿐 새 행이 아니다").isEqualTo(firstId);
@@ -144,13 +135,13 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(delete("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(token)))
+                        .content(json("token", token)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
@@ -165,7 +156,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(delete("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("never-registered-token")))
+                        .content(json("token", "never-registered-token")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -178,7 +169,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("")))
+                        .content(json("token", "")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -199,7 +190,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     void registerUnauthenticated() throws Exception {
         mockMvc.perform(post("/api/notification/fcm-token")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("some-token")))
+                        .content(json("token", "some-token")))
                 .andExpect(status().isUnauthorized());
     }
 }

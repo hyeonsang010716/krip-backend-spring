@@ -1,6 +1,5 @@
 package site.krip.domain.publicshare;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.bson.Document;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,7 +12,6 @@ import site.krip.support.IntegrationTestSupport;
 import java.util.List;
 import java.util.UUID;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -62,7 +60,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("plan_id").asText();
+        return idFrom(res, "plan_id");
     }
 
     /** 공유 토큰 발급(POST /plans/{id}/share, 201) 후 share_token 반환. */
@@ -73,7 +71,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.share_token").exists())
                 .andExpect(jsonPath("$.expires_at").exists())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("share_token").asText();
+        return idFrom(res, "share_token");
     }
 
     // ──────────────────── 라운드트립 ────────────────────
@@ -87,7 +85,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
         String token = issueShareToken(userId, planId);
 
         // 공개 endpoint — Authorization/X-Auth-Token 헤더 없이 호출
-        MvcResult res = mockMvc.perform(get("/api/public/share/plan/" + token))
+        mockMvc.perform(get("/api/public/share/plan/" + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan_id").value(planId))
                 .andExpect(jsonPath("$.title").value("공유용 플랜"))
@@ -96,10 +94,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.items[0].place_id").value(placeId))
                 .andExpect(jsonPath("$.items[0].display_name").value("불국사"))
                 // 소유자 식별 필드는 노출되지 않아야 함
-                .andExpect(jsonPath("$.user_id").doesNotExist())
-                .andReturn();
-        JsonNode body = objectMapper.readTree(res.getResponse().getContentAsString());
-        assertThat(body.has("user_id")).as("공개 응답에 user_id 가 없어야 한다").isFalse();
+                .andExpect(jsonPath("$.user_id").doesNotExist());
     }
 
     // ──────────────────── 오류 케이스 ────────────────────

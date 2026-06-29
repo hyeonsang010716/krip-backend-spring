@@ -1,6 +1,5 @@
 package site.krip.domain.feed;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -19,19 +18,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FeedCommentE2eTest extends FeedTestSupport {
 
-    private static String body(String content) {
-        return "{\"content\": \"" + content + "\"}";
-    }
-
     private String createComment(String userId, String postId, String content) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body(content)))
+                        .content(json("content", content)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        JsonNode json = objectMapper.readTree(res.getResponse().getContentAsString());
-        return json.get("comment_id").asText();
+        return idFrom(res, "comment_id");
     }
 
     @Test
@@ -67,7 +61,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("   ")))
+                        .content(json("content", "   ")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -80,7 +74,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("")))
+                        .content(json("content", "")))
                 .andExpect(status().isBadRequest());
     }
 
@@ -134,7 +128,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
                         .with(auth(stranger))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(body("숨겨진 글 댓글")))
+                        .content(json("content", "숨겨진 글 댓글")))
                 .andExpect(status().isNotFound());
     }
 }

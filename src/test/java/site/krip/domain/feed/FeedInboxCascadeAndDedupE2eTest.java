@@ -59,7 +59,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
 
         mockMvc.perform(delete("/api/feed/posts/" + post)
                         .with(auth(owner)))
-                .andExpect(status().is2xxSuccessful());
+                .andExpect(status().isOk());
 
         assertFeedLikeCount(owner, 0);
     }

@@ -60,8 +60,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
                 .andExpect(jsonPath("$.is_displayed").value(true))
                 .andExpect(jsonPath("$.post_id").exists())
                 .andReturn();
-        String postId = objectMapper.readTree(created.getResponse().getContentAsString())
-                .get("post_id").asText();
+        String postId = idFrom(created, "post_id");
 
         // 단건 (200)
         mockMvc.perform(get("/api/tripmate/posts/" + postId)

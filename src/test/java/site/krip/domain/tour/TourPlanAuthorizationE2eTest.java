@@ -62,7 +62,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
                         .content(body))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString()).get("plan_id").asText();
+        return idFrom(res, "plan_id");
     }
 
     private String firstItemId(String userId, String planId) throws Exception {
@@ -71,7 +71,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString())
+        return readJson(res)
                 .get("items").get(0).get("item_id").asText();
     }
 

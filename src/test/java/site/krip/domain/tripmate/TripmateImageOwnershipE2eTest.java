@@ -55,7 +55,7 @@ class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
                         .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andReturn();
-        return objectMapper.readTree(res.getResponse().getContentAsString())
+        return readJson(res)
                 .get("images").get(0).get("image_url").asText();
     }
 
@@ -105,8 +105,7 @@ class TripmateImageOwnershipE2eTest extends TripmateTestSupport {
                         .content(postBody("동행 모집", "여행 같이 떠나실 분을 찾습니다.", "부산", "[]")))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String postId = objectMapper.readTree(created.getResponse().getContentAsString())
-                .get("post_id").asText();
+        String postId = idFrom(created, "post_id");
 
         // 수정 시 피해자 URL 주입 시도 → 403
         mockMvc.perform(put(POSTS + "/" + postId)

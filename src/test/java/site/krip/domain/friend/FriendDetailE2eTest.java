@@ -3,15 +3,12 @@ package site.krip.domain.friend;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.friend.service.UserBlockService;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,16 +22,6 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
 
     @Autowired
     private UserBlockService userBlockService;
-
-    private String sendRequest(String requester, String addressee) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
-                        .with(auth(requester))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(json("addressee_id", addressee)))
-                .andExpect(status().isCreated())
-                .andReturn();
-        return idFrom(res, "friendship_id");
-    }
 
     @Test
     @DisplayName("존재하지 않는 유저 상세 → 404")
@@ -63,7 +50,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     void detailAcceptedRelation() throws Exception {
         String viewer = fixtures.createActiveUser("상세친구뷰어");
         String target = fixtures.createActiveUser("상세친구타겟");
-        String friendshipId = sendRequest(viewer, target);
+        String friendshipId = sendFriendRequest(viewer, target);
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
                         .with(auth(target)))
                 .andExpect(status().isOk());
@@ -82,7 +69,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     void detailPendingAsAddressee() throws Exception {
         String requester = fixtures.createActiveUser("상세받은요청자");
         String addressee = fixtures.createActiveUser("상세받은당사자");
-        sendRequest(requester, addressee);
+        sendFriendRequest(requester, addressee);
 
         // addressee 가 requester 의 상세를 보면 is_requester=false (내가 요청자가 아님)
         mockMvc.perform(get("/api/friend/detail/{userId}", requester)
@@ -98,7 +85,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     void detailRejectedRelationMasked() throws Exception {
         String viewer = fixtures.createActiveUser("상세거절뷰어");
         String target = fixtures.createActiveUser("상세거절타겟");
-        String friendshipId = sendRequest(viewer, target);
+        String friendshipId = sendFriendRequest(viewer, target);
         // addressee(target) 가 거절 → REJECTED 는 재요청으로 되살아나는 상태라 노출하면 안 됨
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
                         .with(auth(target)))
