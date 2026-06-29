@@ -30,7 +30,7 @@ import site.krip.global.auth.jwt.JwtProvider;
 @Import(TestFixtures.class)
 public abstract class IntegrationTestSupport {
 
-    /** application.yml 의 {@code krip.auth.access-token} 로컬 기본값 — 글로벌 Bearer 필터 통과용. */
+    /** 글로벌 Bearer 필터 통과용 토큰 — application.yml 엔 기본값이 없어 {@code @DynamicPropertySource} 로 주입. */
     protected static final String ACCESS_TOKEN = "dev-access-token";
 
     static final PostgreSQLContainer<?> POSTGRES;

@@ -1,6 +1,10 @@
 package site.krip.global.config;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * 채팅 도메인 설정.
@@ -12,14 +16,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 오래 묶지 못하게 데코레이터로 강제 — 초과 시 세션 종료). {@code deliverySessionMaxQueued}: fan-out 전송을
  * 세션별 직렬 실행기로 offload 할 때 세션당 대기 한도(초과 시 그 전달만 드롭 — 폴/송신 스레드 비차단).
  */
+@Validated
 @ConfigurationProperties(prefix = "krip.chat")
 public record ChatProperties(
-        String fanoutMode,
-        String nodeId,
-        int dedupeRedisDatabase,
-        int wsSendTimeLimitMs,
-        int wsSendBufferBytes,
-        int deliverySessionMaxQueued
+        @NotBlank String fanoutMode,
+        @NotBlank String nodeId,
+        @PositiveOrZero int dedupeRedisDatabase,
+        @Positive int wsSendTimeLimitMs,
+        @Positive int wsSendBufferBytes,
+        @Positive int deliverySessionMaxQueued
 ) {
     public boolean isMultiNode() {
         return "redis_stream".equals(fanoutMode);

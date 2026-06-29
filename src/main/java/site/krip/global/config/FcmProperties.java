@@ -1,6 +1,8 @@
 package site.krip.global.config;
 
+import jakarta.validation.constraints.Positive;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
 
 /**
  * FCM 설정.
@@ -12,13 +14,14 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * {@code circuitFailureThreshold}/{@code circuitOpenMs}: 전송 연속 실패가 임계치에 도달하면
  * cooldown 동안 발송을 단락(fast-fail)해 장애 시 워커 풀 고갈을 막는다.
  */
+@Validated
 @ConfigurationProperties(prefix = "krip.fcm")
 public record FcmProperties(
         boolean enabled,
         String credentialsPath,
-        int connectTimeoutMs,
-        int readTimeoutMs,
-        int circuitFailureThreshold,
-        int circuitOpenMs
+        @Positive int connectTimeoutMs,
+        @Positive int readTimeoutMs,
+        @Positive int circuitFailureThreshold,
+        @Positive int circuitOpenMs
 ) {
 }
