@@ -56,8 +56,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
     void getPlaceNotFound() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tour/places/no-such-place")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -68,8 +67,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         String placeId = seedPlace("덕수궁");
 
         mockMvc.perform(get("/api/tour/places/" + placeId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.place_id").value(placeId))
                 .andExpect(jsonPath("$.display_name").value("덕수궁"));
@@ -81,8 +79,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         // 데이터가 없는 좌표(태평양 한가운데)로 조회 → 빈 결과
         mockMvc.perform(get("/api/tour/places")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .param("lat", "0.0")
                         .param("lng", "-160.0")
                         .param("max_distance", "1000"))
@@ -95,8 +92,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
     void getPlacesBadMaxDistance() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tour/places")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .param("max_distance", "0"))
                 .andExpect(status().isBadRequest());
     }
@@ -111,8 +107,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
 
         // 추가 (201)
         mockMvc.perform(post("/api/tour/places/favorites")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"" + placeId + "\"}"))
                 .andExpect(status().isCreated())
@@ -120,38 +115,33 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
 
         // 중복 추가 (400)
         mockMvc.perform(post("/api/tour/places/favorites")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"" + placeId + "\"}"))
                 .andExpect(status().isBadRequest());
 
         // 목록 (200) — 추가된 장소가 반영
         mockMvc.perform(get("/api/tour/places/favorites")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_count").value(1))
                 .andExpect(jsonPath("$.favorites[0].place.place_id").value(placeId));
 
         // 단건 조회 시 is_favorite=true 반영
         mockMvc.perform(get("/api/tour/places/" + placeId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is_favorite").value(true));
 
         // 삭제 (200)
         mockMvc.perform(delete("/api/tour/places/favorites/" + placeId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 삭제 후 목록 비어있음
         mockMvc.perform(get("/api/tour/places/favorites")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_count").value(0));
     }
@@ -161,8 +151,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
     void addFavoriteMissingPlace() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(post("/api/tour/places/favorites")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"no-such-place\"}"))
                 .andExpect(status().isBadRequest());
@@ -174,8 +163,7 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("종묘");
         mockMvc.perform(delete("/api/tour/places/favorites/" + placeId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -189,39 +177,34 @@ class PlaceFavoriteE2eTest extends IntegrationTestSupport {
         // keyword 검색을 통해 검색어 저장(best-effort). geo 결과가 비어도 검색어는 저장됨.
         for (String kw : List.of("경복궁", "남산", "한강")) {
             mockMvc.perform(get("/api/tour/places")
-                            .header("Authorization", bearer())
-                            .header("X-Auth-Token", userToken(userId))
+                            .with(auth(userId))
                             .param("keyword", kw))
                     .andExpect(status().isOk());
         }
 
         // 목록 (200)
         mockMvc.perform(get("/api/tour/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories").isArray())
                 .andExpect(jsonPath("$.histories[?(@.search_name == '경복궁')]").exists());
 
         // 한 건 삭제 (200)
         mockMvc.perform(delete("/api/tour/search-history/one")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .param("search_name", "경복궁"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 전체 삭제 (200)
         mockMvc.perform(delete("/api/tour/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 전체 삭제 후 목록 비어있음
         mockMvc.perform(get("/api/tour/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories.length()").value(0));
     }

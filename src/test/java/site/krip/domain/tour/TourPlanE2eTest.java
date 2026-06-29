@@ -68,8 +68,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     /** 플랜 생성 후 plan_id 반환 (선행 데이터 준비용). */
     private String createPlan(String userId, String title, int travelDays, String placeId) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createPlanBody(title, travelDays, placeId, 1, "10:00")))
                 .andExpect(status().isCreated())
@@ -89,8 +88,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 생성 (201) — user_id 포함, day1 카드 1개
         MvcResult created = mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createPlanBody("서울 2박3일", 3, placeA, 1, "09:00")))
                 .andExpect(status().isCreated())
@@ -109,24 +107,21 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 단건 조회 (200)
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan_id").value(planId))
                 .andExpect(jsonPath("$.items.length()").value(1));
 
         // 목록 (200)
         mockMvc.perform(get("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans").isArray())
                 .andExpect(jsonPath("$.plans[?(@.plan_id == '" + planId + "')]").exists());
 
         // 제목 수정 (200, PATCH)
         mockMvc.perform(patch("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\": \"서울 알찬 여행\"}"))
                 .andExpect(status().isOk())
@@ -135,15 +130,13 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 일차 추가 (201) → travel_days 4
         mockMvc.perform(post("/api/tour/plans/" + planId + "/days")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.travel_days").value(4));
 
         // 카드 추가 (201) — day1 끝에 placeB
         MvcResult addedItem = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\": 1, \"place_id\": \"" + placeB + "\", \"visit_time\": \"13:00\"}"))
                 .andExpect(status().isCreated())
@@ -156,8 +149,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // day1 두번째 카드 추가 → 이동 검증용 placeC
         MvcResult addedItemC = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\": 1, \"place_id\": \"" + placeC + "\", \"visit_time\": \"15:00\"}"))
                 .andExpect(status().isCreated())
@@ -167,8 +159,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 조회 → day1 응답 순서: placeA(첫 생성) → placeB → placeC (position 단조 증가)
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(3))
                 .andExpect(jsonPath("$.items[0].place_id").value(placeA))
@@ -177,8 +168,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 카드 수정 (PUT 200) — itemB 를 placeC 로 교체하고 visit_time 변경
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/" + itemBId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"" + placeC + "\", \"visit_time\": \"14:30\"}"))
                 .andExpect(status().isOk())
@@ -189,8 +179,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 카드 이동 (PATCH move 200) — itemC 를 day2 의 맨 앞으로 (after_item_id null)
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemCId + "/move")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"target_day_number\": 2, \"after_item_id\": null}"))
                 .andExpect(status().isOk())
@@ -198,44 +187,38 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 이동 검증 → itemC 는 day2 로, day1 엔 placeA/itemB(=placeC) 만 남음
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.item_id == '" + itemCId + "')].day_number").value(2));
 
         // 카드 삭제 (200) — itemB
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/items/" + itemBId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 일차 삭제 (200) — day2 (itemC 포함 비움)
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/days/2")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // day2 카드(itemC) 가 사라졌는지 → 남은 카드는 placeA 1개
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].place_id").value(placeA));
 
         // 플랜 삭제 (200)
         mockMvc.perform(delete("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 삭제 후 조회 → 404
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -251,16 +234,14 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         // day1 에 카드를 하나 더 추가 → day1 에 카드 2개. (이동 대상 자기 자신을 제외해도 dayItems 가 비지 않아야
         //  after_item_id 검증을 거친다. 카드가 1개뿐이면 자기 제외 후 빈 day → SPACING 반환=정상 200, 검증 미발생.)
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\": 1, \"place_id\": \"" + placeA + "\", \"visit_time\": \"11:00\"}"))
                 .andExpect(status().isCreated());
 
         // day1 의 첫 카드 id 조회
         MvcResult plan = mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andReturn();
         String itemId = objectMapper.readTree(plan.getResponse().getContentAsString())
@@ -268,8 +249,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // day1 내에 존재하지 않는 after_item_id 로 이동 → dayItems(자기 제외=1개)에서 못 찾아 computePosition 400
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"target_day_number\": 1, \"after_item_id\": \"no-such-item\"}"))
                 .andExpect(status().isBadRequest());
@@ -283,23 +263,20 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, "자기이동 테스트", 2, placeA);
 
         String itemId = objectMapper.readTree(mockMvc.perform(get("/api/tour/plans/" + planId)
-                                .header("Authorization", bearer())
-                                .header("X-Auth-Token", userToken(userId)))
+                                .with(auth(userId)))
                         .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
                 .get("items").get(0).get("item_id").asText();
 
         // X 를 X 뒤로 = 제자리 유지. 400 이 아니라 멱등 200.
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"target_day_number\": 1, \"after_item_id\": \"" + itemId + "\"}"))
                 .andExpect(status().isOk());
 
         // 위치 불변 확인 — day1 에 그대로.
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].item_id").value(itemId))
@@ -314,23 +291,20 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, "타day 자기이동", 2, placeA);
 
         String itemId = objectMapper.readTree(mockMvc.perform(get("/api/tour/plans/" + planId)
-                                .header("Authorization", bearer())
-                                .header("X-Auth-Token", userToken(userId)))
+                                .with(auth(userId)))
                         .andExpect(status().isOk()).andReturn().getResponse().getContentAsString())
                 .get("items").get(0).get("item_id").asText();
 
         // day1 의 카드를 "day2, after=자기자신" 으로 이동 — 같은 day 가 아니므로 no-op 아님. day2 가 비어 정상 이동.
         mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + itemId + "/move")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"target_day_number\": 2, \"after_item_id\": \"" + itemId + "\"}"))
                 .andExpect(status().isOk());
 
         // day2 로 실제 이동됐는지 확인 (구버그: silent no-op 으로 day1 잔존).
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
                 .andExpect(jsonPath("$.items[0].item_id").value(itemId))
@@ -344,8 +318,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, "갭 붕괴", 1, seedPlace("c0", "addr0"));
 
         String c0 = objectMapper.readTree(mockMvc.perform(get("/api/tour/plans/" + planId)
-                                .header("Authorization", bearer())
-                                .header("X-Auth-Token", userToken(userId)))
+                                .with(auth(userId)))
                         .andReturn().getResponse().getContentAsString())
                 .get("items").get(0).get("item_id").asText();
         String c1 = addCard(planId, userId, seedPlace("c1", "addr1"));
@@ -356,8 +329,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         for (int i = 0; i < 60; i++) {
             String moving = (i % 2 == 0) ? c2 : c1;
             mockMvc.perform(patch("/api/tour/plans/" + planId + "/items/" + moving + "/move")
-                            .header("Authorization", bearer())
-                            .header("X-Auth-Token", userToken(userId))
+                            .with(auth(userId))
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"target_day_number\": 1, \"after_item_id\": \"" + c0 + "\"}"))
                     .andExpect(status().isOk());
@@ -365,8 +337,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // 최종: 3장 보존, 마지막 이동(i=59→c1)이 c0 바로 뒤 → 순서 [c0, c1, c2], 모두 day1.
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(3))
                 .andExpect(jsonPath("$.items[0].item_id").value(c0))
@@ -378,8 +349,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     /** day1 끝에 카드 추가 후 item_id 반환. */
     private String addCard(String planId, String userId, String placeId) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\": 1, \"place_id\": \"" + placeId + "\", \"visit_time\": \"10:00\"}"))
                 .andExpect(status().isCreated())
@@ -395,8 +365,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, "범위 테스트", 2, placeA);
 
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\": 9, \"place_id\": \"" + placeA + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -410,8 +379,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, "장소 누락", 2, placeA);
 
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\": 1, \"place_id\": \"no-such-place\"}"))
                 .andExpect(status().isBadRequest());
@@ -422,8 +390,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     void createPlanEmptyItems() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\": \"빈 플랜\", \"travel_days\": 2, \"items\": []}"))
                 .andExpect(status().isBadRequest());
@@ -440,8 +407,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(owner, "비공개 플랜", 2, placeA);
 
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -454,8 +420,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(owner, "삭제 권한", 2, placeA);
 
         mockMvc.perform(delete("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -464,8 +429,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
     void getMissingPlan() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tour/plans/no-such-plan")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -477,8 +441,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, "카드 미존재", 2, placeA);
 
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/items/no-such-item")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -496,8 +459,7 @@ class TourPlanE2eTest extends IntegrationTestSupport {
 
         // @Max(365) 가 place 조회 이전에 거부하므로 더미 place_id 로 충분.
         mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createPlanBody("초장기", 400, "place-dummy", 1, "10:00")))
                 .andExpect(status().isBadRequest());

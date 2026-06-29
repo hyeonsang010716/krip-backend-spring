@@ -30,8 +30,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
 
         for (String postId : new String[]{priv, friends, pub}) {
             mockMvc.perform(get("/api/feed/posts/" + postId)
-                            .header("Authorization", bearer())
-                            .header("X-Auth-Token", userToken(owner)))
+                            .with(auth(owner)))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.post_id").value(postId))
                     .andExpect(jsonPath("$.user_id").value(owner));
@@ -45,8 +44,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
         mockMvc.perform(get("/api/feed/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + priv + "')]").exists());
     }
@@ -65,8 +63,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(get("/api/feed/users/" + owner)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(friend)))
+                        .with(auth(friend)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + fr + "')]").exists())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + pub + "')]").exists())
@@ -86,8 +83,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(get("/api/feed/users/" + owner)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger)))
+                        .with(auth(stranger)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + pub + "')]").exists())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + fr + "')]").doesNotExist())
@@ -104,8 +100,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
 
         mockMvc.perform(get("/api/feed/posts/" + fr + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger)))
+                        .with(auth(stranger)))
                 .andExpect(status().isNotFound());
     }
 
@@ -117,8 +112,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
         mockMvc.perform(get("/api/feed/posts/" + priv + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger)))
+                        .with(auth(stranger)))
                 .andExpect(status().isNotFound());
     }
 
@@ -130,8 +124,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(get("/api/feed/posts/" + pub + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger)))
+                        .with(auth(stranger)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(pub));
     }
@@ -145,8 +138,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(get("/api/feed/posts/" + pub + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(blockedViewer)))
+                        .with(auth(blockedViewer)))
                 .andExpect(status().isNotFound());
     }
 
@@ -155,8 +147,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     void missingPostNotFound() throws Exception {
         String viewer = fixtures.createActiveUser("뷰어");
         mockMvc.perform(get("/api/feed/posts/no-such-post/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 }

@@ -23,16 +23,14 @@ class WithdrawE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("탈퇴유저");
 
         mockMvc.perform(delete("/api/auth/withdraw")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.scheduled_purge_at").exists())
                 .andExpect(cookie().maxAge("utk", 0));
 
         // INACTIVE → RegisterCheckFilter 가 419(withdrawal_pending) 로 차단
         mockMvc.perform(get("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().is(419))
                 .andExpect(jsonPath("$.status").value("withdrawal_pending"));
     }
@@ -43,18 +41,15 @@ class WithdrawE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("복구유저");
 
         mockMvc.perform(delete("/api/auth/withdraw")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/auth/withdraw/cancel")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_name").value("복구유저"));
     }
@@ -65,13 +60,11 @@ class WithdrawE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("중복탈퇴");
 
         mockMvc.perform(delete("/api/auth/withdraw")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(delete("/api/auth/withdraw")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isConflict());
     }
 }

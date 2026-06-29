@@ -22,30 +22,26 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
 
     private void like(String liker, String postId) throws Exception {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isCreated());
     }
 
     private void unlike(String liker, String postId) throws Exception {
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isOk());
     }
 
     private void assertFeedLikeCount(String owner, int expected) throws Exception {
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.type=='feed_like')]", hasSize(expected)));
     }
 
     private String firstInboxItemId(String owner) throws Exception {
         MvcResult res = mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andReturn();
         return JsonPath.read(res.getResponse().getContentAsString(), "$.items[0].inbox_item_id");
@@ -62,8 +58,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
         assertFeedLikeCount(owner, 1);
 
         mockMvc.perform(delete("/api/feed/posts/" + post)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().is2xxSuccessful());
 
         assertFeedLikeCount(owner, 0);
@@ -81,8 +76,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
 
         String itemId = firstInboxItemId(owner);
         mockMvc.perform(patch("/api/notification/inbox/" + itemId + "/hide")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk());
         assertFeedLikeCount(owner, 0);
 

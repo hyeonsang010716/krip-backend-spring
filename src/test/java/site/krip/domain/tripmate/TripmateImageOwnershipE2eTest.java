@@ -58,8 +58,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
     /** 이미지 1건 업로드 후 image_url 반환. */
     private String uploadImage(String userId, String name) throws Exception {
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg(name))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andReturn();
         return objectMapper.readTree(res.getResponse().getContentAsString())
@@ -95,8 +94,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
     /** 게시글 생성 후 post_id 반환. */
     private String createPost(String userId, String imageUrlsJson) throws Exception {
         MvcResult res = mockMvc.perform(post(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody(imageUrlsJson)))
                 .andExpect(status().isCreated())
@@ -112,8 +110,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         String victimUrl = uploadImage(victim, "victim.jpg");
 
         mockMvc.perform(post(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(attacker))
+                        .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("[\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
@@ -132,8 +129,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
 
         // 공격자가 자기 글을 정상 생성(이미지 없음).
         MvcResult created = mockMvc.perform(post(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(attacker))
+                        .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("[]")))
                 .andExpect(status().isCreated())
@@ -143,8 +139,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
 
         // 수정 시 피해자 URL 주입 시도 → 403
         mockMvc.perform(put(POSTS + "/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(attacker))
+                        .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("[\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
@@ -161,8 +156,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         String victimUrl = uploadImage(victim, "victim3.jpg");
 
         mockMvc.perform(put(POSTS + "/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(attacker))
+                        .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftBody("[\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
@@ -177,15 +171,13 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         String ownUrl = uploadImage(owner, "own.jpg");
 
         mockMvc.perform(post(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("[\"" + ownUrl + "\"]")))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(put(POSTS + "/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftBody("[\"" + ownUrl + "\"]")))
                 .andExpect(status().isOk());
@@ -200,8 +192,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         String ownUrl = uploadImage(attacker, "own4.jpg");
 
         mockMvc.perform(post(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(attacker))
+                        .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("[\"" + ownUrl + "\",\"" + victimUrl + "\"]")))
                 .andExpect(status().isForbidden());
@@ -218,8 +209,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         createPost(owner, "[\"" + sharedUrl + "\"]"); // P2 도 같은 이미지 사용
 
         mockMvc.perform(delete(POSTS + "/" + p1)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk());
 
         // P2 가 아직 참조 → 스토리지/Mongo 보존
@@ -235,15 +225,13 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         String postId = createPost(owner, "[\"" + sharedUrl + "\"]");
 
         mockMvc.perform(put(POSTS + "/draft") // 같은 이미지를 드래프트에도 저장
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftBody("[\"" + sharedUrl + "\"]")))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put(POSTS + "/" + postId) // 게시글에서 이미지 제거(빈 배열)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("[]")))
                 .andExpect(status().isOk());
@@ -261,8 +249,7 @@ class TripmateImageOwnershipE2eTest extends IntegrationTestSupport {
         String postId = createPost(owner, "[\"" + soloUrl + "\"]");
 
         mockMvc.perform(delete(POSTS + "/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk());
 
         // 어디에도 참조 없음 → 즉시 정리

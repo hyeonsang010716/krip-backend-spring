@@ -42,8 +42,7 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("나이역전");
 
         mockMvc.perform(post(CREATE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(40, 20, "2026-09-01", "2026-09-07")))
                 .andExpect(status().isBadRequest())
@@ -56,8 +55,7 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("날짜역전");
 
         mockMvc.perform(post(CREATE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(20, 35, "2026-09-07", "2026-09-01")))
                 .andExpect(status().isBadRequest())
@@ -70,8 +68,7 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("경계동일");
 
         mockMvc.perform(post(CREATE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(30, 30, "2026-09-01", "2026-09-01")))
                 .andExpect(status().isCreated());
@@ -83,8 +80,7 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("나이상한초과");
 
         mockMvc.perform(post(CREATE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(20, 200, "2026-09-01", "2026-09-07")))
                 .andExpect(status().isBadRequest());
@@ -112,8 +108,7 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
                 """.formatted(urls);
 
         mockMvc.perform(post(CREATE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(content))
                 .andExpect(status().isBadRequest());

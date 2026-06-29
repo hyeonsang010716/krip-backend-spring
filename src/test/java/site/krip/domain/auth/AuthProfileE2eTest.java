@@ -43,8 +43,7 @@ class AuthProfileE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("프로필테스터");
 
         mockMvc.perform(get("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_name").value("프로필테스터"));
     }

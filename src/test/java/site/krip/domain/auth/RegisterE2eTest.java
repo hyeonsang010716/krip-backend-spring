@@ -35,15 +35,13 @@ class RegisterE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).content(BODY)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 2차 가입 완료 → RegisterCheckFilter 통과 → 프로필 조회 200
         mockMvc.perform(get("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_name").value("신규유저"));
     }
@@ -55,8 +53,7 @@ class RegisterE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).content(BODY)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isConflict());
     }
 
@@ -70,8 +67,7 @@ class RegisterE2eTest extends IntegrationTestSupport {
                 """;
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).content(invalid)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 }

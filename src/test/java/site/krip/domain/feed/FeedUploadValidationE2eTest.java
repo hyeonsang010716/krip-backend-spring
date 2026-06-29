@@ -26,8 +26,7 @@ class FeedUploadValidationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(multipart("/api/feed/posts")
                         .file(file("application/pdf", new byte[]{1, 2, 3}))
                         .param("visibility", "public")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -37,8 +36,7 @@ class FeedUploadValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(multipart("/api/feed/posts")
                         .file(file("text/plain", "not an image".getBytes()))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -50,8 +48,7 @@ class FeedUploadValidationE2eTest extends IntegrationTestSupport {
         byte[] big = new byte[10 * 1024 * 1024 + 1024];
         mockMvc.perform(multipart("/api/feed/posts")
                         .file(file("image/jpeg", big))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -63,8 +60,7 @@ class FeedUploadValidationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(multipart("/api/feed/posts")
                         .file(file("image/jpeg", new byte[]{1, 2, 3}))
                         .param("caption", caption101)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -78,8 +74,7 @@ class FeedUploadValidationE2eTest extends IntegrationTestSupport {
                         .file(file("image/jpeg", garbage))
                         .param("visibility", "public")
                         .param("caption", "정상 캡션")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 

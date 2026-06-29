@@ -30,37 +30,32 @@ class FeedLikeE2eTest extends FeedTestSupport {
 
         // 추가 (201)
         mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.like_count").value(1));
 
         // 중복 추가 (400)
         mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isBadRequest());
 
         // 좋아요 목록 (200) — liker 포함
         mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.users[?(@.user_id == '" + liker + "')]").exists());
 
         // 취소 (200)
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.like_count").value(0));
 
         // 재취소 (400)
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -71,8 +66,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PRIVATE, null);
 
         mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.like_count").value(1));
     }
@@ -85,8 +79,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.FRIENDS, null);
 
         mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger)))
+                        .with(auth(stranger)))
                 .andExpect(status().isNotFound());
     }
 
@@ -95,8 +88,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
     void likeMissingPost() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(post("/api/feed/posts/no-such-post/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -110,15 +102,13 @@ class FeedLikeE2eTest extends FeedTestSupport {
         for (int i = 0; i < 31; i++) {
             String liker = fixtures.createActiveUser("좋아요" + i);
             mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                            .header("Authorization", bearer())
-                            .header("X-Auth-Token", userToken(liker)))
+                            .with(auth(liker)))
                     .andExpect(status().isCreated());
         }
 
         // 첫 페이지 — 30명 + next_cursor 존재
         String body = mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users.length()").value(30))
                 .andExpect(jsonPath("$.next_cursor").isNotEmpty())
@@ -128,8 +118,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
         // 다음 페이지 — 남은 1명 + next_cursor null(마지막 페이지)
         mockMvc.perform(get("/api/feed/posts/" + postId + "/likes")
                         .param("cursor", cursor)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users.length()").value(1))
                 .andExpect(jsonPath("$.next_cursor").isEmpty());

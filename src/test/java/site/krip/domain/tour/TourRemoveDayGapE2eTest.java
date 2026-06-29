@@ -48,8 +48,7 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
 
     private void addItem(String planId, String userId, int day, String placeId) throws Exception {
         mockMvc.perform(post("/api/tour/plans/" + planId + "/items")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"day_number\":" + day + ",\"place_id\":\"" + placeId + "\",\"visit_time\":\"11:00\"}"))
                 .andExpect(status().isCreated());
@@ -70,8 +69,7 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
                 }
                 """.formatted(placeId);
         MvcResult res = mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user))
+                        .with(auth(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -84,14 +82,12 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
 
         // day2 삭제
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/days/{day}", 2)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().is2xxSuccessful());
 
         // travel_days 불변(3), day2 항목만 사라지고 day1/day3 유지(gap 보존)
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.travel_days").value(3))
                 .andExpect(jsonPath("$.items[?(@.day_number==2)]", hasSize(0)))
@@ -100,13 +96,11 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
 
         // add_day → travel_days = max+1 = 4 (gap 재사용 안 함)
         mockMvc.perform(post("/api/tour/plans/" + planId + "/days")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().is2xxSuccessful());
 
         mockMvc.perform(get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.travel_days").value(4));
     }

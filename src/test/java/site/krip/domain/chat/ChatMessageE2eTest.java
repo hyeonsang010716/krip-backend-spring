@@ -42,8 +42,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
     /** 1:1 방 생성 REST → room_id 반환 (a,b 양쪽 활성 멤버 + Redis 멤버셋 세팅). */
     private String createDirectRoom(String a, String b) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"" + b + "\"}"))
                 .andExpect(status().isCreated())
@@ -86,8 +85,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         seedMessage(roomId, 3, a, "세번째");
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("before_server_seq", "10")
                         .param("limit", "50"))
                 .andExpect(status().isOk())
@@ -110,8 +108,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         seedMessage(roomId, 3, a, "m3");
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("after_server_seq", "1")
                         .param("limit", "50"))
                 .andExpect(status().isOk())
@@ -133,8 +130,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         }
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("before_server_seq", "100")
                         .param("limit", "2"))
                 .andExpect(status().isOk())
@@ -151,8 +147,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("before_server_seq", "10")
                         .param("after_server_seq", "1"))
                 .andExpect(status().isBadRequest())
@@ -167,8 +162,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -181,8 +175,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("before_server_seq", "10")
                         .param("limit", "0"))
                 .andExpect(status().isBadRequest())
@@ -197,8 +190,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String roomId = createDirectRoom(a, b);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("before_server_seq", "10")
                         .param("limit", "201"))
                 .andExpect(status().isBadRequest())
@@ -215,8 +207,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         seedMessage(roomId, 1, a, "secret");
 
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(outsider))
+                        .with(auth(outsider))
                         .param("before_server_seq", "10"))
                 .andExpect(status().isForbidden());
     }
@@ -232,8 +223,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String messageId = seedMessage(roomId, 1, a, "원본", Instant.now());
 
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"수정됨\"}"))
                 .andExpect(status().isOk())
@@ -251,8 +241,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String messageId = seedMessage(roomId, 1, a, "내것");
 
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b))
+                        .with(auth(b))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"해킹\"}"))
                 .andExpect(status().isForbidden());
@@ -269,8 +258,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
                 Instant.now().minus(10, ChronoUnit.MINUTES));
 
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"이미늦음\"}"))
                 .andExpect(status().isBadRequest())
@@ -283,8 +271,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("편집없음");
 
         mockMvc.perform(patch("/api/chat/messages/{id}", "no-such-message")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"내용\"}"))
                 .andExpect(status().isBadRequest())
@@ -300,8 +287,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String messageId = seedMessage(roomId, 1, a, "원본");
 
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"\"}"))
                 .andExpect(status().isBadRequest());
@@ -318,14 +304,12 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String messageId = seedMessage(roomId, 1, a, "삭제될메시지");
 
         mockMvc.perform(delete("/api/chat/messages/{id}", messageId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isNoContent());
 
         // 삭제 후 히스토리 조회 시 content=null (soft delete)
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("before_server_seq", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.messages[0].deleted_at").exists())
@@ -341,8 +325,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String messageId = seedMessage(roomId, 1, a, "내메시지");
 
         mockMvc.perform(delete("/api/chat/messages/{id}", messageId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isForbidden());
     }
 
@@ -352,8 +335,7 @@ class ChatMessageE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("삭제없음");
 
         mockMvc.perform(delete("/api/chat/messages/{id}", "no-such-message")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }

@@ -71,8 +71,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("img업로드");
 
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.images.length()").value(2))
                 .andReturn();
@@ -91,8 +90,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
             req.file(jpeg("f" + i + ".jpg"));
         }
         mockMvc.perform(req
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -102,8 +100,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("img타입");
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "x.pdf", "application/pdf", new byte[]{1}))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -113,8 +110,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("img위장");
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "fake.jpg", "image/jpeg", new byte[]{1, 2, 3}))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -124,8 +120,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("imggif");
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "a.gif", "image/gif", new byte[]{1}))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -136,8 +131,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         byte[] big = new byte[10 * 1024 * 1024 + 1024];
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "big.jpg", "image/jpeg", big))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -147,8 +141,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("img정리");
 
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andReturn();
         List<String> urls = new ArrayList<>();
@@ -157,8 +150,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
 
         // 방금 올린(유예기간 내) 이미지는 작성 중일 수 있어 보호된다 — 즉시 정리해도 0건.
         mockMvc.perform(post(IMAGES + "/cleanup")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deleted_count").value(0));
         assertThat(storage.stored).containsAll(urls);
@@ -166,8 +158,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         // 유예기간을 벗어나면 미참조 이미지로 정리된다.
         ageImages(userId);
         mockMvc.perform(post(IMAGES + "/cleanup")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deleted_count").value(2));
 
@@ -175,8 +166,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
 
         // 재실행 → 더 이상 고아 없음
         mockMvc.perform(post(IMAGES + "/cleanup")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deleted_count").value(0));
     }
@@ -187,8 +177,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("img부분실패");
 
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andReturn();
         List<String> urls = new ArrayList<>();
@@ -201,8 +190,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         storage.failDeletion.add(failUrl);
 
         mockMvc.perform(post(IMAGES + "/cleanup")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deleted_count").value(1));
 
@@ -214,8 +202,7 @@ class TripmateImageE2eTest extends IntegrationTestSupport {
         // S3 가 회복되면 재실행에서 정상 정리된다.
         storage.failDeletion.clear();
         mockMvc.perform(post(IMAGES + "/cleanup")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.deleted_count").value(1));
         assertThat(storage.stored).doesNotContain(failUrl);

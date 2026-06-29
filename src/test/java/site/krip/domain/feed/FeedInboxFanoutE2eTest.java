@@ -20,22 +20,19 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
 
     private void like(String liker, String postId) throws Exception {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isCreated());
     }
 
     private void unlike(String liker, String postId) throws Exception {
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isOk());
     }
 
     private void comment(String commenter, String postId, String content) throws Exception {
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(commenter))
+                        .with(auth(commenter))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"" + content + "\"}"))
                 .andExpect(status().isCreated());
@@ -51,8 +48,7 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
         like(liker, post);
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.type=='feed_like')]", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].actor_id").value(liker))
@@ -68,8 +64,7 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
         like(owner, post);
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)));
     }
@@ -86,8 +81,7 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
         like(liker, post);
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.type=='feed_like')]", hasSize(1)));
     }
@@ -102,8 +96,7 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
         comment(commenter, post, "좋은 사진이네요");
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].type").value("feed_comment"))
                 .andExpect(jsonPath("$.items[0].comment_id").exists())
@@ -121,8 +114,7 @@ class FeedInboxFanoutE2eTest extends FeedTestSupport {
 
         String expected = "x".repeat(100) + "…";
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].type").value("feed_comment"))
                 .andExpect(jsonPath("$.items[0].comment_preview").value(expected));

@@ -4,11 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import site.krip.domain.friend.entity.Friendship;
-import site.krip.domain.friend.repository.FriendshipRepository;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,19 +26,9 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
 
     private final ObjectMapper om = new ObjectMapper();
 
-    @Autowired
-    private FriendshipRepository friendshipRepo;
-
-    private void makeFriends(String a, String b) {
-        Friendship f = new Friendship(a, b);
-        f.accept();
-        friendshipRepo.save(f);
-    }
-
     private String createDirect(String me, String peer) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(me))
+                        .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"" + peer + "\"}"))
                 .andExpect(status().isCreated())
@@ -58,8 +45,7 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
             ids.append("\"").append(memberIds[i]).append("\"");
         }
         MvcResult res = mockMvc.perform(post("/api/chat/rooms/group")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(me))
+                        .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + title + "\",\"member_ids\":[" + ids + "]}"))
                 .andExpect(status().isCreated())
@@ -75,8 +61,7 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
         String roomId = createDirect(a, b);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -88,8 +73,7 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
         String roomId = createDirect(a, b);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_id\":\"" + b + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -104,8 +88,7 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "자기강퇴방", member);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_id\":\"" + owner + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -121,14 +104,12 @@ class ChatRoomRulesE2eTest extends IntegrationTestSupport {
 
         // member 가 먼저 퇴장(204)
         mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(member)))
+                        .with(auth(member)))
                 .andExpect(status().isNoContent());
 
         // 방장이 이미 떠난 member 를 강퇴 시도 → 400
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_id\":\"" + member + "\"}"))
                 .andExpect(status().isBadRequest());

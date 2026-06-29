@@ -41,8 +41,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
         // 저장 (PUT) → 200
         mockMvc.perform(put("/api/tripmate/posts/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftBody))
                 .andExpect(status().isOk())
@@ -52,16 +51,14 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
         // 조회 (GET) → 200, 저장한 값
         mockMvc.perform(get("/api/tripmate/posts/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("임시 제목"))
                 .andExpect(jsonPath("$.preferred_gender").value("female"));
 
         // 삭제 (DELETE) → 200
         mockMvc.perform(delete("/api/tripmate/posts/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -71,8 +68,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     void getEmptyDraft() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tripmate/posts/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk());
     }
 
@@ -81,8 +77,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     void saveEmptyDraft() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(put("/api/tripmate/posts/draft")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
@@ -93,8 +88,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     /** 검색 API 호출은 검색 기록을 부수효과로 저장한다. */
     private void search(String userId, String keyword) throws Exception {
         mockMvc.perform(get("/api/tripmate/posts/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .param("keyword", keyword))
                 .andExpect(status().isOk());
     }
@@ -109,8 +103,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
         // 목록 — 두 키워드 포함
         mockMvc.perform(get("/api/tripmate/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories").isArray())
                 .andExpect(jsonPath("$.histories[?(@.search_name == '부산')]").exists())
@@ -118,29 +111,25 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
         // 한 건 삭제 (?search_name=부산)
         mockMvc.perform(delete("/api/tripmate/search-history/one")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .param("search_name", "부산"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/tripmate/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories[?(@.search_name == '부산')]").doesNotExist())
                 .andExpect(jsonPath("$.histories[?(@.search_name == '제주')]").exists());
 
         // 전체 삭제
         mockMvc.perform(delete("/api/tripmate/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/tripmate/search-history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories.length()").value(0));
     }
@@ -150,8 +139,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     void searchMissingKeyword() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tripmate/posts/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -160,8 +148,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     void deleteOneMissingParam() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(delete("/api/tripmate/search-history/one")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -60,8 +60,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
                 }
                 """.formatted(placeId);
         MvcResult res = mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -72,8 +71,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
     /** 공유 토큰 발급(POST /plans/{id}/share, 201) 후 share_token 반환. */
     private String issueShareToken(String userId, String planId) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tour/plans/" + planId + "/share")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.share_token").exists())
                 .andExpect(jsonPath("$.expires_at").exists())
@@ -134,8 +132,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
 
         // 소유자가 플랜 삭제
         mockMvc.perform(delete("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk());
 
         // 토큰 디코드는 성공하지만 plan 이 사라져 → 404
@@ -152,7 +149,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
         String token = issueShareToken(userId, planId);
 
         mockMvc.perform(get("/api/public/share/plan/" + token)
-                        .header("Authorization", bearer()))
+                        .with(bearerOnly()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plan_id").value(planId));
     }

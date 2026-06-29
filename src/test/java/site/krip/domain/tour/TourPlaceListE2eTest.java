@@ -60,8 +60,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(get(PLACES).param("keyword", "ZZORDER")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(3))
                 .andExpect(jsonPath("$.places[0].place_id").value("ZZORDER0"))
@@ -79,8 +78,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(get(PLACES).param("keyword", "ZZFAV")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].place_id").value("ZZFAV0"))
                 .andExpect(jsonPath("$.places[0].is_favorite").value(true));
@@ -96,8 +94,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
         MvcResult first = mockMvc.perform(get(PLACES).param("keyword", "ZZCUR")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(30))
                 .andExpect(jsonPath("$.next_cursor").exists())
@@ -107,8 +104,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(get(PLACES).param("keyword", "ZZCUR").param("cursor", cursor)
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].place_id").value("ZZCUR30"))
@@ -125,8 +121,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(get(PLACES).param("keyword", "ZZEXACT")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(30))
                 .andExpect(jsonPath("$.next_cursor").isEmpty());
@@ -140,8 +135,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(get(PLACES).param("keyword", tooLong)
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -56,8 +56,7 @@ class TourRemoveDayTouchE2eTest extends IntegrationTestSupport {
                 }
                 """.formatted(title, travelDays, placeId);
         MvcResult res = mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user))
+                        .with(auth(user))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -76,22 +75,19 @@ class TourRemoveDayTouchE2eTest extends IntegrationTestSupport {
         String planB = createPlan(user, "플랜 B", 2, placeId);
 
         mockMvc.perform(get("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans[0].plan_id").value(planB))
                 .andExpect(jsonPath("$.plans[1].plan_id").value(planA));
 
         // A 의 day 1 삭제 → A.updated_at 이 B 생성 시점보다 뒤로 갱신돼야 함
         mockMvc.perform(delete("/api/tour/plans/" + planA + "/days/{day}", 1)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().is2xxSuccessful());
 
         // 갱신됐다면 최신순은 [A, B] 로 뒤집힌다
         mockMvc.perform(get("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.plans[0].plan_id").value(planA))
                 .andExpect(jsonPath("$.plans[1].plan_id").value(planB));

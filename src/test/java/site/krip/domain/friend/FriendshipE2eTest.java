@@ -28,8 +28,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     /** A → B 친구 요청 생성(201), 생성된 friendship_id 반환. */
     private String sendRequest(String requester, String addressee) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(requester))
+                        .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + addressee + "\"}"))
                 .andExpect(status().isCreated())
@@ -51,8 +50,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
 
         // B 의 받은 요청 목록에 노출 (B 기준 is_requester=false, peer=A)
         mockMvc.perform(get("/api/friend/friendships/requests/received")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].friendship_id").value(friendshipId))
                 .andExpect(jsonPath("$.items[0].status").value("pending"))
@@ -61,31 +59,27 @@ class FriendshipE2eTest extends IntegrationTestSupport {
 
         // A 의 보낸 요청 목록에도 노출
         mockMvc.perform(get("/api/friend/friendships/requests/sent")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].friendship_id").value(friendshipId))
                 .andExpect(jsonPath("$.items[0].is_requester").value(true));
 
         // B 가 수락
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 양쪽 친구 목록에 ACCEPTED 로 노출
         mockMvc.perform(get("/api/friend/friendships")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].friendship_id").value(friendshipId))
                 .andExpect(jsonPath("$.items[0].status").value("accepted"))
                 .andExpect(jsonPath("$.items[0].peer.user_id").value(b));
 
         mockMvc.perform(get("/api/friend/friendships")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].friendship_id").value(friendshipId))
                 .andExpect(jsonPath("$.items[0].status").value("accepted"))
@@ -93,8 +87,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
 
         // A 의 프로필 통계 친구 수 = 1
         mockMvc.perform(get("/api/auth/profile/me/stats")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_friends").value(1));
     }
@@ -107,26 +100,22 @@ class FriendshipE2eTest extends IntegrationTestSupport {
 
         String friendshipId = sendRequest(a, b);
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk());
 
         // A 가 친구 삭제
         mockMvc.perform(delete("/api/friend/friendships/{id}", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/friend/friendships")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
 
         mockMvc.perform(get("/api/auth/profile/me/stats")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_friends").value(0));
     }
@@ -140,22 +129,19 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String friendshipId = sendRequest(a, b);
 
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // B 받은 목록 비고
         mockMvc.perform(get("/api/friend/friendships/requests/received")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
 
         // A 보낸 목록도 비고(REJECTED 는 PENDING 목록에 안 잡힘)
         mockMvc.perform(get("/api/friend/friendships/requests/sent")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
     }
@@ -169,14 +155,12 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String friendshipId = sendRequest(a, b);
 
         mockMvc.perform(delete("/api/friend/friendships/requests/{id}", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/friend/friendships/requests/received")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
     }
@@ -190,14 +174,12 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         // A→B 요청 후 B 거절(REJECTED 로 잔존)
         String friendshipId = sendRequest(a, b);
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk());
 
         // 이제 B 가 A 에게 재요청 → REJECTED 재오픈 + 방향 반전(B 가 requester)
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b))
+                        .with(auth(b))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + a + "\"}"))
                 .andExpect(status().isCreated())
@@ -207,8 +189,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
 
         // A 의 받은 요청 목록에 노출(A 기준 is_requester=false)
         mockMvc.perform(get("/api/friend/friendships/requests/received")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].is_requester").value(false))
                 .andExpect(jsonPath("$.items[0].peer.user_id").value(b));
@@ -220,8 +201,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("승철");
 
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + a + "\"}"))
                 .andExpect(status().isBadRequest())
@@ -237,8 +217,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         sendRequest(a, b);
 
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + b + "\"}"))
                 .andExpect(status().isBadRequest())
@@ -255,8 +234,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
 
         // requester(A) 가 자기 요청을 수락 시도 → addressee 만 가능하므로 403
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isForbidden());
     }
 
@@ -266,8 +244,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("디노");
 
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -280,8 +257,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
         String preRegister = fixtures.createPreRegisterUser();
 
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(requester))
+                        .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + preRegister + "\"}"))
                 .andExpect(status().isBadRequest())

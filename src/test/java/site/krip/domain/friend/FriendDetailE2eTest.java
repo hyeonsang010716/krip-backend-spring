@@ -32,8 +32,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
 
     private String sendRequest(String requester, String addressee) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(requester))
+                        .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + addressee + "\"}"))
                 .andExpect(status().isCreated())
@@ -47,8 +46,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         String viewer = fixtures.createActiveUser("상세404뷰어");
 
         mockMvc.perform(get("/api/friend/detail/{userId}", "no-such-user")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 
@@ -59,8 +57,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         String preRegister = fixtures.createPreRegisterUser();
 
         mockMvc.perform(get("/api/friend/detail/{userId}", preRegister)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
     }
@@ -72,13 +69,11 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         String target = fixtures.createActiveUser("상세친구타겟");
         String friendshipId = sendRequest(viewer, target);
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(target)))
+                        .with(auth(target)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(target))
                 .andExpect(jsonPath("$.friendship_status").value("accepted"))
@@ -95,8 +90,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
 
         // addressee 가 requester 의 상세를 보면 is_requester=false (내가 요청자가 아님)
         mockMvc.perform(get("/api/friend/detail/{userId}", requester)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(addressee)))
+                        .with(auth(addressee)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(requester))
                 .andExpect(jsonPath("$.friendship_status").value("pending"))
@@ -111,13 +105,11 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         String friendshipId = sendRequest(viewer, target);
         // addressee(target) 가 거절 → REJECTED 는 재요청으로 되살아나는 상태라 노출하면 안 됨
         mockMvc.perform(patch("/api/friend/friendships/requests/{id}/reject", friendshipId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(target)))
+                        .with(auth(target)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(target))
                 .andExpect(jsonPath("$.friendship_status").value(nullValue()))
@@ -133,8 +125,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         userBlockService.blockUser(peer, viewer); // peer 가 viewer 를 차단
 
         mockMvc.perform(get("/api/friend/detail/{userId}", peer)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 
@@ -146,8 +137,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
         userBlockService.blockUser(viewer, peer); // viewer 가 peer 를 차단
 
         mockMvc.perform(get("/api/friend/detail/{userId}", peer)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(peer))
                 .andExpect(jsonPath("$.i_blocked_peer").value(true));

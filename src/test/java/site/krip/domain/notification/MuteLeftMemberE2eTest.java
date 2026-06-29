@@ -45,8 +45,7 @@ class MuteLeftMemberE2eTest extends IntegrationTestSupport {
         memberRepo.saveAndFlush(new ChatRoomMember(roomId, peerId, 0L));
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"muted\": true}"))
                 .andExpect(status().isBadRequest());

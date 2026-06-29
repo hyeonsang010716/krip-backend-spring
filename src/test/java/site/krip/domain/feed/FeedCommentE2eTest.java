@@ -30,8 +30,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
 
     private String createComment(String userId, String postId, String content) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(content)))
                 .andExpect(status().isCreated())
@@ -51,16 +50,14 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String commentId = createComment(commenter, postId, "좋은 사진이네요");
 
         mockMvc.perform(get("/api/feed/posts/" + postId + "/comments")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.comments[?(@.comment_id == '" + commentId + "')]").exists())
                 .andExpect(jsonPath("$.comments[?(@.content == '좋은 사진이네요')]").exists());
 
         // 작성자 본인 삭제 (200)
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/" + commentId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(commenter)))
+                        .with(auth(commenter)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
     }
@@ -73,8 +70,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
 
         // "   " 는 @Size(min=1) 통과 후 서비스 strip 에서 400.
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("   ")))
                 .andExpect(status().isBadRequest());
@@ -87,8 +83,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("")))
                 .andExpect(status().isBadRequest());
@@ -104,8 +99,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
 
         // 게시물 owner 라도 댓글 작성자가 아니면 삭제 불가 → 403
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/" + commentId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isForbidden());
     }
 
@@ -120,8 +114,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
 
         // postB 경로로 postA 의 댓글 삭제 시도 → 댓글-게시물 불일치 404
         mockMvc.perform(delete("/api/feed/posts/" + postB + "/comments/" + commentId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(commenter)))
+                        .with(auth(commenter)))
                 .andExpect(status().isNotFound());
     }
 
@@ -132,8 +125,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(delete("/api/feed/posts/" + postId + "/comments/no-such-comment")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isNotFound());
     }
 
@@ -145,8 +137,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PRIVATE, null);
 
         mockMvc.perform(post("/api/feed/posts/" + postId + "/comments")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger))
+                        .with(auth(stranger))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("숨겨진 글 댓글")))
                 .andExpect(status().isNotFound());

@@ -1,14 +1,11 @@
 package site.krip.domain.notification;
 
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MvcResult;
 import site.krip.domain.chat.service.RoomService;
 import site.krip.domain.notification.fcm.FcmClient;
 import site.krip.domain.notification.repository.FcmTokenRepository;
@@ -25,9 +22,6 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * FCM 채팅 푸시 게이팅 E2E — 실 DB(방 멤버십/뮤트/토큰) + mock {@link FcmClient} 로
@@ -58,22 +52,6 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
                 .thenReturn(new FcmClient.SendResult(1, List.of()));
     }
 
-    /** A 가 B 의 친구요청을 수락하여 ACCEPTED 관계로 만든다(그룹방 생성 전제). */
-    private void makeFriends(String a, String b) throws Exception {
-        MvcResult res = mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"addressee_id\":\"" + b + "\"}"))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String fid = JsonPath.read(res.getResponse().getContentAsString(), "$.friendship_id");
-        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", fid)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
-                .andExpect(status().isOk());
-    }
-
     private record Group(String owner, String b, String c, String room) {
         String tokenB() {
             return "tok-" + b;
@@ -89,8 +67,8 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         String owner = fixtures.createActiveUser(label + "owner");
         String b = fixtures.createActiveUser(label + "B");
         String c = fixtures.createActiveUser(label + "C");
-        makeFriends(owner, b);
-        makeFriends(owner, c);
+        befriendViaApi(owner, b);
+        befriendViaApi(owner, c);
         String room = roomService.createGroupRoom(owner, label + "방", List.of(b, c)).chatRoomId();
         Group g = new Group(owner, b, c, room);
         fcmService.registerToken(b, g.tokenB());
@@ -135,8 +113,8 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         String owner = fixtures.createActiveUser("ntOwner");
         String d = fixtures.createActiveUser("ntD");
         String e = fixtures.createActiveUser("ntE");
-        makeFriends(owner, d);
-        makeFriends(owner, e);
+        befriendViaApi(owner, d);
+        befriendViaApi(owner, e);
         String room = roomService.createGroupRoom(owner, "무토큰방", List.of(d, e)).chatRoomId();
 
         int sent = fcmService.sendChatPush(List.of(d, e), room, owner, "본문", "제목");

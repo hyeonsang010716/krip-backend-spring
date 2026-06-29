@@ -47,8 +47,7 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
 
     private String addImage(String userId) throws Exception {
         MvcResult res = mockMvc.perform(multipart(IMAGE).file(jpeg())
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.profile_image_url").exists())
                 .andReturn();
@@ -71,8 +70,7 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
         addImage(userId);
 
         mockMvc.perform(multipart(IMAGE).file(jpeg())
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isConflict());
     }
 
@@ -86,8 +84,7 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
                             req.setMethod("PUT");
                             return req;
                         })
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.profile_image_url").exists())
                 .andReturn();
@@ -105,8 +102,7 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
         String url = addImage(userId);
 
         mockMvc.perform(delete(IMAGE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk());
 
         assertThat(storage.stored).doesNotContain(url);
@@ -117,8 +113,7 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
     void deleteWhenNoneNotFound() throws Exception {
         String userId = fixtures.createActiveUser("img없음");
         mockMvc.perform(delete(IMAGE)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 }

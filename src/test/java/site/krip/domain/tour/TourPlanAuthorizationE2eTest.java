@@ -61,8 +61,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
                 }
                 """.formatted(placeId);
         MvcResult res = mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated())
@@ -73,8 +72,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
     private String firstItemId(String userId, String planId) throws Exception {
         MvcResult res = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andReturn();
         return objectMapper.readTree(res.getResponse().getContentAsString())
@@ -96,8 +94,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
                 }
                 """.formatted(placeId);
         mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -116,8 +113,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
                 }
                 """.formatted(placeId);
         mockMvc.perform(post("/api/tour/plans")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -130,8 +126,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, seedPlace());
 
         mockMvc.perform(patch("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\": \"   \"}"))
                 .andExpect(status().isBadRequest());
@@ -147,8 +142,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String planId = createPlan(owner, seedPlace());
 
         mockMvc.perform(patch("/api/tour/plans/" + planId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other))
+                        .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\": \"가로채기\"}"))
                 .andExpect(status().isForbidden());
@@ -162,8 +156,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String planId = createPlan(owner, seedPlace());
 
         mockMvc.perform(post("/api/tour/plans/" + planId + "/days")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -175,8 +168,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String planId = createPlan(owner, seedPlace());
 
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/days/1")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -189,8 +181,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String itemId = firstItemId(owner, planId);
 
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/items/" + itemId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -204,8 +195,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String itemId = firstItemId(owner, planId);
 
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/" + itemId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other))
+                        .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"" + placeId + "\", \"visit_time\": \"11:00\"}"))
                 .andExpect(status().isForbidden());
@@ -220,8 +210,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, seedPlace());
 
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/days/99")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -233,8 +222,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String itemId = firstItemId(userId, planId);
 
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/" + itemId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"no-such-place\", \"visit_time\": \"11:00\"}"))
                 .andExpect(status().isBadRequest());
@@ -248,8 +236,7 @@ class TourPlanAuthorizationE2eTest extends IntegrationTestSupport {
         String planId = createPlan(userId, placeId);
 
         mockMvc.perform(put("/api/tour/plans/" + planId + "/items/no-such-item")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"" + placeId + "\", \"visit_time\": \"11:00\"}"))
                 .andExpect(status().isNotFound());

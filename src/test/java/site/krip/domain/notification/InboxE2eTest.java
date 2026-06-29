@@ -54,8 +54,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         InboxItem item = seedFeedLike(recipient, actor, "post-list-1");
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray())
                 .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").exists())
@@ -72,8 +71,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         seedFeedLike(recipient, actor, "post-count-2");
 
         mockMvc.perform(get("/api/notification/inbox/unread-count")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_count").value(2));
     }
@@ -84,8 +82,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String recipient = fixtures.createActiveUser();
 
         mockMvc.perform(get("/api/notification/inbox/unread-count")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_count").value(0));
     }
@@ -101,23 +98,20 @@ class InboxE2eTest extends IntegrationTestSupport {
 
         // 첫 페이지(cursor 없음) → 자동 read 처리되지만 응답 is_read 는 read 전(false).
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
                         + "')].is_read").value(false));
 
         // 이후 미읽음 카운트는 0 (자동 read 반영).
         mockMvc.perform(get("/api/notification/inbox/unread-count")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_count").value(0));
 
         // 재조회 시 is_read=true.
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId()
                         + "')].is_read").value(true));
@@ -168,8 +162,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         inboxService.notifyFeedLike(user, user, "본인", null, "post-self-1", "내 글");
 
         mockMvc.perform(get("/api/notification/inbox/unread-count")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(user)))
+                        .with(auth(user)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_count").value(0));
     }
@@ -184,14 +177,12 @@ class InboxE2eTest extends IntegrationTestSupport {
         InboxItem item = seedFeedLike(recipient, actor, "post-hide-1");
 
         mockMvc.perform(patch("/api/notification/inbox/" + item.getId() + "/hide")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").doesNotExist());
     }
@@ -202,8 +193,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String recipient = fixtures.createActiveUser();
 
         mockMvc.perform(patch("/api/notification/inbox/not-an-objectid/hide")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isNotFound());
     }
 
@@ -213,8 +203,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String recipient = fixtures.createActiveUser();
 
         mockMvc.perform(patch("/api/notification/inbox/0123456789abcdef01234567/hide")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isNotFound());
     }
 
@@ -227,8 +216,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         InboxItem item = seedFeedLike(recipient, actor, "post-nonowner-1");
 
         mockMvc.perform(patch("/api/notification/inbox/" + item.getId() + "/hide")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isNotFound());
     }
 
@@ -245,8 +233,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         inboxService.cascadePostDeleted(TargetType.FEED_POST.getValue(), postId);
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.inbox_item_id == '" + item.getId() + "')]").doesNotExist());
     }
@@ -260,8 +247,7 @@ class InboxE2eTest extends IntegrationTestSupport {
 
         // 탈퇴 전: 항목 존재(미읽음 1).
         mockMvc.perform(get("/api/notification/inbox/unread-count")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.unread_count").value(1));
 
@@ -269,8 +255,7 @@ class InboxE2eTest extends IntegrationTestSupport {
 
         // 탈퇴 후: 수신자 매칭 항목이 모두 삭제 → 빈 목록.
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient)))
+                        .with(auth(recipient)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
     }
@@ -283,8 +268,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String recipient = fixtures.createActiveUser();
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient))
+                        .with(auth(recipient))
                         .param("cursor", "2026-01-01T00:00:00Z"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isArray());
@@ -296,8 +280,7 @@ class InboxE2eTest extends IntegrationTestSupport {
         String recipient = fixtures.createActiveUser();
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(recipient))
+                        .with(auth(recipient))
                         .param("cursor", "not-a-date"))
                 .andExpect(status().isBadRequest());
     }

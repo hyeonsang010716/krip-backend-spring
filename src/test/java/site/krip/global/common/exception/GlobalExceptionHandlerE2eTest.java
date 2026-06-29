@@ -39,8 +39,7 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     void invalidEnumReturns400() throws Exception {
         String u = fixtures.createActiveUser("enum유저");
         mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(u))
+                        .with(auth(u))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(tripmateBody("충분히 긴 본문 내용입니다.", "bogus")))
                 .andExpect(status().isBadRequest())
@@ -52,8 +51,7 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     void validationErrorReturns400() throws Exception {
         String u = fixtures.createActiveUser("valid유저");
         mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(u))
+                        .with(auth(u))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(tripmateBody("짧음", "friend")))
                 .andExpect(status().isBadRequest())
@@ -65,8 +63,7 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     void malformedJsonReturns400() throws Exception {
         String u = fixtures.createActiveUser("json유저");
         mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(u))
+                        .with(auth(u))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ this is not json"))
                 .andExpect(status().isBadRequest());
@@ -77,8 +74,7 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     void missingRequiredParamReturns400() throws Exception {
         String u = fixtures.createActiveUser("param유저");
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(u)))
+                        .with(auth(u)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail", containsString("keyword")));
     }
@@ -88,8 +84,7 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     void unknownRouteReturns404() throws Exception {
         String u = fixtures.createActiveUser("route유저");
         mockMvc.perform(get("/api/this-route-does-not-exist")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(u)))
+                        .with(auth(u)))
                 .andExpect(status().isNotFound());
     }
 
@@ -99,7 +94,7 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
         // OAuthProviderConverter 가 'kakao' 를 변환하지 못해 MethodArgumentTypeMismatchException → 400.
         // 로그인 진입점은 인증 필터 제외 경로이므로 컨트롤러 바인딩 단계까지 도달한다.
         mockMvc.perform(get("/api/auth/login")
-                        .header("Authorization", bearer())
+                        .with(bearerOnly())
                         .param("type", "kakao"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());

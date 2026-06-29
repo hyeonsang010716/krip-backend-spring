@@ -4,13 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
-import site.krip.domain.friend.entity.Friendship;
-import site.krip.domain.friend.entity.UserBlock;
-import site.krip.domain.friend.repository.FriendshipRepository;
-import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.support.IntegrationTestSupport;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,7 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 채팅 방 생성/멤버십/조회 REST E2E ({@code /api/chat/rooms}).
  *
- * <p>친구 관계는 친구 API({@code FriendshipController})로, 차단은 {@link UserBlockRepository} 직접 시드.
+ * <p>친구/차단 관계는 리포지토리로 직접 시드(base 의 {@code makeFriends}/{@code block}).
  * (방/메시지 생성은 REST 로만 다루며 WS 실시간 경로는 별도.) 응답 JSON 은 snake_case,
  * room type 은 대문자 enum({@code DIRECT/GROUP}).
  */
@@ -29,30 +24,9 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
 
     private final ObjectMapper om = new ObjectMapper();
 
-    @Autowired
-    private FriendshipRepository friendshipRepo;
-
-    @Autowired
-    private UserBlockRepository blockRepo;
-
-    // ──────────────────── 헬퍼 ────────────────────
-
-    /** a↔b 를 ACCEPTED 친구로 시드 (그룹 초대 정책 통과용). assigned-id 라 save() 반환값 사용. */
-    private void makeFriends(String a, String b) {
-        Friendship f = new Friendship(a, b);
-        f.accept();
-        friendshipRepo.save(f);
-    }
-
-    /** blocker → blocked 차단 시드. */
-    private void block(String blocker, String blocked) {
-        blockRepo.save(new UserBlock(blocker, blocked));
-    }
-
     private MvcResult createDirect(String me, String peer) throws Exception {
         return mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(me))
+                        .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"" + peer + "\"}"))
                 .andReturn();
@@ -67,8 +41,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
             ids.append("\"").append(memberIds[i]).append("\"");
         }
         MvcResult res = mockMvc.perform(post("/api/chat/rooms/group")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(me))
+                        .with(auth(me))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"" + title + "\",\"member_ids\":[" + ids + "]}"))
                 .andExpect(status().isCreated())
@@ -113,8 +86,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
 
         createDirect(a, b).getResponse();
         mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"" + b + "\"}"))
                 .andExpect(status().isCreated());
@@ -126,8 +98,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("이브");
 
         mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"" + a + "\"}"))
                 .andExpect(status().isBadRequest())
@@ -140,8 +111,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("프랭크");
 
         mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"nonexistent-user-id\"}"))
                 .andExpect(status().isBadRequest())
@@ -156,8 +126,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         block(a, b);
 
         mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"peer_user_id\":\"" + b + "\"}"))
                 .andExpect(status().isBadRequest())
@@ -170,8 +139,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("아이비");
 
         mockMvc.perform(post("/api/chat/rooms/direct")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -193,8 +161,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
 
         // 방 상세 — GROUP + title
         mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.type").value("group"))
                 .andExpect(jsonPath("$.title").value("여행 단톡방"));
@@ -206,8 +173,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String owner = fixtures.createActiveUser("외톨이");
 
         mockMvc.perform(post("/api/chat/rooms/group")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"혼자방\",\"member_ids\":[\"" + owner + "\"]}"))
                 .andExpect(status().isBadRequest())
@@ -221,8 +187,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String stranger = fixtures.createActiveUser("낯선이");
 
         mockMvc.perform(post("/api/chat/rooms/group")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"낯선방\",\"member_ids\":[\"" + stranger + "\"]}"))
                 .andExpect(status().isBadRequest())
@@ -235,8 +200,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String owner = fixtures.createActiveUser("빈방장");
 
         mockMvc.perform(post("/api/chat/rooms/group")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"빈방\",\"member_ids\":[]}"))
                 .andExpect(status().isBadRequest());
@@ -256,8 +220,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "초대테스트", m1);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_ids\":[\"" + invitee + "\"]}"))
                 .andExpect(status().isOk())
@@ -275,8 +238,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "초대거부", m1);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_ids\":[\"" + stranger + "\"]}"))
                 .andExpect(status().isBadRequest())
@@ -296,8 +258,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "권한방", m1);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(outsider))
+                        .with(auth(outsider))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_ids\":[\"" + target + "\"]}"))
                 .andExpect(status().isForbidden());
@@ -313,14 +274,12 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "퇴장방", leaver);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(leaver)))
+                        .with(auth(leaver)))
                 .andExpect(status().isNoContent());
 
         // 퇴장 후 방 상세 접근 → 403 (활성 멤버 아님)
         mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(leaver)))
+                        .with(auth(leaver)))
                 .andExpect(status().isForbidden());
     }
 
@@ -334,8 +293,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "강퇴방", target);
 
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_id\":\"" + target + "\"}"))
                 .andExpect(status().isNoContent());
@@ -354,8 +312,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
 
         // m1(방장 아님)이 m2 강퇴 시도 → 403
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(m1))
+                        .with(auth(m1))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"user_id\":\"" + m2 + "\"}"))
                 .andExpect(status().isForbidden());
@@ -374,8 +331,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
                 .get("chat_room_id").asText();
 
         mockMvc.perform(get("/api/chat/rooms")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.chat_room_id == '" + roomId + "')]").exists());
     }
@@ -390,8 +346,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "멤버조회방", m1);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/members", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.user_id == '" + m1 + "')]").exists())
                 .andExpect(jsonPath("$.items[?(@.user_id == '" + owner + "')]").exists());
@@ -409,8 +364,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String roomId = createGroup(owner, "초대가능방", member);
 
         mockMvc.perform(get("/api/chat/rooms/{id}/invitable-friends", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.user_id == '" + candidate + "')]").exists())
                 .andExpect(jsonPath("$.items[?(@.user_id == '" + member + "')]").doesNotExist());
@@ -428,8 +382,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
                 .get("chat_room_id").asText();
 
         mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(outsider)))
+                        .with(auth(outsider)))
                 .andExpect(status().isForbidden());
     }
 
@@ -439,8 +392,7 @@ class ChatRoomE2eTest extends IntegrationTestSupport {
         String a = fixtures.createActiveUser("조회자");
 
         mockMvc.perform(get("/api/chat/rooms/{id}", "no-such-room")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isNotFound());
     }
 }

@@ -24,8 +24,7 @@ class FeedCommentLengthE2eTest extends IntegrationTestSupport {
         mockMvc.perform(post(COMMENTS)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"content\":\"" + content + "\"}")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(expect);
     }
 

@@ -40,8 +40,7 @@ class TripmateLikeInboxFanoutE2eTest extends IntegrationTestSupport {
 
     private String createPost(String userId) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody()))
                 .andExpect(status().isCreated())
@@ -51,8 +50,7 @@ class TripmateLikeInboxFanoutE2eTest extends IntegrationTestSupport {
 
     private void like(String liker, String postId) throws Exception {
         mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isCreated());
     }
 
@@ -66,8 +64,7 @@ class TripmateLikeInboxFanoutE2eTest extends IntegrationTestSupport {
         like(liker, post);
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.type=='tripmate_like')]", hasSize(1)))
                 .andExpect(jsonPath("$.items[0].actor_id").value(liker))
@@ -83,8 +80,7 @@ class TripmateLikeInboxFanoutE2eTest extends IntegrationTestSupport {
         like(owner, post);
 
         mockMvc.perform(get("/api/notification/inbox")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items", hasSize(0)));
     }

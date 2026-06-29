@@ -24,8 +24,7 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
         mockMvc.perform(get("/api/tour/places")
                         .param("keyword", "cafe")
                         .param("cursor", "garbage-no-colon")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -36,8 +35,7 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(delete("/api/friend/search/history/one")
                         .param("search_name", " ")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -48,8 +46,7 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(delete("/api/tour/search-history/one")
                         .param("search_name", " ")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -60,8 +57,7 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
 
         mockMvc.perform(delete("/api/tripmate/search-history/one")
                         .param("search_name", " ")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -71,8 +67,7 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(multipart("/api/tripmate/images")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 }

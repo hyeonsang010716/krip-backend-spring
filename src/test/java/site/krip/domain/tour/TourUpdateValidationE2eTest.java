@@ -45,8 +45,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(patch(NO_SUCH_PLAN)
                         .contentType(MediaType.APPLICATION_JSON).content("{}")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -56,8 +55,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(patch(NO_SUCH_PLAN)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"title\": null}")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -67,8 +65,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(put(NO_SUCH_ITEM)
                         .contentType(MediaType.APPLICATION_JSON).content("{\"place_id\": \"p1\"}")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -81,8 +78,7 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
         mockMvc.perform(put(NO_SUCH_ITEM)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"place_id\": \"p1\", \"visit_time\": null}")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 }

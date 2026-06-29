@@ -47,8 +47,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     /** 게시글 생성 후 post_id 반환 (다른 테스트의 선행 데이터 준비용). */
     private String createPost(String userId, String title, String content, String region) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody(title, content, region)))
                 .andExpect(status().isCreated())
@@ -67,16 +66,14 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
 
         // 작성자 닉네임 부분일치 → 검색됨
         mockMvc.perform(get("/api/tripmate/posts/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(searcher))
+                        .with(auth(searcher))
                         .param("keyword", "탐험가"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
 
         // 어디에도 없는 키워드 → 검색 안 됨
         mockMvc.perform(get("/api/tripmate/posts/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(searcher))
+                        .with(auth(searcher))
                         .param("keyword", "존재하지않는키워드zzz"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").doesNotExist());
@@ -89,8 +86,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
 
         // 생성 (201)
         MvcResult created = mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("부산 같이 가실 분", "부산 여행 같이 떠나실 동행을 찾습니다.", "부산")))
                 .andExpect(status().isCreated())
@@ -106,8 +102,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
 
         // 단건 (200)
         mockMvc.perform(get("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.title").value("부산 같이 가실 분"))
@@ -116,16 +111,14 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
 
         // 목록 (200, 커서 페이지네이션)
         mockMvc.perform(get("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts").isArray())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
 
         // 검색 (200)
         mockMvc.perform(get("/api/tripmate/posts/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .param("keyword", "부산"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts").isArray())
@@ -135,8 +128,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         String updateBody = createBody("부산 수정됨", "수정된 부산 여행 동행 모집 글입니다.", "부산")
                 .replace("\"region\": \"부산\"", "\"region\": \"제주\"");
         mockMvc.perform(put("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updateBody))
                 .andExpect(status().isOk())
@@ -145,23 +137,20 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
 
         // display 토글 (200) — true→false
         mockMvc.perform(patch("/api/tripmate/posts/" + postId + "/display")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.is_displayed").value(false));
 
         // 삭제 (200)
         mockMvc.perform(delete("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         // 삭제 후 단건 → 404
         mockMvc.perform(get("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -170,8 +159,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     void getMissingPost() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tripmate/posts/no-such-post")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -183,8 +171,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         String postId = createPost(author, "원본 글", "원본 글 본문 내용입니다.", "서울");
 
         mockMvc.perform(put("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other))
+                        .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("뺏으려는 수정", "남의 글을 수정하려는 시도입니다.", "서울")))
                 .andExpect(status().isForbidden());
@@ -198,8 +185,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         String postId = createPost(author, "삭제대상 글", "삭제 권한 테스트용 본문입니다.", "대구");
 
         mockMvc.perform(delete("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -208,8 +194,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
     void updateMissingPost() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(put("/api/tripmate/posts/no-such-post")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody("제목", "본문 내용은 충분히 길게 작성합니다.", "서울")))
                 .andExpect(status().isNotFound());
@@ -222,8 +207,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         // content 가 10자 미만 → @Size 위반
         String body = createBody("제목", "짧음", "서울");
         mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -235,8 +219,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
         String body = createBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "   ");
         mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
@@ -249,8 +232,7 @@ class TripmatePostE2eTest extends IntegrationTestSupport {
         String body = createBody("제목입니다", "충분히 긴 본문 내용을 작성합니다.", "서울")
                 .replace("\"companion_type\": \"friend\"", "\"companion_type\": \"bogus\"");
         mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());

@@ -6,13 +6,25 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import site.krip.domain.friend.entity.Friendship;
+import site.krip.domain.friend.entity.UserBlock;
+import site.krip.domain.friend.repository.FriendshipRepository;
+import site.krip.domain.friend.repository.UserBlockRepository;
 import site.krip.global.auth.jwt.JwtProvider;
+
+import com.jayway.jsonpath.JsonPath;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 모든 통합 테스트의 베이스 — 실 PostgreSQL/MongoDB/Redis 를 Testcontainers 로 띄운다.
@@ -80,6 +92,12 @@ public abstract class IntegrationTestSupport {
     @Autowired
     protected JwtProvider jwtProvider;
 
+    @Autowired
+    protected FriendshipRepository friendshipRepository;
+
+    @Autowired
+    protected UserBlockRepository userBlockRepository;
+
     /** 글로벌 Bearer 토큰 헤더 값 ({@code Authorization: Bearer ...} 에 그대로 사용). */
     protected String bearer() {
         return "Bearer " + ACCESS_TOKEN;
@@ -88,5 +106,57 @@ public abstract class IntegrationTestSupport {
     /** 주어진 user_id 로 발급한 유저 로그인 JWT ({@code X-Auth-Token} 헤더에 사용). */
     protected String userToken(String userId) {
         return jwtProvider.issue(userId);
+    }
+
+    /** 글로벌 Bearer + 해당 user_id 의 로그인 JWT 를 함께 실어 모든 인증 필터를 통과시킨다. */
+    protected RequestPostProcessor auth(String userId) {
+        return request -> {
+            request.addHeader("Authorization", bearer());
+            request.addHeader("X-Auth-Token", userToken(userId));
+            return request;
+        };
+    }
+
+    /** 글로벌 Bearer 만 — 유저 JWT 가 필요 없는 공개 엔드포인트(OAuth 로그인/콜백 등)용. */
+    protected RequestPostProcessor bearerOnly() {
+        return request -> {
+            request.addHeader("Authorization", bearer());
+            return request;
+        };
+    }
+
+    /** 두 유저를 ACCEPTED 친구로 직접 시드(API 우회, 방향 무관) — 친구 관계가 precondition 일 때 사용. */
+    protected void makeFriends(String a, String b) {
+        Friendship friendship = new Friendship(a, b);
+        friendship.accept();
+        friendshipRepository.save(friendship);
+    }
+
+    /** blocker 가 blocked 를 단방향 차단 — 직접 시드(API 우회). */
+    protected void block(String blocker, String blocked) {
+        userBlockRepository.save(new UserBlock(blocker, blocked));
+    }
+
+    /** 친구 요청→수락을 실제 API 로 수행 — 친구 플로우 자체의 부수효과(알림 등)까지 거쳐야 할 때 사용. */
+    protected void befriendViaApi(String a, String b) throws Exception {
+        String res = mockMvc.perform(post("/api/friend/friendships/requests")
+                        .with(auth(a))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"addressee_id\":\"" + b + "\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String friendshipId = JsonPath.read(res, "$.friendship_id");
+        mockMvc.perform(patch("/api/friend/friendships/requests/{id}/accept", friendshipId)
+                        .with(auth(b)))
+                .andExpect(status().isOk());
+    }
+
+    /** blocker 가 blocked 를 실제 차단 API 로 차단 — 차단 플로우의 부수효과까지 거쳐야 할 때 사용. */
+    protected void blockViaApi(String blocker, String blocked) throws Exception {
+        mockMvc.perform(post("/api/friend/blocks")
+                        .with(auth(blocker))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"target_user_id\":\"" + blocked + "\"}"))
+                .andExpect(status().isCreated());
     }
 }

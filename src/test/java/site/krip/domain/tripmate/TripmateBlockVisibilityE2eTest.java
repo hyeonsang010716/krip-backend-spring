@@ -47,8 +47,7 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
 
     private String createPost(String userId, String title, String content) throws Exception {
         MvcResult res = mockMvc.perform(post(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody(title, content)))
                 .andExpect(status().isCreated())
@@ -56,19 +55,9 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         return objectMapper.readTree(res.getResponse().getContentAsString()).get("post_id").asText();
     }
 
-    private void block(String blocker, String target) throws Exception {
-        mockMvc.perform(post("/api/friend/blocks")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(blocker))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"target_user_id\":\"" + target + "\"}"))
-                .andExpect(status().isCreated());
-    }
-
     private void hide(String owner, String postId) throws Exception {
         mockMvc.perform(patch(POSTS + "/" + postId + "/display")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is_displayed").value(false));
     }
@@ -81,19 +70,17 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         String postA = createPost(a, "A의 모집글", "A 가 올린 충분히 긴 본문입니다.");
         String postB = createPost(b, "B의 모집글", "B 가 올린 충분히 긴 본문입니다.");
 
-        block(a, b);
+        blockViaApi(a, b);
 
         // A 의 목록에 B 의 글이 없어야 한다
         mockMvc.perform(get(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postB + "')]").doesNotExist());
 
         // B 의 목록에도 A 의 글이 없어야 한다(차단은 방향 무관)
         mockMvc.perform(get(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postA + "')]").doesNotExist());
     }
@@ -106,11 +93,10 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         String keyword = "유니크검색어ZZZ";
         String postB = createPost(b, keyword + " 동행", "검색에 걸릴 충분히 긴 본문입니다.");
 
-        block(a, b);
+        blockViaApi(a, b);
 
         mockMvc.perform(get(POSTS + "/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a))
+                        .with(auth(a))
                         .param("keyword", keyword))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postB + "')]").doesNotExist());
@@ -124,16 +110,14 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         String postA = createPost(a, "A 단건", "A 단건 본문 충분히 깁니다.");
         String postB = createPost(b, "B 단건", "B 단건 본문 충분히 깁니다.");
 
-        block(a, b);
+        blockViaApi(a, b);
 
         mockMvc.perform(get(POSTS + "/" + postB)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(a)))
+                        .with(auth(a)))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(get(POSTS + "/" + postA)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(b)))
+                        .with(auth(b)))
                 .andExpect(status().isNotFound());
     }
 
@@ -147,13 +131,11 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         hide(owner, postId);
 
         mockMvc.perform(get(POSTS + "/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isNotFound());
 
         mockMvc.perform(get(POSTS + "/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.is_displayed").value(false));
@@ -167,14 +149,12 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         String postId = createPost(owner, "정상 노출 글", "정상적으로 노출되는 본문 충분히 깁니다.");
 
         mockMvc.perform(get(POSTS + "/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId));
 
         mockMvc.perform(get(POSTS)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").exists());
     }
@@ -185,19 +165,16 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         String owner = fixtures.createActiveUser("tmbvLikeBlkOwner");
         String viewer = fixtures.createActiveUser("tmbvLikeBlkViewer");
         String postId = createPost(owner, "차단 글", "차단 관계 좋아요 게이트 테스트 본문입니다.");
-        block(owner, viewer);
+        blockViaApi(owner, viewer);
 
         mockMvc.perform(post(POSTS + "/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get(POSTS + "/" + postId + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
         mockMvc.perform(delete(POSTS + "/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 
@@ -210,12 +187,10 @@ class TripmateBlockVisibilityE2eTest extends IntegrationTestSupport {
         hide(owner, postId);
 
         mockMvc.perform(post(POSTS + "/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
         mockMvc.perform(get(POSTS + "/" + postId + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 }

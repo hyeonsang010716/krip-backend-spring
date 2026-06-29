@@ -33,8 +33,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("수정전이름");
 
         mockMvc.perform(patch("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -51,8 +50,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
 
         // 재조회로 영속 확인
         mockMvc.perform(get("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_name").value("수정후이름"))
                 .andExpect(jsonPath("$.age").value(30));
@@ -65,16 +63,14 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
 
         // 먼저 스타일 세팅
         mockMvc.perform(patch("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"travel_styles\": [\"healing\"]}"))
                 .andExpect(status().isOk());
 
         // 빈 배열 → 전체 삭제
         mockMvc.perform(patch("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"travel_styles\": []}"))
                 .andExpect(status().isOk())
@@ -87,8 +83,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(patch("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\": \"not-an-email\"}"))
                 .andExpect(status().isBadRequest());
@@ -100,8 +95,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(patch("/api/auth/profile/me")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"phone_number\": \"012345678901234567890\"}")) // 21자 > varchar(20)
                 .andExpect(status().isBadRequest());
@@ -114,8 +108,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         String other = fixtures.createActiveUser("탐색대상유저");
 
         mockMvc.perform(get("/api/auth/profile/all")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(me)))
+                        .with(auth(me)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users[*].user_id", hasItem(other)))
                 .andExpect(jsonPath("$.users[?(@.user_id == '" + me + "')]").doesNotExist());
@@ -127,8 +120,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("통계신규");
 
         mockMvc.perform(get("/api/auth/profile/me/stats")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.total_feed_likes").value(0))
                 .andExpect(jsonPath("$.total_friends").value(0));

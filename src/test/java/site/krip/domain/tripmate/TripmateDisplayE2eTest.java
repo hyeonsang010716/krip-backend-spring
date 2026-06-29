@@ -44,8 +44,7 @@ class TripmateDisplayE2eTest extends IntegrationTestSupport {
 
     private String createPost(String userId, String title) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody(title, "동행을 찾는 충분히 긴 본문입니다.")))
                 .andExpect(status().isCreated())
@@ -61,8 +60,7 @@ class TripmateDisplayE2eTest extends IntegrationTestSupport {
         String postId = createPost(owner, "토글 권한 글");
 
         mockMvc.perform(patch("/api/tripmate/posts/" + postId + "/display")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isForbidden());
     }
 
@@ -72,8 +70,7 @@ class TripmateDisplayE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("토글미존재");
 
         mockMvc.perform(patch("/api/tripmate/posts/no-such-post/display")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -86,15 +83,13 @@ class TripmateDisplayE2eTest extends IntegrationTestSupport {
 
         // 토글 → display=false
         mockMvc.perform(patch("/api/tripmate/posts/" + postId + "/display")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.is_displayed").value(false));
 
         // 다른 유저의 공개 목록에서 해당 글이 보이지 않아야 한다
         mockMvc.perform(get("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[?(@.post_id == '" + postId + "')]").doesNotExist());
     }

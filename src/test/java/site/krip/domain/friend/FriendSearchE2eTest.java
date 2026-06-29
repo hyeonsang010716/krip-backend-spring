@@ -34,8 +34,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         fixtures.createActiveUser("관계없는유저");
 
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "코스모스"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].user_id").value(target))
@@ -50,8 +49,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
 
         // 전체 user_id(UUID)로 검색 → ILIKE 가 user_id 컬럼에 매칭(공유 DB 충돌 회피 위해 풀 ID 사용)
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", target))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].user_id", hasItem(target)));
@@ -63,8 +61,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String viewer = fixtures.createActiveUser("자기검색유저");
 
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "자기검색유저"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items").isEmpty());
@@ -78,15 +75,13 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
 
         // viewer → target 요청
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + target + "\"}"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "관계타겟유저"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].user_id").value(target))
@@ -100,8 +95,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String viewer = fixtures.createActiveUser("빈검색유저");
 
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "   "))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.detail").exists());
@@ -113,8 +107,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String viewer = fixtures.createActiveUser("긴검색유저");
 
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "가".repeat(101)))
                 .andExpect(status().isBadRequest());
     }
@@ -128,20 +121,17 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
 
         // 두 번 검색(첫 페이지 → 기록 저장)
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "히스토리대상A"))
                 .andExpect(status().isOk());
         mockMvc.perform(get("/api/friend/search")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("keyword", "히스토리대상B"))
                 .andExpect(status().isOk());
 
         // 목록 노출(최신순, created_at DESC) — 두 검색어 모두 포함
         mockMvc.perform(get("/api/friend/search/history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories.length()").value(2))
                 .andExpect(jsonPath("$.histories[*].search_name",
@@ -149,29 +139,25 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
 
         // 단건 삭제
         mockMvc.perform(delete("/api/friend/search/history/one")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .param("search_name", "히스토리대상B"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/friend/search/history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories.length()").value(1))
                 .andExpect(jsonPath("$.histories[0].search_name").value("히스토리대상A"));
 
         // 전체 삭제
         mockMvc.perform(delete("/api/friend/search/history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/friend/search/history")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories").isEmpty());
     }
@@ -183,8 +169,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String target = fixtures.createActiveUser("상세타겟");
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(target))
                 .andExpect(jsonPath("$.user_name").value("상세타겟"))
@@ -200,15 +185,13 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         String target = fixtures.createActiveUser("상세관계타겟");
 
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer))
+                        .with(auth(viewer))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + target + "\"}"))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(target))
                 .andExpect(jsonPath("$.friendship_id").exists())

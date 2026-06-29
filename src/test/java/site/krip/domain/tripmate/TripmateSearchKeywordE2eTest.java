@@ -21,8 +21,7 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     void emptyKeyword() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get(SEARCH).param("keyword", "")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -31,8 +30,7 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     void blankKeyword() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get(SEARCH).param("keyword", "   ")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -41,8 +39,7 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     void validKeyword() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get(SEARCH).param("keyword", "서울")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts").isArray());
     }

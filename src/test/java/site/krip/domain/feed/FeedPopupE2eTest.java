@@ -24,8 +24,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
         mockMvc.perform(get("/api/feed/popup/" + owner)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(stranger)))
+                        .with(auth(stranger)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.user_id").value(owner))
                 .andExpect(jsonPath("$.user_name").value("팝업주인"))
@@ -45,8 +44,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
         mockMvc.perform(get("/api/feed/popup/" + owner)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(friend)))
+                        .with(auth(friend)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.feed.items[?(@.post_id == '" + pub + "')]").exists())
                 .andExpect(jsonPath("$.feed.items[?(@.post_id == '" + fr + "')]").exists())
@@ -61,8 +59,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         block(owner, blockedViewer);
 
         mockMvc.perform(get("/api/feed/popup/" + owner)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(blockedViewer)))
+                        .with(auth(blockedViewer)))
                 .andExpect(status().isNotFound());
     }
 
@@ -71,8 +68,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
     void missingUserPopup() throws Exception {
         String viewer = fixtures.createActiveUser("뷰어");
         mockMvc.perform(get("/api/feed/popup/no-such-user")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 }

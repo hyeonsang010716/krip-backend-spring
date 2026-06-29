@@ -27,8 +27,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"새로운 캡션\"}"))
                 .andExpect(status().isOk())
@@ -43,8 +42,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, "지울 캡션");
 
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"   \"}"))
                 .andExpect(status().isOk())
@@ -59,8 +57,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
 
         String caption101 = "가".repeat(101);
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"" + caption101 + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -75,8 +72,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         // U+1F600 은 1 코드포인트지만 String.length()는 2 → 코드포인트 카운팅이면 100 으로 통과해야 함.
         String emoji100 = "😀".repeat(100);
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"" + emoji100 + "\"}"))
                 .andExpect(status().isOk())
@@ -91,8 +87,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
 
         String emoji101 = "😀".repeat(101);
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"" + emoji101 + "\"}"))
                 .andExpect(status().isBadRequest());
@@ -106,8 +101,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/caption")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other))
+                        .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"caption\": \"뺏으려는 캡션\"}"))
                 .andExpect(status().isNotFound());
@@ -122,8 +116,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"visibility\": \"private\"}"))
                 .andExpect(status().isOk())
@@ -138,16 +131,14 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"visibility\": \"private\"}"))
                 .andExpect(status().isOk());
 
         // 별도 요청(새 트랜잭션)으로 재조회 — DB 영속 확인
         mockMvc.perform(get("/api/feed/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.visibility").value("private"));
     }
@@ -159,8 +150,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(patch("/api/feed/posts/" + postId + "/visibility")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"visibility\": \"bogus\"}"))
                 .andExpect(status().isBadRequest());
@@ -175,14 +165,12 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(delete("/api/feed/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
         mockMvc.perform(get("/api/feed/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner)))
+                        .with(auth(owner)))
                 .andExpect(status().isNotFound());
     }
 
@@ -194,8 +182,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(delete("/api/feed/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(other)))
+                        .with(auth(other)))
                 .andExpect(status().isNotFound());
     }
 }

@@ -43,8 +43,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("토큰등록자");
 
         mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("device-token-aaa")))
                 .andExpect(status().isCreated())
@@ -59,8 +58,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String token = "device-token-idem";
 
         MvcResult first = mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated())
@@ -69,8 +67,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
                 .get("fcm_token_id").asText();
 
         MvcResult second = mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated())
@@ -88,8 +85,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String token = "device-token-touch";
 
         mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated());
@@ -102,8 +98,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         Thread.sleep(10); // updated_at 이 확실히 뒤가 되도록 최소 간격 확보.
 
         mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated());
@@ -122,8 +117,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String token = "device-token-swap";
 
         MvcResult first = mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(ownerA))
+                        .with(auth(ownerA))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated())
@@ -132,8 +126,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
                 .get("fcm_token_id").asText();
 
         MvcResult second = mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(ownerB))
+                        .with(auth(ownerB))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated())
@@ -154,15 +147,13 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String token = "device-token-del";
 
         mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(delete("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(token)))
                 .andExpect(status().isOk())
@@ -177,8 +168,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("미존재해제자");
 
         mockMvc.perform(delete("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("never-registered-token")))
                 .andExpect(status().isOk())
@@ -191,8 +181,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("")))
                 .andExpect(status().isBadRequest());
@@ -204,8 +193,7 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(post("/api/notification/fcm-token")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());

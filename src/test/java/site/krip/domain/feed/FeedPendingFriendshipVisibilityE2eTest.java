@@ -22,8 +22,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
 
         // owner → viewer 친구요청만 보내고 수락하지 않음 → PENDING
         mockMvc.perform(post("/api/friend/friendships/requests")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(owner))
+                        .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"addressee_id\":\"" + viewer + "\"}"))
                 .andExpect(status().isCreated());
@@ -31,8 +30,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
         mockMvc.perform(get("/api/feed/posts/" + friendsPost + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(viewer)))
+                        .with(auth(viewer)))
                 .andExpect(status().isNotFound());
     }
 
@@ -46,8 +44,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
         mockMvc.perform(get("/api/feed/posts/" + friendsPost + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(friend)))
+                        .with(auth(friend)))
                 .andExpect(status().isOk());
     }
 }

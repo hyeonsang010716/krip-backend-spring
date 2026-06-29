@@ -49,8 +49,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser("전역차단자");
 
         mockMvc.perform(put("/api/notification/mute/global")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(true)))
                 .andExpect(status().isOk())
@@ -67,16 +66,14 @@ class MuteE2eTest extends IntegrationTestSupport {
 
         // 먼저 차단.
         mockMvc.perform(put("/api/notification/mute/global")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(true)))
                 .andExpect(status().isOk());
 
         // 해제.
         mockMvc.perform(put("/api/notification/mute/global")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(false)))
                 .andExpect(status().isOk());
@@ -91,8 +88,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(put("/api/notification/mute/global")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());
@@ -108,8 +104,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String roomId = seedRoomWithMember(userId, peerId);
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(true)))
                 .andExpect(status().isOk())
@@ -127,15 +122,13 @@ class MuteE2eTest extends IntegrationTestSupport {
         String roomId = seedRoomWithMember(userId, peerId);
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(true)))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(false)))
                 .andExpect(status().isOk());
@@ -153,8 +146,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String roomId = seedRoomWithMember(memberUser, peerId);
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(outsider))
+                        .with(auth(outsider))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(true)))
                 .andExpect(status().isBadRequest());
@@ -166,8 +158,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String userId = fixtures.createActiveUser();
 
         mockMvc.perform(put("/api/notification/mute/rooms/no-such-room")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body(true)))
                 .andExpect(status().isBadRequest());
@@ -181,8 +172,7 @@ class MuteE2eTest extends IntegrationTestSupport {
         String roomId = seedRoomWithMember(userId, peerId);
 
         mockMvc.perform(put("/api/notification/mute/rooms/" + roomId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest());

@@ -42,8 +42,7 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
 
     private String createPost(String userId) throws Exception {
         MvcResult res = mockMvc.perform(post("/api/tripmate/posts")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId))
+                        .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(createBody()))
                 .andExpect(status().isCreated())
@@ -60,37 +59,32 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
 
         // 추가 (201)
         mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.like_count").value(1));
 
         // 중복 추가 (400)
         mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isBadRequest());
 
         // 좋아요 누른 유저 목록 — liker 포함
         mockMvc.perform(get("/api/tripmate/posts/" + postId + "/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(author)))
+                        .with(auth(author)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.post_id").value(postId))
                 .andExpect(jsonPath("$.user_ids[?(@ == '" + liker + "')]").exists());
 
         // 취소 (200)
         mockMvc.perform(delete("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.like_count").value(0));
 
         // 재취소 (400)
         mockMvc.perform(delete("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isBadRequest());
     }
 
@@ -101,8 +95,7 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
         String postId = createPost(author);
 
         mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(author)))
+                        .with(auth(author)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.like_count").value(1));
     }
@@ -115,13 +108,11 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
         String postId = createPost(author);
 
         mockMvc.perform(post("/api/tripmate/posts/" + postId + "/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/tripmate/posts/" + postId)
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(liker)))
+                        .with(auth(liker)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.like_count").value(1))
                 .andExpect(jsonPath("$.is_liked").value(true));
@@ -132,8 +123,7 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
     void likeMissingPost() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(post("/api/tripmate/posts/no-such-post/like")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 
@@ -142,8 +132,7 @@ class TripmateLikeE2eTest extends IntegrationTestSupport {
     void likedUsersMissingPost() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get("/api/tripmate/posts/no-such-post/likes")
-                        .header("Authorization", bearer())
-                        .header("X-Auth-Token", userToken(userId)))
+                        .with(auth(userId)))
                 .andExpect(status().isNotFound());
     }
 }
