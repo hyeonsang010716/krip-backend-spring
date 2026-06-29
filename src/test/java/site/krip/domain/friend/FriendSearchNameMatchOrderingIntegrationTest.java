@@ -21,6 +21,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class FriendSearchNameMatchOrderingIntegrationTest extends IntegrationTestSupport {
 
+    /** 닉네임 선해석 상한 — 매치 3건보다 작게 잡아 가장 오래된 1건이 잘리도록. */
+    private static final int MATCH_CAP = 2;
+
     @Autowired
     private FriendUserSearchRepository searchRepository;
 
@@ -40,8 +43,8 @@ class FriendSearchNameMatchOrderingIntegrationTest extends IntegrationTestSuppor
         setCreatedAt(mid, base.plusSeconds(1));
         setCreatedAt(newest, base.plusSeconds(2));
 
-        // 상한(2) < 매치(3) — 최신순 정렬이라 가장 오래된 oldest 만 잘려야 한다.
-        List<String> capped = searchRepository.findUserIdsByNameLike("%" + name + "%", PageRequest.of(0, 2));
+        // 상한 < 매치(3) — 최신순 정렬이라 가장 오래된 oldest 만 잘려야 한다.
+        List<String> capped = searchRepository.findUserIdsByNameLike("%" + name + "%", PageRequest.of(0, MATCH_CAP));
 
         assertThat(capped).containsExactly(newest, mid);
         assertThat(capped).doesNotContain(oldest);

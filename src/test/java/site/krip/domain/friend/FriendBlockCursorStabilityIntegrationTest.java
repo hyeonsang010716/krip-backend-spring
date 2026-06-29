@@ -27,6 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
 
+    /** 서비스 첫 페이지와 동일한 크기 — 2행을 한 페이지에 담아 경계/다음 행을 가린다. */
+    private static final int FIRST_PAGE_SIZE = 30;
+
     @Autowired
     private FriendshipService friendshipService;
     @Autowired
@@ -43,7 +46,7 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
 
         // 서비스와 동일 정렬로 정렬해 1페이지 경계(첫 행)/그 다음 행을 정한다.
         List<Friendship> sorted = friendshipRepository.findFriendsFirstPage(me, FriendshipStatus.ACCEPTED,
-                PageRequest.of(0, 30, Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("friendshipId"))));
+                PageRequest.of(0, FIRST_PAGE_SIZE, Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("friendshipId"))));
         assertThat(sorted).hasSize(2);
         Friendship boundary = sorted.get(0);
         Friendship next = sorted.get(1);
@@ -72,7 +75,7 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         userBlockRepository.flush();
 
         List<UserBlock> sorted = userBlockRepository.findBlocksFirstPage(me,
-                PageRequest.of(0, 30, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("blockId"))));
+                PageRequest.of(0, FIRST_PAGE_SIZE, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("blockId"))));
         assertThat(sorted).hasSize(2);
         UserBlock boundary = sorted.get(0);
         UserBlock next = sorted.get(1);

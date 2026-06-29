@@ -34,24 +34,19 @@ class ChatHandshakeInterceptorTest {
     private static final String SECRET = "test-login-jwt-secret-value-1234567890";
     private static final String ALLOWED_ORIGIN = "https://app.test";
     private static final String APP_ORIGIN = "capacitor://localhost";
+    private static final AuthProperties AUTH_PROPS =
+            new AuthProperties("dev-access-token", new AuthProperties.Jwt(SECRET, 7, "access_token"), 300L);
 
     private final RegisteredCacheManager registeredCache = mock(RegisteredCacheManager.class);
     private final UserQueryPort userQuery = mock(UserQueryPort.class);
     private final TokenRevocationService revocation = mock(TokenRevocationService.class);
     // 인터셉터 와이어링과 토큰 발급에 동일 JwtProvider 사용(같은 SECRET) — 서명 정합성 보장.
-    private final JwtProvider jwtProvider = newJwtProvider();
+    private final JwtProvider jwtProvider = new JwtProvider(AUTH_PROPS, java.time.Clock.systemUTC());
     private final ChatHandshakeInterceptor interceptor = newInterceptor();
 
-    private static JwtProvider newJwtProvider() {
-        AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
-        return new JwtProvider(new AuthProperties("dev-access-token", jwt, 300L), java.time.Clock.systemUTC());
-    }
-
     private ChatHandshakeInterceptor newInterceptor() {
-        AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 7, "access_token");
-        AuthProperties authProps = new AuthProperties("dev-access-token", jwt, 300L);
         CorsProperties corsProps = new CorsProperties(List.of(ALLOWED_ORIGIN), List.of(APP_ORIGIN));
-        return new ChatHandshakeInterceptor(jwtProvider, revocation, authProps, corsProps,
+        return new ChatHandshakeInterceptor(jwtProvider, revocation, AUTH_PROPS, corsProps,
                 registeredCache, userQuery);
     }
 

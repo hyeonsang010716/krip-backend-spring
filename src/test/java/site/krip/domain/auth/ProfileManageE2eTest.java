@@ -68,7 +68,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PATCH /me — 잘못된 이메일 형식 → 400")
     void updateProfileInvalidEmail() throws Exception {
-        String userId = fixtures.createActiveUser();
+        String userId = fixtures.createActiveUser("이메일형식");
 
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))

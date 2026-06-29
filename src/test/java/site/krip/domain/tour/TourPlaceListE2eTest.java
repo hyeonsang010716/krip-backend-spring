@@ -24,6 +24,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     private static final String PLACES = "/api/tour/places";
     private static final double LAT = 10.0;
     private static final double LNG = 10.0;
+    private static final int PAGE_SIZE = 30;
 
     @Autowired
     private MongoTemplate mongo;
@@ -81,7 +82,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @DisplayName("커서 페이지네이션: 첫 페이지 30 + next_cursor, 둘째 페이지 나머지 1 + cursor 없음")
     void cursorPagination() throws Exception {
         String userId = fixtures.createActiveUser("place커서");
-        for (int i = 0; i <= 30; i++) { // 31개
+        for (int i = 0; i <= PAGE_SIZE; i++) { // PAGE_SIZE + 1 개 → 둘째 페이지에 1개 남김
             seedPlace(String.format("ZZCUR%02d", i), "ZZCUR place " + i, i);
         }
 
@@ -89,7 +90,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
                         .with(auth(userId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.places.length()").value(30))
+                .andExpect(jsonPath("$.places.length()").value(PAGE_SIZE))
                 .andExpect(jsonPath("$.next_cursor").exists())
                 .andReturn();
         String cursor = idFrom(first, "next_cursor");
@@ -107,7 +108,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @DisplayName("마지막 페이지가 정확히 30개면 next_cursor 없음 (phantom 커서 회귀)")
     void exactlyFullLastPageHasNoCursor() throws Exception {
         String userId = fixtures.createActiveUser("place딱30");
-        for (int i = 0; i < 30; i++) { // 정확히 30개
+        for (int i = 0; i < PAGE_SIZE; i++) { // 정확히 한 페이지
             seedPlace(String.format("ZZEXACT%02d", i), "ZZEXACT place " + i, i);
         }
 
@@ -115,7 +116,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
                         .with(auth(userId)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.places.length()").value(30))
+                .andExpect(jsonPath("$.places.length()").value(PAGE_SIZE))
                 .andExpect(jsonPath("$.next_cursor").isEmpty());
     }
 

@@ -1,6 +1,5 @@
 package site.krip.domain.feed;
 
-import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MvcResult;
@@ -19,19 +18,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
 
+    private static final String INBOX = "/api/notification/inbox";
+
     private void assertFeedLikeCount(String owner, int expected) throws Exception {
-        mockMvc.perform(get("/api/notification/inbox")
+        mockMvc.perform(get(INBOX)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[?(@.type=='feed_like')]", hasSize(expected)));
     }
 
     private String firstInboxItemId(String owner) throws Exception {
-        MvcResult res = mockMvc.perform(get("/api/notification/inbox")
+        MvcResult res = mockMvc.perform(get(INBOX)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
                 .andReturn();
-        return JsonPath.read(res.getResponse().getContentAsString(), "$.items[0].inbox_item_id");
+        return readJson(res).get("items").get(0).get("inbox_item_id").asText();
     }
 
     @Test

@@ -27,6 +27,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSupport {
 
+    private static final int CONTENDERS = 2;
+    private static final int AWAIT_TIMEOUT_SECONDS = 20;
+
     @Autowired
     private FriendshipService friendshipService;
 
@@ -35,13 +38,13 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
 
     /** 두 작업을 최대한 동시에 출발시키고 (성공 수, 마지막 예외) 를 돌려준다. */
     private Result runConcurrently(Runnable op) throws InterruptedException {
-        ExecutorService pool = Executors.newFixedThreadPool(2);
+        ExecutorService pool = Executors.newFixedThreadPool(CONTENDERS);
         CountDownLatch start = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(2);
+        CountDownLatch done = new CountDownLatch(CONTENDERS);
         AtomicInteger ok = new AtomicInteger();
         AtomicReference<Throwable> err = new AtomicReference<>();
 
-        for (int i = 0; i < 2; i++) {
+        for (int i = 0; i < CONTENDERS; i++) {
             pool.submit(() -> {
                 try {
                     start.await();
@@ -55,8 +58,9 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
             });
         }
         start.countDown();
-        done.await(20, TimeUnit.SECONDS);
+        boolean finished = done.await(AWAIT_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         pool.shutdownNow();
+        assertThat(finished).as("두 작업이 제한 시간 내 종료").isTrue();
         return new Result(ok.get(), err.get());
     }
 

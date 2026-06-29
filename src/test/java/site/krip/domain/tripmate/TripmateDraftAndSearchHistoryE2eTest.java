@@ -20,6 +20,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
+    private static final String DRAFT = "/api/tripmate/posts/draft";
+    private static final String SEARCH = "/api/tripmate/posts/search";
+    private static final String SEARCH_HISTORY = "/api/tripmate/search-history";
+
     // ──────────────────── 임시저장(draft) ────────────────────
 
     @Test
@@ -39,8 +43,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
                 "companion_type", "couple",
                 "image_urls", List.of());
 
-        // 저장 (PUT) → 200
-        mockMvc.perform(put("/api/tripmate/posts/draft")
+        mockMvc.perform(put(DRAFT)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftBody))
@@ -49,15 +52,13 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.region").value("강릉"))
                 .andExpect(jsonPath("$.companion_type").value("couple"));
 
-        // 조회 (GET) → 200, 저장한 값
-        mockMvc.perform(get("/api/tripmate/posts/draft")
+        mockMvc.perform(get(DRAFT)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("임시 제목"))
                 .andExpect(jsonPath("$.preferred_gender").value("female"));
 
-        // 삭제 (DELETE) → 200
-        mockMvc.perform(delete("/api/tripmate/posts/draft")
+        mockMvc.perform(delete(DRAFT)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -68,7 +69,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     void getEmptyDraft() throws Exception {
         String userId = fixtures.createActiveUser();
         // 저장된 draft 가 없으면 Optional.empty → 200 + JSON null 직렬화.
-        mockMvc.perform(get("/api/tripmate/posts/draft")
+        mockMvc.perform(get(DRAFT)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("null"));
@@ -78,7 +79,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @DisplayName("draft 는 모든 필드 선택 — 빈 본문으로 저장 가능(200)")
     void saveEmptyDraft() throws Exception {
         String userId = fixtures.createActiveUser();
-        mockMvc.perform(put("/api/tripmate/posts/draft")
+        mockMvc.perform(put(DRAFT)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json()))
@@ -89,7 +90,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
     /** 검색 API 호출은 검색 기록을 부수효과로 저장한다. */
     private void search(String userId, String keyword) throws Exception {
-        mockMvc.perform(get("/api/tripmate/posts/search")
+        mockMvc.perform(get(SEARCH)
                         .with(auth(userId))
                         .param("keyword", keyword))
                 .andExpect(status().isOk());
@@ -104,7 +105,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
         search(userId, "제주");
 
         // 목록 — 두 키워드 포함
-        mockMvc.perform(get("/api/tripmate/search-history")
+        mockMvc.perform(get(SEARCH_HISTORY)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories").isArray())
@@ -112,25 +113,25 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
                 .andExpect(jsonPath("$.histories[?(@.search_name == '제주')]").exists());
 
         // 한 건 삭제 (?search_name=부산)
-        mockMvc.perform(delete("/api/tripmate/search-history/one")
+        mockMvc.perform(delete(SEARCH_HISTORY + "/one")
                         .with(auth(userId))
                         .param("search_name", "부산"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
-        mockMvc.perform(get("/api/tripmate/search-history")
+        mockMvc.perform(get(SEARCH_HISTORY)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories[?(@.search_name == '부산')]").doesNotExist())
                 .andExpect(jsonPath("$.histories[?(@.search_name == '제주')]").exists());
 
         // 전체 삭제
-        mockMvc.perform(delete("/api/tripmate/search-history")
+        mockMvc.perform(delete(SEARCH_HISTORY)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
 
-        mockMvc.perform(get("/api/tripmate/search-history")
+        mockMvc.perform(get(SEARCH_HISTORY)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.histories.length()").value(0));
@@ -140,7 +141,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @DisplayName("검색 keyword 파라미터 누락 → 400")
     void searchMissingKeyword() throws Exception {
         String userId = fixtures.createActiveUser();
-        mockMvc.perform(get("/api/tripmate/posts/search")
+        mockMvc.perform(get(SEARCH)
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
@@ -149,7 +150,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @DisplayName("검색 기록 한 건 삭제 시 search_name 누락 → 400")
     void deleteOneMissingParam() throws Exception {
         String userId = fixtures.createActiveUser();
-        mockMvc.perform(delete("/api/tripmate/search-history/one")
+        mockMvc.perform(delete(SEARCH_HISTORY + "/one")
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
     }
