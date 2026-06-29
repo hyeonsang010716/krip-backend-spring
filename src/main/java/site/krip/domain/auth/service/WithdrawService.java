@@ -197,8 +197,8 @@ public class WithdrawService {
                 purge.purgeUserMongoData(userId);
             } catch (Exception e) {
                 allCleaned = false;
-                log.error("탈퇴 영구 삭제 — 외부 도메인 Mongo 삭제 실패 (port={}, user_id={}): {}",
-                        purge.getClass().getSimpleName(), userId, e.toString());
+                log.error("탈퇴 영구 삭제 — 외부 도메인 Mongo 삭제 실패 (port={}, user_id={})",
+                        purge.getClass().getSimpleName(), userId, e);
             }
         }
 
@@ -226,8 +226,8 @@ public class WithdrawService {
         try {
             withdrawalRequestRepository.deleteByUserId(userId);
         } catch (Exception e) {
-            log.error("탈퇴 영구 삭제 — 작업 큐(doc) 삭제 실패, 다음 사이클 재시도 (user_id={}): {}",
-                    userId, e.toString());
+            log.error("탈퇴 영구 삭제 — 작업 큐(doc) 삭제 실패, 다음 사이클 재시도 (user_id={})",
+                    userId, e);
         }
     }
 }
