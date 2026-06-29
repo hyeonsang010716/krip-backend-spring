@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.List;
+import java.util.stream.IntStream;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -19,21 +22,18 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     private static final String CREATE = "/api/tripmate/posts";
 
     /** age min/max, 날짜 start/end 만 파라미터화한 유효 본문 베이스. */
-    private static String body(int ageMin, int ageMax, String start, String end) {
-        return """
-                {
-                  "title": "동행 구해요",
-                  "content": "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
-                  "preferred_age_min": %d,
-                  "preferred_age_max": %d,
-                  "preferred_gender": "any",
-                  "region": "부산",
-                  "travel_start_date": "%s",
-                  "travel_end_date": "%s",
-                  "companion_type": "friend",
-                  "image_urls": []
-                }
-                """.formatted(ageMin, ageMax, start, end);
+    private String body(int ageMin, int ageMax, String start, String end) {
+        return json(
+                "title", "동행 구해요",
+                "content", "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
+                "preferred_age_min", ageMin,
+                "preferred_age_max", ageMax,
+                "preferred_gender", "any",
+                "region", "부산",
+                "travel_start_date", start,
+                "travel_end_date", end,
+                "companion_type", "friend",
+                "image_urls", List.of());
     }
 
     @Test
@@ -91,21 +91,17 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     void imageUrlsOverLimit() throws Exception {
         String userId = fixtures.createActiveUser("이미지초과");
 
-        StringBuilder urls = new StringBuilder();
-        for (int i = 0; i < 11; i++) {
-            urls.append(i == 0 ? "" : ",").append("\"https://cdn.test/").append(i).append(".webp\"");
-        }
-        String content = """
-                {
-                  "title": "동행 구해요",
-                  "content": "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
-                  "preferred_age_min": 20, "preferred_age_max": 35,
-                  "preferred_gender": "any", "region": "부산",
-                  "travel_start_date": "2026-09-01", "travel_end_date": "2026-09-07",
-                  "companion_type": "friend",
-                  "image_urls": [%s]
-                }
-                """.formatted(urls);
+        List<String> urls = IntStream.range(0, 11)
+                .mapToObj(i -> "https://cdn.test/" + i + ".webp")
+                .toList();
+        String content = json(
+                "title", "동행 구해요",
+                "content", "여행 동행을 찾습니다. 함께 가실 분 환영합니다.",
+                "preferred_age_min", 20, "preferred_age_max", 35,
+                "preferred_gender", "any", "region", "부산",
+                "travel_start_date", "2026-09-01", "travel_end_date", "2026-09-07",
+                "companion_type", "friend",
+                "image_urls", urls);
 
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))

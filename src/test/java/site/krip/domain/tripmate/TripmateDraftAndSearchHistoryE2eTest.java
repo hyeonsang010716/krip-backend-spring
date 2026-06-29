@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import site.krip.support.IntegrationTestSupport;
 
+import java.util.List;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -24,20 +26,17 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     void draftLifecycle() throws Exception {
         String userId = fixtures.createActiveUser("임시저장유저");
 
-        String draftBody = """
-                {
-                  "title": "임시 제목",
-                  "content": "임시 본문 내용",
-                  "preferred_age_min": 20,
-                  "preferred_age_max": 30,
-                  "preferred_gender": "female",
-                  "region": "강릉",
-                  "travel_start_date": "2026-11-01",
-                  "travel_end_date": "2026-11-03",
-                  "companion_type": "couple",
-                  "image_urls": []
-                }
-                """;
+        String draftBody = json(
+                "title", "임시 제목",
+                "content", "임시 본문 내용",
+                "preferred_age_min", 20,
+                "preferred_age_max", 30,
+                "preferred_gender", "female",
+                "region", "강릉",
+                "travel_start_date", "2026-11-01",
+                "travel_end_date", "2026-11-03",
+                "companion_type", "couple",
+                "image_urls", List.of());
 
         // 저장 (PUT) → 200
         mockMvc.perform(put("/api/tripmate/posts/draft")

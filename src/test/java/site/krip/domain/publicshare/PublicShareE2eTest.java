@@ -10,6 +10,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import site.krip.support.IntegrationTestSupport;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -42,15 +43,11 @@ class PublicShareE2eTest extends IntegrationTestSupport {
 
     /** 플랜 생성 후 plan_id 반환. */
     private String createPlan(String userId, String placeId) throws Exception {
-        String body = """
-                {
-                  "title": "공유용 플랜",
-                  "travel_days": 2,
-                  "items": [
-                    { "day_number": 1, "place_id": "%s", "visit_time": "10:00" }
-                  ]
-                }
-                """.formatted(placeId);
+        String body = json(
+                "title", "공유용 플랜",
+                "travel_days", 2,
+                "items", List.of(Map.of(
+                        "day_number", 1, "place_id", placeId, "visit_time", "10:00")));
         MvcResult res = mockMvc.perform(post("/api/tour/plans")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -2,8 +2,6 @@ package site.krip.domain.tour;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -25,20 +23,7 @@ class TourRemoveDayGapE2eTest extends TourTestSupport {
         String placeId = seedPlace("장소");
 
         // travel_days=3, day1 에 1개 항목으로 생성
-        String body = """
-                {
-                  "title": "3일 플랜",
-                  "travel_days": 3,
-                  "items": [ { "day_number": 1, "place_id": "%s", "visit_time": "10:00" } ]
-                }
-                """.formatted(placeId);
-        MvcResult res = mockMvc.perform(post(PLANS)
-                        .with(auth(user))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String planId = idFrom(res, "plan_id");
+        String planId = createPlan(user, "3일 플랜", 3, placeId);
 
         addItem(planId, user, 2, placeId);
         addItem(planId, user, 3, placeId);
