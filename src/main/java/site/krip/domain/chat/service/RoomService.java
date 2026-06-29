@@ -93,14 +93,18 @@ public class RoomService {
         }
 
         String roomId = created.getChatRoomId();
-        setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
-                List.of(userA, userB));
-
-        // 구독을 fan-out 보다 먼저 — race 차단.
-        fanout.subscribeUserToRoom(userA, roomId);
-        fanout.subscribeUserToRoom(userB, roomId);
-        fanout.fanOutToUser(userA, Map.of("type", "room_joined", "room_id", roomId));
-        fanout.fanOutToUser(userB, Map.of("type", "room_joined", "room_id", roomId));
+        // 방은 커밋 완료 — 캐시/실시간 전파는 best-effort(실패해도 재접속 시 동기화, 500 미전파).
+        try {
+            setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
+                    List.of(userA, userB));
+            // 구독을 fan-out 보다 먼저 — race 차단.
+            fanout.subscribeUserToRoom(userA, roomId);
+            fanout.subscribeUserToRoom(userB, roomId);
+            fanout.fanOutToUser(userA, Map.of("type", "room_joined", "room_id", roomId));
+            fanout.fanOutToUser(userB, Map.of("type", "room_joined", "room_id", roomId));
+        } catch (Exception e) {
+            log.warn("1:1 방 생성 후처리 실패(best-effort): room_id={}", roomId, e);
+        }
 
         log.info("1:1 방 생성 완료: room_id={}, a={}, b={}", roomId, userA, userB);
         return toDirectDto(created, peer);
@@ -140,20 +144,23 @@ public class RoomService {
         });
 
         String roomId = created.getChatRoomId();
-        setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
-                new ArrayList<>(allMemberIds));
-        for (String uid : allMemberIds) {
-            unreadService.resetToZero(uid, roomId);
+        // 방은 커밋 완료 — 캐시/실시간 전파·시스템 메시지는 best-effort(실패해도 500 미전파).
+        try {
+            setCache.saddWithTtl(ChatRedisKeys.roomMembers(roomId), ChatRedisKeys.ROOM_MEMBERS_TTL,
+                    new ArrayList<>(allMemberIds));
+            for (String uid : allMemberIds) {
+                unreadService.resetToZero(uid, roomId);
+            }
+            for (String uid : allMemberIds) {
+                fanout.subscribeUserToRoom(uid, roomId);
+            }
+            for (String uid : allMemberIds) {
+                fanout.fanOutToUser(uid, Map.of("type", "room_joined", "room_id", roomId));
+            }
+            messageService.sendSystemMessage(roomId, "created", meId);
+        } catch (Exception e) {
+            log.warn("그룹 방 생성 후처리 실패(best-effort): room_id={}", roomId, e);
         }
-
-        for (String uid : allMemberIds) {
-            fanout.subscribeUserToRoom(uid, roomId);
-        }
-        for (String uid : allMemberIds) {
-            fanout.fanOutToUser(uid, Map.of("type", "room_joined", "room_id", roomId));
-        }
-
-        messageService.sendSystemMessage(roomId, "created", meId);
 
         log.info("그룹 방 생성: room_id={}, creator={}, members={}", roomId, meId, allMemberIds);
         return toGroupDto(created);
