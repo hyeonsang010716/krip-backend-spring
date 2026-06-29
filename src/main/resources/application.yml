@@ -65,7 +65,8 @@ spring:
   # ──────────────────── MongoDB ────────────────────
   data:
     mongodb:
-      uri: mongodb://${MONGODB_USER:krip}:${MONGODB_PASSWORD}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_NAME:krip}?authSource=admin
+      # 타임아웃 명시 — socketTimeoutMS 미설정 시 기본 무한(read 행 시 풀 스레드 영구 점유) 차단.
+      uri: mongodb://${MONGODB_USER:krip}:${MONGODB_PASSWORD}@${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_NAME:krip}?authSource=admin&connectTimeoutMS=3000&socketTimeoutMS=10000&serverSelectionTimeoutMS=5000
       auto-index-creation: true
 
   # ──────────────────── Redis ────────────────────
