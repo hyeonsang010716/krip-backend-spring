@@ -35,7 +35,7 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     }
 
     @Test
-    @DisplayName("정상 검색어 → 200, 목록 반환(빈 결과)")
+    @DisplayName("정상 검색어 → 200, posts 배열 반환")
     void validKeyword() throws Exception {
         String userId = fixtures.createActiveUser();
         mockMvc.perform(get(SEARCH).param("keyword", "서울")

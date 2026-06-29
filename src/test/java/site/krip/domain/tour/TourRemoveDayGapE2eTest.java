@@ -78,7 +78,7 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
         // day2 삭제
         mockMvc.perform(delete("/api/tour/plans/" + planId + "/days/{day}", 2)
                         .with(auth(user)))
-                .andExpect(status().is2xxSuccessful());
+                .andExpect(status().isOk());
 
         // travel_days 불변(3), day2 항목만 사라지고 day1/day3 유지(gap 보존)
         mockMvc.perform(get("/api/tour/plans/" + planId)
@@ -92,7 +92,7 @@ class TourRemoveDayGapE2eTest extends IntegrationTestSupport {
         // add_day → travel_days = max+1 = 4 (gap 재사용 안 함)
         mockMvc.perform(post("/api/tour/plans/" + planId + "/days")
                         .with(auth(user)))
-                .andExpect(status().is2xxSuccessful());
+                .andExpect(status().isCreated());
 
         mockMvc.perform(get("/api/tour/plans/" + planId)
                         .with(auth(user)))

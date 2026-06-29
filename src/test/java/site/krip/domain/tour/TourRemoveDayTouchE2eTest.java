@@ -79,7 +79,7 @@ class TourRemoveDayTouchE2eTest extends IntegrationTestSupport {
         // A 의 day 1 삭제 → A.updated_at 이 B 생성 시점보다 뒤로 갱신돼야 함
         mockMvc.perform(delete("/api/tour/plans/" + planA + "/days/{day}", 1)
                         .with(auth(user)))
-                .andExpect(status().is2xxSuccessful());
+                .andExpect(status().isOk());
 
         // 갱신됐다면 최신순은 [A, B] 로 뒤집힌다
         mockMvc.perform(get("/api/tour/plans")

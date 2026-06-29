@@ -134,7 +134,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     void blockedUserNotFound() throws Exception {
         String owner = fixtures.createActiveUser("주인8");
         String blockedViewer = fixtures.createActiveUser("차단된이");
-        block(owner, blockedViewer); // owner 가 viewer 를 차단 (helper 는 방향 무관)
+        block(owner, blockedViewer); // owner 가 viewer 를 단방향 차단 (가시성 체크는 차단 방향 무관)
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         mockMvc.perform(get("/api/feed/posts/" + pub + "/likes")

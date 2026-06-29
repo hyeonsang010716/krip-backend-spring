@@ -49,7 +49,7 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", st.state())
                         .cookie(stateCookie(st)))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("https://krip.site")))
                 .andExpect(header().string("Location", containsString("status=provider_error")));
     }
@@ -66,7 +66,7 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", st.state())
                         .cookie(stateCookie(st)))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("status=error")));
     }
 
@@ -82,7 +82,7 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", st.state())
                         .cookie(stateCookie(st)))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("krip://auth/callback")))
                 .andExpect(header().string("Location", containsString("status=provider_error")));
     }

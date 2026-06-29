@@ -23,7 +23,7 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
     void webLoginRedirects() throws Exception {
         mockMvc.perform(get("/api/auth/login").param("type", "google")
                         .with(bearerOnly()))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("accounts.google.com")));
     }
 
@@ -32,7 +32,7 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
     void appLoginRedirects() throws Exception {
         mockMvc.perform(get("/api/auth/login/app").param("type", "google")
                         .with(bearerOnly()))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("accounts.google.com")));
     }
 
@@ -51,7 +51,7 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", "server:kakao")
                         .with(bearerOnly()))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("https://krip.site")))
                 .andExpect(header().string("Location", containsString("status=state_invalid")));
     }
@@ -63,7 +63,7 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", "no-colon-here")
                         .with(bearerOnly()))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("status=state_invalid")));
     }
 
@@ -74,7 +74,7 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", "app:kakao")
                         .with(bearerOnly()))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("krip://auth/callback")))
                 .andExpect(header().string("Location", containsString("status=state_invalid")));
     }
@@ -86,7 +86,7 @@ class AuthLoginE2eTest extends IntegrationTestSupport {
                         .param("code", "dummy-code")
                         .param("state", "server:google")
                         .with(bearerOnly()))
-                .andExpect(status().is3xxRedirection())
+                .andExpect(status().isFound())
                 .andExpect(header().string("Location", containsString("status=state_invalid")));
     }
 }
