@@ -89,9 +89,10 @@ class FcmServiceTest {
         when(inserted.getFcmTokenId()).thenReturn("NEW");
         when(tokenRepo.saveAndFlush(any())).thenReturn(inserted);
 
-        service.registerToken("B", "T");
+        FcmTokenResponse res = service.registerToken("B", "T");
 
         verify(tokenRepo, never()).reassignOwner(any(), any(), any());
         verify(tokenRepo).saveAndFlush(any(FcmToken.class));
+        assertThat(res.fcmTokenId()).isEqualTo("NEW");
     }
 }

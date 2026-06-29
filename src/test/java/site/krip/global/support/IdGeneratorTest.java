@@ -52,7 +52,7 @@ class IdGeneratorTest {
 
         var m = FORMAT.matcher(id);
         assertThat(m.matches())
-                .as("id '%s' should match <PREFIX>_<epochSeconds>_<8hex>", id)
+                .as("id '%s' should match <PREFIX>_<epochSeconds>_<16hex>", id)
                 .isTrue();
         assertThat(m.group(1)).isEqualTo(expectedPrefix);
 

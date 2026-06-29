@@ -13,6 +13,7 @@ import java.time.ZoneOffset;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -51,8 +52,7 @@ class TokenRevocationServiceTest {
     void revokeSkipsWhenAlreadyExpired() {
         svc.revoke("jti2", FIXED.minusSeconds(10));
 
-        verify(ops, never()).set(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.any(Duration.class));
+        verify(ops, never()).set(anyString(), anyString(), any(Duration.class));
     }
 
     @Test
