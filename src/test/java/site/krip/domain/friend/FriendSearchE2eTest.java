@@ -74,6 +74,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
         // viewer → target 요청
         sendFriendRequest(viewer, target);
 
+        // when & then
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(viewer))
                         .param("keyword", "관계타겟유저"))
