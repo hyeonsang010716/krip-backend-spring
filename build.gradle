@@ -89,6 +89,12 @@ dependencies {
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
+    // QueryDSL — 동적 쿼리 (OpenFeign 유지보수 포크, Jakarta 네이티브)
+    implementation 'io.github.openfeign.querydsl:querydsl-jpa:7.0'
+    annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:7.0:jakarta'
+    annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+    annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+
     // Nullability — JSpecify 어노테이션
     implementation 'org.jspecify:jspecify:1.0.0'
 
@@ -109,6 +115,8 @@ dependencies {
 tasks.named('compileJava') {
     options.errorprone {
         disableAllChecks = true
+        // QueryDSL 생성 Q클래스(@NullMarked 패키지에 생성됨)는 NullAway 검사 제외
+        excludedPaths = '.*/build/generated/.*'
         error 'NullAway'
         option 'NullAway:OnlyNullMarked', 'true'
         option 'NullAway:JSpecifyMode', 'true'
@@ -150,7 +158,8 @@ tasks.named('jacocoTestReport') {
         fileTree(dir: it, exclude: [
             'site/krip/KripApplication.class',
             '**/*Config.class',
-            '**/*Properties.class'
+            '**/*Properties.class',
+            '**/Q*.class'
         ])
     }))
 }

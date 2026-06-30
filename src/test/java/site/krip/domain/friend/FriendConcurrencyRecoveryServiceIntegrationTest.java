@@ -3,7 +3,6 @@ package site.krip.domain.friend;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import site.krip.domain.friend.entity.Friendship;
 import site.krip.domain.friend.entity.FriendshipStatus;
@@ -98,7 +97,7 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
         assertThat(r.lastError()).isInstanceOf(ApiException.class);
         assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
         assertThat(userBlockRepository.existsByBlockerIdAndBlockedId(a, b)).isTrue();
-        assertThat(userBlockRepository.findBlocksFirstPage(a, PageRequest.of(0, 30))).hasSize(1);
+        assertThat(userBlockRepository.findBlocks(a, null, null, 30)).hasSize(1);
     }
 
     private record Result(int successCount, Throwable lastError) {

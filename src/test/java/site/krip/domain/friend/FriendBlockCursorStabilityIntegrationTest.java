@@ -79,8 +79,7 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         block(me, t2);
         userBlockRepository.flush();
 
-        List<UserBlock> sorted = userBlockRepository.findBlocksFirstPage(me,
-                PageRequest.of(0, FIRST_PAGE_SIZE, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("blockId"))));
+        List<UserBlock> sorted = userBlockRepository.findBlocks(me, null, null, FIRST_PAGE_SIZE);
         assertThat(sorted).hasSize(2);
         UserBlock boundary = sorted.get(0);
         UserBlock next = sorted.get(1);

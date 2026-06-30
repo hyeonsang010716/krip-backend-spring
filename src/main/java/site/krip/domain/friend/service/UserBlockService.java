@@ -2,9 +2,6 @@ package site.krip.domain.friend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -34,8 +31,6 @@ import java.util.List;
 public class UserBlockService {
 
     private static final int PAGE_SIZE = 30;
-    private static final Sort PAGE_SORT =
-            Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("blockId"));
 
     private final UserBlockRepository userBlockRepository;
     private final FriendshipRepository friendshipRepository;
@@ -102,16 +97,11 @@ public class UserBlockService {
 
     @Transactional(readOnly = true)
     public UserBlockListResponse getBlockedUsers(String userId, String cursor) {
+        // 커서에 (createdAt, blockId)를 담아 디코딩 — 경계 행을 재조회하지 않아 그 행 삭제 시에도 안 잘린다.
+        KeysetCursor.Decoded c = (cursor == null || cursor.isBlank()) ? null : KeysetCursor.decode(cursor);
         // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
-        Pageable p = PageRequest.of(0, PAGE_SIZE + 1, PAGE_SORT);
-        List<UserBlock> fetched;
-        if (cursor == null || cursor.isBlank()) {
-            fetched = userBlockRepository.findBlocksFirstPage(userId, p);
-        } else {
-            // 커서에 (createdAt, blockId)를 담아 디코딩 — 경계 행을 재조회하지 않아 그 행 삭제 시에도 안 잘린다.
-            KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-            fetched = userBlockRepository.findBlocksAfterCursor(userId, c.sortKey(), c.id(), p);
-        }
+        List<UserBlock> fetched = userBlockRepository.findBlocks(
+                userId, c == null ? null : c.sortKey(), c == null ? null : c.id(), PAGE_SIZE + 1);
         boolean hasMore = fetched.size() > PAGE_SIZE;
         List<UserBlock> items = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
 
