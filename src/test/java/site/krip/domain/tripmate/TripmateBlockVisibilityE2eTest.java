@@ -32,6 +32,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("목록: 차단 관계 작성자의 글은 양방향으로 제외된다")
     void listExcludesBlockedBothDirections() throws Exception {
+        // given
         String a = fixtures.createActiveUser("tmbvListA");
         String b = fixtures.createActiveUser("tmbvListB");
         String postA = createPost(a, "A의 모집글", "A 가 올린 충분히 긴 본문입니다.");
@@ -55,6 +56,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("검색: 차단 관계 작성자의 글은 검색 결과에서 제외된다")
     void searchExcludesBlocked() throws Exception {
+        // given
         String a = fixtures.createActiveUser("tmbvSearchA");
         String b = fixtures.createActiveUser("tmbvSearchB");
         String keyword = "유니크검색어ZZZ";
@@ -62,6 +64,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
 
         blockViaApi(a, b);
 
+        // when & then
         mockMvc.perform(get(POSTS + "/search")
                         .with(auth(a))
                         .param("keyword", keyword))
@@ -72,6 +75,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("단건: 차단 관계 작성자의 글 조회 → 404 (양방향)")
     void detailBlockedReturns404() throws Exception {
+        // given
         String a = fixtures.createActiveUser("tmbvDetailA");
         String b = fixtures.createActiveUser("tmbvDetailB");
         String postA = createPost(a, "A 단건", "A 단건 본문 충분히 깁니다.");
@@ -91,6 +95,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("단건: 숨김(display=false) 글은 타인 404, 작성자 본인은 200")
     void detailHiddenOnlyOwnerCanView() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("tmbvHideOwner");
         String other = fixtures.createActiveUser("tmbvHideOther");
         String postId = createPost(owner, "곧 숨길 단건", "숨김 처리할 단건 본문 충분히 깁니다.");
@@ -111,6 +116,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("회귀: 차단·숨김이 없으면 타인도 단건/목록에서 정상 조회된다")
     void noBlockNoHideStillVisible() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("tmbvOkOwner");
         String viewer = fixtures.createActiveUser("tmbvOkViewer");
         String postId = createPost(owner, "정상 노출 글", "정상적으로 노출되는 본문 충분히 깁니다.");
@@ -129,6 +135,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("좋아요: 차단 관계 작성자 글은 좋아요/likers 조회/취소 모두 404 (IDOR 차단)")
     void likesBlockedByVisibility() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("tmbvLikeBlkOwner");
         String viewer = fixtures.createActiveUser("tmbvLikeBlkViewer");
         String postId = createPost(owner, "차단 글", "차단 관계 좋아요 게이트 테스트 본문입니다.");
@@ -148,6 +155,7 @@ class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("좋아요: 숨김(display=false) 글은 타인이 좋아요/likers 조회 불가 404")
     void likesHiddenPostBlocked() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("tmbvLikeHideOwner");
         String viewer = fixtures.createActiveUser("tmbvLikeHideViewer");
         String postId = createPost(owner, "숨김 글", "숨김 글 좋아요 게이트 테스트 본문입니다.");

@@ -47,8 +47,13 @@ class IdGeneratorTest {
     @MethodSource("factories")
     @DisplayName("각 팩토리는 <PREFIX>_<epochSeconds>_<16hex> 형식과 올바른 접두사를 가진다")
     void factoryProducesCorrectFormatAndPrefix(String expectedPrefix, Supplier<String> factory) {
+        // given
         long before = Instant.now().getEpochSecond();
+
+        // when
         String id = factory.get();
+
+        // then
         long after = Instant.now().getEpochSecond();
 
         var m = FORMAT.matcher(id);
@@ -67,20 +72,28 @@ class IdGeneratorTest {
     @MethodSource("factories")
     @DisplayName("각 팩토리는 반복 호출 시 고유한 ID 를 생성한다")
     void factoryProducesUniqueIds(String expectedPrefix, Supplier<String> factory) {
+        // given
         int n = 1000;
         Set<String> seen = new HashSet<>(n * 2);
+
+        // when
         for (int i = 0; i < n; i++) {
             seen.add(factory.get());
         }
+
+        // then
         assertThat(seen).hasSize(n);
     }
 
     @Test
     @DisplayName("서로 다른 팩토리는 서로 다른 접두사를 사용한다")
     void distinctPrefixesAcrossFactories() {
+        // when
         Set<String> prefixes = factories()
                 .map(a -> (String) a.get()[0])
                 .collect(java.util.stream.Collectors.toSet());
+
+        // then
         // 모든 팩토리의 접두사가 유일해야 한다.
         assertThat(prefixes).hasSize((int) factories().count());
     }

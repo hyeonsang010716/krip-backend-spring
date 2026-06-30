@@ -76,6 +76,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("공유 토큰 발급 → 공개 endpoint 조회(인증 없이) → 200, user_id 미노출")
     void shareRoundTrip() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("공유소유자");
         String placeId = seedPlace("불국사", "경주");
         String planId = createPlan(userId, placeId);
@@ -108,6 +109,7 @@ class PublicShareE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("공개 endpoint — 토큰 발급 후 plan 삭제됨 → 404")
     void planDeletedAfterShare() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("삭제예정");
         String placeId = seedPlace("석굴암", "경주");
         String planId = createPlan(userId, placeId);
@@ -126,11 +128,13 @@ class PublicShareE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("공개 endpoint — 인증 헤더가 있어도(화이트리스트) 정상 200")
     void worksWithStrayHeaders() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("첨성대", "경주");
         String planId = createPlan(userId, placeId);
         String token = issueShareToken(userId, planId);
 
+        // when & then
         mockMvc.perform(get("/api/public/share/plan/{token}", token)
                         .with(bearerOnly()))
                 .andExpect(status().isOk())

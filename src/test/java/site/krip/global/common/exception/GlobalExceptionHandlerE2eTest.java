@@ -37,7 +37,10 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("잘못된 enum 값 → 400 + detail")
     void invalidEnumReturns400() throws Exception {
+        // given
         String u = fixtures.createActiveUser("enum유저");
+
+        // when & then
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(u))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -49,7 +52,10 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("Bean Validation 위반(본문 10자 미만) → 400 + detail")
     void validationErrorReturns400() throws Exception {
+        // given
         String u = fixtures.createActiveUser("valid유저");
+
+        // when & then
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(u))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -61,7 +67,10 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("깨진 JSON 본문 → 400")
     void malformedJsonReturns400() throws Exception {
+        // given
         String u = fixtures.createActiveUser("json유저");
+
+        // when & then
         mockMvc.perform(post("/api/tripmate/posts")
                         .with(auth(u))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -72,7 +81,10 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("필수 쿼리 파라미터 누락(keyword) → 400 + detail 에 파라미터명")
     void missingRequiredParamReturns400() throws Exception {
+        // given
         String u = fixtures.createActiveUser("param유저");
+
+        // when & then
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(u)))
                 .andExpect(status().isBadRequest())
@@ -82,7 +94,10 @@ class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("매핑되지 않은 라우트 → 404")
     void unknownRouteReturns404() throws Exception {
+        // given
         String u = fixtures.createActiveUser("route유저");
+
+        // when & then
         mockMvc.perform(get("/api/this-route-does-not-exist")
                         .with(auth(u)))
                 .andExpect(status().isNotFound());

@@ -43,10 +43,12 @@ class GoogleOAuthClientTest {
     @Test
     @DisplayName("토큰 교환 성공 → access_token 반환")
     void exchangeCodeForTokenSuccess() {
+        // given
         server.expect(requestTo(TOKEN_URL)).andExpect(method(HttpMethod.POST))
                 .andRespond(withSuccess("{\"access_token\":\"tok-123\",\"token_type\":\"Bearer\"}",
                         MediaType.APPLICATION_JSON));
 
+        // when & then
         assertThat(client.exchangeCodeForToken(config, "auth-code")).isEqualTo("tok-123");
         server.verify();
     }
@@ -54,9 +56,11 @@ class GoogleOAuthClientTest {
     @Test
     @DisplayName("토큰 응답에 access_token 없음 → IllegalStateException")
     void exchangeCodeForTokenMissingToken() {
+        // given
         server.expect(requestTo(TOKEN_URL))
                 .andRespond(withSuccess("{\"error\":\"invalid_grant\"}", MediaType.APPLICATION_JSON));
 
+        // when & then
         assertThatThrownBy(() -> client.exchangeCodeForToken(config, "bad-code"))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -70,8 +74,10 @@ class GoogleOAuthClientTest {
                         "{\"id\":\"google-sub-1\",\"email\":\"u@example.com\",\"name\":\"홍길동\"}",
                         MediaType.APPLICATION_JSON));
 
+        // when
         OAuthUser user = client.fetchUserInfo(config, "tok-123");
 
+        // then
         assertThat(user.id()).isEqualTo("google-sub-1");
         assertThat(user.email()).isEqualTo("u@example.com");
         assertThat(user.name()).isEqualTo("홍길동");
@@ -82,9 +88,11 @@ class GoogleOAuthClientTest {
     @Test
     @DisplayName("userinfo 응답에 id 없음 → IllegalStateException")
     void fetchUserInfoMissingId() {
+        // given
         server.expect(requestTo(USERINFO_URL))
                 .andRespond(withSuccess("{\"email\":\"u@example.com\"}", MediaType.APPLICATION_JSON));
 
+        // when & then
         assertThatThrownBy(() -> client.fetchUserInfo(config, "tok-123"))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -92,8 +100,10 @@ class GoogleOAuthClientTest {
     @Test
     @DisplayName("authorize URL — client_id/redirect_uri/state/prompt 포함")
     void buildAuthorizationUrl() {
+        // when
         String url = client.buildAuthorizationUrl(config, "server:google");
 
+        // then
         assertThat(url)
                 .contains("client_id=client-id")
                 .contains("response_type=code")

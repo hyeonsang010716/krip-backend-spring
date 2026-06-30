@@ -21,10 +21,12 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("user_name 부분일치로 검색 → 해당 유저 노출")
     void searchByName() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("검색뷰어");
         String target = fixtures.createActiveUser("코스모스타겟");
         fixtures.createActiveUser("관계없는유저");
 
+        // when & then
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(viewer))
                         .param("keyword", "코스모스"))
@@ -36,6 +38,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("user_id 부분일치로 검색 → 해당 유저 노출")
     void searchById() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("아이디뷰어");
         String target = fixtures.createActiveUser("아이디타겟");
 
@@ -50,8 +53,10 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("검색 결과는 본인을 제외한다")
     void searchExcludesSelf() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("자기검색유저");
 
+        // when & then
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(viewer))
                         .param("keyword", "자기검색유저"))
@@ -62,6 +67,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PENDING 친구요청이 있으면 검색결과에 friendship_status/is_requester 노출")
     void searchShowsRelationStatus() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("관계뷰어");
         String target = fixtures.createActiveUser("관계타겟유저");
 
@@ -80,8 +86,10 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("빈 keyword → 400")
     void searchEmptyKeyword() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("빈검색유저");
 
+        // when & then
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(viewer))
                         .param("keyword", "   "))
@@ -92,8 +100,10 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("100자 초과 keyword → 400 (쿼리 DoS 방지 바운드)")
     void searchOverLongKeyword() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("긴검색유저");
 
+        // when & then
         mockMvc.perform(get("/api/friend/search")
                         .with(auth(viewer))
                         .param("keyword", "가".repeat(101)))
@@ -103,6 +113,7 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("검색 기록: 검색 후 목록 노출 → 단건 삭제 → 전체 삭제")
     void searchHistoryFlow() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("기록뷰어");
         fixtures.createActiveUser("히스토리대상A");
         fixtures.createActiveUser("히스토리대상B");
@@ -153,9 +164,11 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: 관계 없는 상대 → 공개 프로필 + friendship_status null")
     void detailNoRelation() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("상세뷰어");
         String target = fixtures.createActiveUser("상세타겟");
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
                         .with(auth(viewer)))
                 .andExpect(status().isOk())
@@ -169,11 +182,13 @@ class FriendSearchE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: PENDING 요청 상대 → friendship_id/status/is_requester 노출")
     void detailWithPendingRequest() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("상세관계뷰어");
         String target = fixtures.createActiveUser("상세관계타겟");
 
         sendFriendRequest(viewer, target);
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
                         .with(auth(viewer)))
                 .andExpect(status().isOk())

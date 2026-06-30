@@ -39,6 +39,7 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("친구 목록 — 경계 친구가 나를 끊어 행이 삭제돼도 다음 페이지가 안 잘린다")
     void friendListNotTruncatedWhenBoundaryDeleted() {
+        // given
         String me = fixtures.createActiveUser("나");
         String f1 = fixtures.createActiveUser("친구1");
         String f2 = fixtures.createActiveUser("친구2");
@@ -57,8 +58,10 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         friendshipRepository.delete(boundary);
         friendshipRepository.flush();
 
+        // when
         FriendshipListResponse page2 = friendshipService.getFriends(me, cursor);
 
+        // then
         assertThat(page2.items())
                 .isNotEmpty()
                 .extracting(FriendshipResponse::friendshipId)
@@ -68,6 +71,7 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("차단 목록 — 경계 차단 행이 삭제(해제)돼도 다음 페이지가 안 잘린다")
     void blockListNotTruncatedWhenBoundaryDeleted() {
+        // given
         String me = fixtures.createActiveUser("나");
         String t1 = fixtures.createActiveUser("차단1");
         String t2 = fixtures.createActiveUser("차단2");
@@ -85,8 +89,10 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         userBlockRepository.delete(boundary);
         userBlockRepository.flush();
 
+        // when
         UserBlockListResponse page2 = userBlockService.getBlockedUsers(me, cursor);
 
+        // then
         assertThat(page2.items())
                 .isNotEmpty()
                 .extracting(UserBlockResponse::blockId)

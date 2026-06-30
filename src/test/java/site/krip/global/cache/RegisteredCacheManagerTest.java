@@ -33,11 +33,13 @@ class RegisteredCacheManagerTest {
     @Test
     @DisplayName("lookup 은 저장된 R/U/I 를 Outcome 으로 디코딩한다")
     void lookupDecodes() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
         when(ops.get("REGISTERED:u1")).thenReturn("R");
         when(ops.get("REGISTERED:u2")).thenReturn("U");
         when(ops.get("REGISTERED:u3")).thenReturn("I");
 
+        // when & then
         assertThat(cache.lookup("u1")).isEqualTo(Outcome.REGISTERED);
         assertThat(cache.lookup("u2")).isEqualTo(Outcome.UNREGISTERED);
         assertThat(cache.lookup("u3")).isEqualTo(Outcome.INACTIVE);
@@ -46,10 +48,12 @@ class RegisteredCacheManagerTest {
     @Test
     @DisplayName("미스/미상 값은 null (DB 폴백)")
     void lookupMissOrUnknown() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
         when(ops.get("REGISTERED:miss")).thenReturn(null);
         when(ops.get("REGISTERED:legacy")).thenReturn("1"); // 구버전 값
 
+        // when & then
         assertThat(cache.lookup("miss")).isNull();
         assertThat(cache.lookup("legacy")).isNull();
     }
@@ -57,10 +61,12 @@ class RegisteredCacheManagerTest {
     @Test
     @DisplayName("exists() 는 REGISTERED 일 때만 true")
     void existsOnlyForRegistered() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
         when(ops.get("REGISTERED:r")).thenReturn("R");
         when(ops.get("REGISTERED:u")).thenReturn("U");
 
+        // when & then
         assertThat(cache.exists("r")).isTrue();
         assertThat(cache.exists("u")).isFalse();
     }
@@ -68,6 +74,7 @@ class RegisteredCacheManagerTest {
     @Test
     @DisplayName("음성 결과는 짧은 TTL(60s), 양성은 기본 TTL 로 기록")
     void cacheUsesNegativeTtlForNonRegistered() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
 
         cache.cache("u1", Outcome.REGISTERED);
@@ -83,8 +90,11 @@ class RegisteredCacheManagerTest {
     @Test
     @DisplayName("Redis 장애 시 lookup() 은 null (fail-open)")
     void lookupFailOpen() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
         when(ops.get(anyString())).thenThrow(new RuntimeException("redis down"));
+
+        // when & then
         assertThat(cache.lookup("u1")).isNull();
         assertThat(cache.exists("u1")).isFalse();
     }
@@ -92,7 +102,10 @@ class RegisteredCacheManagerTest {
     @Test
     @DisplayName("Redis 장애 시 cache()/setFlag() 는 예외를 던지지 않는다 (best-effort)")
     void cacheSwallows() {
+        // given
         when(redis.opsForValue()).thenThrow(new RuntimeException("redis down"));
+
+        // when & then
         assertThatCode(() -> cache.setFlag("u1")).doesNotThrowAnyException();
         assertThatCode(() -> cache.cache("u2", Outcome.INACTIVE)).doesNotThrowAnyException();
     }

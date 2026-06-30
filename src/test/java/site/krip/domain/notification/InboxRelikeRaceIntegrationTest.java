@@ -35,6 +35,7 @@ class InboxRelikeRaceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("동시 재좋아요 ↔ hide 경합에서도 같은 튜플 visible 문서는 최대 1건")
     void concurrentRelikeAndHideNeverDuplicatesVisible() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("dedupR");
         String actor = fixtures.createActiveUser("dedupA");
         String postId = "post-race-1";
@@ -58,12 +59,15 @@ class InboxRelikeRaceIntegrationTest extends IntegrationTestSupport {
                     return null;
                 }));
             }
+
+            // when
             start.countDown();
             for (Future<?> f : futures) {
                 f.get();
             }
             pool.shutdown();
 
+            // then
             long visible = countVisible(recipient, actor, postId);
             assertThat(visible)
                     .as("round %d — 같은 튜플 visible 문서 수", round)

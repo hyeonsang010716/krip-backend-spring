@@ -25,7 +25,10 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("장소 단건 조회 — 존재하지 않는 place_id → 404")
     void getPlaceNotFound() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get("/api/tour/places/no-such-place")
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -34,9 +37,11 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("장소 단건 조회 — 시드된 place_id → 200, is_favorite 반영(미등록 시 null)")
     void getPlaceFound() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("덕수궁");
 
+        // when & then
         mockMvc.perform(get("/api/tour/places/{placeId}", placeId)
                         .with(auth(userId)))
                 .andExpect(status().isOk())
@@ -49,6 +54,7 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("장소 목록(거리순) — 시드 없음 → 200, 빈 결과 (geo 시드 한계로 빈/페이지 경로만 검증)")
     void getPlacesEmpty() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         // 데이터가 없는 좌표(태평양 한가운데)로 조회 → 빈 결과
         mockMvc.perform(get("/api/tour/places")
@@ -64,7 +70,10 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("장소 목록 — max_distance <= 0 → 400")
     void getPlacesBadMaxDistance() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get("/api/tour/places")
                         .with(auth(userId))
                         .param("max_distance", "0"))
@@ -76,6 +85,7 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("즐겨찾기 추가(201)→중복(400)→목록(반영)→삭제 전체 흐름")
     void favoriteLifecycle() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("창덕궁");
 
@@ -123,7 +133,10 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("즐겨찾기 추가 — 존재하지 않는 place_id → 400")
     void addFavoriteMissingPlace() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(post("/api/tour/places/favorites")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -134,8 +147,11 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("즐겨찾기 해제 — 등록되지 않은 장소 → 404")
     void removeFavoriteNotRegistered() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("종묘");
+
+        // when & then
         mockMvc.perform(delete("/api/tour/places/favorites/{placeId}", placeId)
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -146,6 +162,7 @@ class PlaceFavoriteE2eTest extends TourTestSupport {
     @Test
     @DisplayName("검색 기록 — 검색 유발→목록→한건 삭제→전체 삭제")
     void searchHistoryLifecycle() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
         // keyword 검색을 통해 검색어 저장(best-effort). geo 결과가 비어도 검색어는 저장됨.

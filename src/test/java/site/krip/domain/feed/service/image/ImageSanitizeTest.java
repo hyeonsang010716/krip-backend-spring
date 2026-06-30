@@ -36,6 +36,7 @@ class ImageSanitizeTest {
     @Test
     @DisplayName("폴리글랏(JPEG + 트레일링 스크립트)을 재인코딩으로 무력화 — 트레일링 페이로드가 출력에서 사라진다")
     void neutralizesPolyglot() throws Exception {
+        // given
         ByteArrayOutputStream poly = new ByteArrayOutputStream();
         poly.write(realJpeg());
         poly.write("<?php system($_GET['c']); ?>".getBytes(StandardCharsets.US_ASCII));
@@ -43,8 +44,10 @@ class ImageSanitizeTest {
         byte[] polyglot = poly.toByteArray();
         assertThat(indexOf(polyglot, MARKER)).as("입력엔 마커가 있어야").isGreaterThan(0);
 
+        // when
         ProcessedVariant out = processor.sanitize(polyglot);
 
+        // then
         // 출력은 순수 픽셀로 재인코딩된 새 이미지 — 트레일링 페이로드가 남으면 안 된다.
         assertThat(indexOf(out.data(), MARKER))
                 .as("재인코딩된 출력에 트레일링 페이로드가 남으면 안 됨").isEqualTo(-1);
@@ -56,10 +59,13 @@ class ImageSanitizeTest {
     @Test
     @DisplayName("정상 입력도 항상 재인코딩 — passthrough 가 아니라 새 bytes 를 만든다(메타데이터 제거)")
     void alwaysReencodes() throws Exception {
+        // given
         byte[] jpeg = realJpeg();
 
+        // when
         ProcessedVariant out = processor.sanitize(jpeg);
 
+        // then
         assertThat(out.data()).isNotEmpty();
         // 원본을 그대로 통과시키면(재인코딩 skip 회귀) EXIF/폴리글랏 제거가 안 된다.
         assertThat(out.data()).isNotEqualTo(jpeg);

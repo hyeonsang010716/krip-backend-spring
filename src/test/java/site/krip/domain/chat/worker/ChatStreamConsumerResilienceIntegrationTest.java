@@ -43,6 +43,7 @@ class ChatStreamConsumerResilienceIntegrationTest extends ChatTestSupport {
     @Test
     @DisplayName("group 이 런타임에 파괴돼도 구독은 살아남고 재생성 후 전달이 재개된다")
     void recoversAfterConsumerGroupDestroyed() throws Exception {
+        // given
         CountDownLatch delivered = new CountDownLatch(1);
         WebSocketSession ws = mockWsSession("sess-resilience", "user-resilience");
         latchOnSend(ws, delivered);

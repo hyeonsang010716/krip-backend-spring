@@ -49,8 +49,10 @@ class FeedImageEdgeCaseTest {
     @Test
     @DisplayName("EXIF Orientation=6 — 회전 적용으로 원본 치수가 swap (120x80 → 80x120)")
     void exifOrientationApplied() throws Exception {
+        // when
         ProcessedImageSet result = processor.process(fixture("exif-orient6.jpg"));
 
+        // then
         BufferedImage out = ImageIO.read(new ByteArrayInputStream(result.original().data()));
         assertThat(out).isNotNull();
         // 저장 120x80(landscape) + orientation 6 → 표시 기준 80x120(portrait)로 회전 적용.

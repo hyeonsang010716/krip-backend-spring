@@ -22,6 +22,7 @@ class WithdrawPurgeRetentionIntegrationTest extends WithdrawPurgeTestSupport {
     @Test
     @DisplayName("외부 삭제 실패 → 유저는 삭제되나 doc 보존(재시도), 이후 성공 시 doc 제거")
     void retainsWorkItemWhenExternalPurgeFailsThenRetries() {
+        // given
         String userId = fixtures.createActiveUser("재시도대상");
         withdrawService.requestWithdraw(userId);
         makeDue(userId);

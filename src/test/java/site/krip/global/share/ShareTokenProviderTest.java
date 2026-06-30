@@ -36,11 +36,14 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("encode 한 토큰을 decode 하면 동일한 planId 가 돌아온다")
     void encodeDecodeRoundTrip() {
+        // given
         ShareTokenProvider provider = provider(7);
         String planId = "TP_1717000000_deadbeef";
 
+        // when
         ShareTokenProvider.Issued issued = provider.encode(planId);
 
+        // then
         assertThat(issued.token()).isNotBlank();
         assertThat(provider.decode(issued.token())).isEqualTo(planId);
     }
@@ -48,13 +51,16 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("Issued.expiresAt 은 발급 시각 + expirationSeconds 이다")
     void issuedExpiresAtMatchesExpirationWindow() {
+        // given
         int days = 7;
         Instant fixed = Instant.parse("2026-01-01T00:00:00Z");
         // 고정 Clock 주입 — 오차 허용 없이 결정적으로 검증(TokenRevocationServiceTest 패턴).
         ShareTokenProvider provider = provider(days, Clock.fixed(fixed, ZoneOffset.UTC));
 
+        // when
         ShareTokenProvider.Issued issued = provider.encode("TP_x");
 
+        // then
         long expectedSeconds = (long) days * 24 * 60 * 60;
         assertThat(issued.expiresAt()).isEqualTo(fixed.plusSeconds(expectedSeconds));
     }
@@ -62,7 +68,10 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("형식이 깨진(garbage) 토큰은 ShareTokenException 을 던진다")
     void garbageTokenThrows() {
+        // given
         ShareTokenProvider provider = provider(7);
+
+        // when & then
         assertThatThrownBy(() -> provider.decode("not-a-jwt"))
                 .isInstanceOf(ShareTokenException.class)
                 .hasMessageContaining("유효하지 않은");
@@ -71,7 +80,10 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("빈 토큰은 ShareTokenException 을 던진다")
     void emptyTokenThrows() {
+        // given
         ShareTokenProvider provider = provider(7);
+
+        // when & then
         assertThatThrownBy(() -> provider.decode(""))
                 .isInstanceOf(ShareTokenException.class);
     }
@@ -79,9 +91,11 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("서명을 변조한 토큰은 ShareTokenException 을 던진다")
     void tamperedSignatureThrows() {
+        // given
         ShareTokenProvider provider = provider(7);
         String tampered = TokenTestSupport.tamperSignature(provider.encode("TP_abc").token());
 
+        // when & then
         assertThatThrownBy(() -> provider.decode(tampered))
                 .isInstanceOf(ShareTokenException.class);
     }
@@ -89,6 +103,7 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("다른 secret 으로 서명한 토큰은 ShareTokenException 을 던진다")
     void wrongKeyThrows() {
+        // given
         ShareTokenProvider provider = provider(7);
         SecretKey otherKey = TokenTestSupport.deriveKey("a-totally-different-secret-value");
         String foreign = Jwts.builder()
@@ -98,6 +113,7 @@ class ShareTokenProviderTest {
                 .signWith(otherKey)
                 .compact();
 
+        // when & then
         assertThatThrownBy(() -> provider.decode(foreign))
                 .isInstanceOf(ShareTokenException.class);
     }
@@ -105,6 +121,7 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("만료된 토큰은 ShareTokenException(만료 메시지) 을 던진다")
     void expiredTokenThrows() {
+        // given
         ShareTokenProvider provider = provider(7);
         SecretKey key = TokenTestSupport.deriveKey(SECRET);
         Instant past = Instant.now().minusSeconds(3600);
@@ -115,6 +132,7 @@ class ShareTokenProviderTest {
                 .signWith(key)
                 .compact();
 
+        // when & then
         assertThatThrownBy(() -> provider.decode(expired))
                 .isInstanceOf(ShareTokenException.class)
                 .hasMessageContaining("만료");
@@ -123,6 +141,7 @@ class ShareTokenProviderTest {
     @Test
     @DisplayName("plan_id 클레임이 없는 유효 서명 토큰은 ShareTokenException 을 던진다")
     void missingPlanIdClaimThrows() {
+        // given
         ShareTokenProvider provider = provider(7);
         SecretKey key = TokenTestSupport.deriveKey(SECRET);
         String noPlan = Jwts.builder()
@@ -132,6 +151,7 @@ class ShareTokenProviderTest {
                 .signWith(key)
                 .compact();
 
+        // when & then
         assertThatThrownBy(() -> provider.decode(noPlan))
                 .isInstanceOf(ShareTokenException.class);
     }

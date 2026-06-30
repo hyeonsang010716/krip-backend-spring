@@ -30,6 +30,7 @@ class UserBlockCacheRollbackE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("캐시 무효화(Redis) 실패 → 블록 INSERT 와 friendship 삭제가 모두 롤백된다(fail-closed)")
     void redisFailureRollsBackBlock() throws Exception {
+        // given
         String a = fixtures.createActiveUser("롤백차단A");
         String b = fixtures.createActiveUser("롤백차단B");
         befriendViaApi(a, b);
@@ -37,9 +38,11 @@ class UserBlockCacheRollbackE2eTest extends IntegrationTestSupport {
         doThrow(new RuntimeException("redis down"))
                 .when(blockCacheService).invalidateBlockCache(anyString(), anyString());
 
+        // when
         assertThatThrownBy(() -> userBlockService.blockUser(a, b))
                 .isInstanceOf(RuntimeException.class);
 
+        // then
         // 블록은 커밋되지 않았고, friendship 도 삭제되지 않았다(트랜잭션 통째로 롤백).
         assertThat(userBlockRepository.existsByBlockerIdAndBlockedId(a, b)).isFalse();
         assertThat(friendshipRepository.findBetween(a, b)).isPresent();
@@ -48,13 +51,16 @@ class UserBlockCacheRollbackE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("캐시 무효화 성공 → 블록 커밋 + friendship 삭제(정상 경로 대조군)")
     void successCommitsBlock() throws Exception {
+        // given
         String a = fixtures.createActiveUser("정상차단A");
         String b = fixtures.createActiveUser("정상차단B");
         befriendViaApi(a, b);
 
+        // when
         // mock invalidateBlockCache 는 기본적으로 아무것도 하지 않음(성공으로 간주).
         UserBlockResponse resp = userBlockService.blockUser(a, b);
 
+        // then
         assertThat(resp).isNotNull();
         assertThat(userBlockRepository.existsByBlockerIdAndBlockedId(a, b)).isTrue();
         assertThat(friendshipRepository.findBetween(a, b)).isEmpty();

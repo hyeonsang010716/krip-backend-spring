@@ -81,6 +81,7 @@ class FanoutServiceTest {
     @Test
     @DisplayName("방 fan-out 은 sender_session_id 세션(자기 에코)을 건너뛴다")
     void roomFanoutSkipsSenderSession() {
+        // given
         WebSocketSession sender = session("s-sender", "u1", true);
         WebSocketSession other = session("s-other", "u2", true);
         fanout.registerSession(sender);
@@ -88,8 +89,10 @@ class FanoutServiceTest {
         fanout.registerWsToRoom(sender, "room-1");
         fanout.registerWsToRoom(other, "room-1");
 
+        // when
         fanout.fanOutToRoom("room-1", payload("message.new", "s-sender"));
 
+        // then
         assertThat(captured.get(sender)).isEmpty();
         assertThat(captured.get(other)).hasSize(1);
         assertThat(captured.get(other).get(0)).contains("message.new");
@@ -98,6 +101,7 @@ class FanoutServiceTest {
     @Test
     @DisplayName("유저 fan-out 은 해당 유저의 모든 세션에 전달된다")
     void userFanoutDeliversToAllSessions() {
+        // given
         WebSocketSession s1 = session("s1", "u1", true);
         WebSocketSession s2 = session("s2", "u1", true);
         WebSocketSession otherUser = session("s3", "u2", true);
@@ -105,8 +109,10 @@ class FanoutServiceTest {
         fanout.registerSession(s2);
         fanout.registerSession(otherUser);
 
+        // when
         fanout.fanOutToUser("u1", payload("room_left", null));
 
+        // then
         assertThat(captured.get(s1)).hasSize(1);
         assertThat(captured.get(s2)).hasSize(1);
         assertThat(captured.get(otherUser)).isEmpty();
@@ -115,6 +121,7 @@ class FanoutServiceTest {
     @Test
     @DisplayName("닫힌 소켓은 전달에서 제외되고 등록에서 정리된다")
     void closedSocketSkippedAndUnregistered() {
+        // given
         WebSocketSession open = session("s-open", "u1", true);
         WebSocketSession closed = session("s-closed", "u2", false);
         fanout.registerSession(open);
@@ -122,8 +129,10 @@ class FanoutServiceTest {
         fanout.registerWsToRoom(open, "room-1");
         fanout.registerWsToRoom(closed, "room-1");
 
+        // when
         fanout.fanOutToRoom("room-1", payload("message.new", null));
 
+        // then
         assertThat(captured.get(open)).hasSize(1);
         assertThat(captured.get(closed)).isEmpty();
 
@@ -135,13 +144,16 @@ class FanoutServiceTest {
     @Test
     @DisplayName("unregisterWs 후에는 방 fan-out 대상에서 빠진다")
     void unregisterRemovesFromRoom() {
+        // given
         WebSocketSession ws = session("s1", "u1", true);
         fanout.registerSession(ws);
         fanout.registerWsToRoom(ws, "room-1");
 
+        // when
         fanout.unregisterWs(ws);
         fanout.fanOutToRoom("room-1", payload("message.new", null));
 
+        // then
         assertThat(captured.get(ws)).isEmpty();
     }
 
@@ -150,6 +162,7 @@ class FanoutServiceTest {
     void concurrentRegisterUnregisterNoOrphan() throws Exception {
         // 같은 user 의 세션을 여러 스레드가 동시에 register/unregister. 막 등록한 세션은 fanOutToUser 가 반드시
         // 닿아야 한다 — 닿지 않으면 빈-set 키 제거 race 로 live 세션이 userSubs 에서 누락된 것(orphan).
+        // given
         String uid = "race-user";
         Map<WebSocketSession, Set<String>> recvByWs = new ConcurrentHashMap<>();
         AtomicInteger marker = new AtomicInteger();
@@ -183,8 +196,12 @@ class FanoutServiceTest {
                 }
             });
         }
+
+        // when
         start.countDown();
         assertThat(done.await(30, TimeUnit.SECONDS)).isTrue();
+
+        // then
         assertThat(violation.get()).isNull();
         pool.shutdownNow();
     }

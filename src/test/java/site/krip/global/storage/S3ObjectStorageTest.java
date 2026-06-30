@@ -48,8 +48,10 @@ class S3ObjectStorageTest {
     @Test
     @DisplayName("uploadToKey: 결정적 키로 URL 생성 + putObject 호출")
     void uploadToKeyDeterministicUrl() {
+        // when
         String url = storage.uploadToKey(bytes(), 3, "small.jpg", "image/jpeg", "u1/post");
 
+        // then
         assertThat(url).isEqualTo("https://s3.test/mybucket/uploads/perm/u1/post/small.jpg");
         verify(s3).putObject(any(PutObjectRequest.class), any(RequestBody.class));
     }
@@ -57,8 +59,10 @@ class S3ObjectStorageTest {
     @Test
     @DisplayName("uploadPerm: prefix 하위 uuid 키 + 확장자 보존")
     void uploadPermUrlUnderPrefix() {
+        // when
         String url = storage.uploadPerm(bytes(), 3, "photo.png", "image/png", "u1/profile");
 
+        // then
         assertThat(url).startsWith("https://s3.test/mybucket/uploads/perm/u1/profile/");
         assertThat(url).endsWith(".png");
         verify(s3).putObject(any(PutObjectRequest.class), any(RequestBody.class));
@@ -67,30 +71,37 @@ class S3ObjectStorageTest {
     @Test
     @DisplayName("delete: perm 키 URL → 해당 key 로 deleteObject 호출")
     void deleteValidUrl() {
+        // when
         storage.delete("https://s3.test/mybucket/uploads/perm/u1/post/small.jpg");
 
+        // then
         verify(s3).deleteObject(any(DeleteObjectRequest.class));
     }
 
     @Test
     @DisplayName("delete: perm 키 형식이 아닌 URL → SDK 호출 없이 건너뜀(orphan 은폐 방지 로그)")
     void deleteUnparseableUrlSkipped() {
+        // when
         storage.delete("https://cdn.other.com/whatever/x.jpg");
         storage.delete(null);
 
+        // then
         verify(s3, never()).deleteObject(any(DeleteObjectRequest.class));
     }
 
     @Test
     @DisplayName("deleteMany: 유효/무효 혼재 시 유효 키만 추려 deleteObjects 1회, 무효 URL 은 실패 미보고")
     void deleteManyFiltersInvalidFromMixed() {
+        // given
         when(s3.deleteObjects(any(DeleteObjectsRequest.class)))
                 .thenReturn(DeleteObjectsResponse.builder().build()); // 에러 없음
 
+        // when
         List<String> failed = storage.deleteMany(List.of(
                 "https://s3.test/mybucket/uploads/perm/u1/post/a.jpg",
                 "https://cdn.other.com/nope.jpg"));
 
+        // then
         verify(s3, times(1)).deleteObjects(any(DeleteObjectsRequest.class));
         // 파싱 불가 URL 은 S3 대상이 아니므로 실패로 보고하지 않는다(메타데이터 정리 진행).
         assertThat(failed).isEmpty();
@@ -99,6 +110,7 @@ class S3ObjectStorageTest {
     @Test
     @DisplayName("deleteMany: 전부 무효 URL 이면 SDK 미접근, 빈 결과")
     void deleteManyAllInvalidSkipsSdk() {
+        // when & then
         assertThat(storage.deleteMany(List.of("https://cdn.other.com/nope.jpg"))).isEmpty();
 
         verify(s3, never()).deleteObjects(any(DeleteObjectsRequest.class));
@@ -107,6 +119,7 @@ class S3ObjectStorageTest {
     @Test
     @DisplayName("deleteMany: 배치 부분 실패 시 실패한 키를 URL 로 환원해 반환(메타데이터 보존용)")
     void deleteManyReturnsPartialFailureUrls() {
+        // given
         String okUrl = "https://s3.test/mybucket/uploads/perm/u1/post/a.jpg";
         String failUrl = "https://s3.test/mybucket/uploads/perm/u1/post/b.jpg";
         // b.jpg 키만 실패로 응답 (deleteObjects 는 예외 대신 errors() 로 보고)
@@ -118,8 +131,10 @@ class S3ObjectStorageTest {
                                 .build())
                         .build());
 
+        // when
         List<String> failed = storage.deleteMany(List.of(okUrl, failUrl));
 
+        // then
         assertThat(failed).containsExactly(failUrl);
     }
 }

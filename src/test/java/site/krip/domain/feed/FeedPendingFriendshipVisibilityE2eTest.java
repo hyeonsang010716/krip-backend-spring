@@ -17,6 +17,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("PENDING 친구요청 상태의 유저는 FRIENDS 게시물을 볼 수 없다(404)")
     void pendingFriendCannotSeeFriendsPost() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("가시성주인");
         String viewer = fixtures.createActiveUser("대기중친구");
 
@@ -25,6 +26,7 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
 
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/posts/{friendsPost}/likes", friendsPost)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
@@ -33,12 +35,14 @@ class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("ACCEPTED 친구는 FRIENDS 게시물을 볼 수 있다(200, 대조군)")
     void acceptedFriendCanSeeFriendsPost() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("가시성주인2");
         String friend = fixtures.createActiveUser("수락친구");
         makeFriends(owner, friend);
 
         String friendsPost = seedPost(owner, FeedVisibility.FRIENDS, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/posts/{friendsPost}/likes", friendsPost)
                         .with(auth(friend)))
                 .andExpect(status().isOk())

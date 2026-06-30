@@ -20,8 +20,10 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("존재하지 않는 유저 상세 → 404")
     void detailUserNotFound() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("상세404뷰어");
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", "no-such-user")
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
@@ -30,9 +32,11 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("2차 회원가입 미완료(detail 없음) 유저 상세 → 400")
     void detailIncompleteProfile() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("상세400뷰어");
         String preRegister = fixtures.createPreRegisterUser();
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", preRegister)
                         .with(auth(viewer)))
                 .andExpect(status().isBadRequest())
@@ -42,11 +46,13 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: ACCEPTED 친구 → friendship_status=accepted")
     void detailAcceptedRelation() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("상세친구뷰어");
         String target = fixtures.createActiveUser("상세친구타겟");
         String friendshipId = sendFriendRequest(viewer, target);
         acceptFriendRequest(target, friendshipId);
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", target)
                         .with(auth(viewer)))
                 .andExpect(status().isOk())
@@ -59,6 +65,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: 요청을 받은 시점 → is_requester=false")
     void detailPendingAsAddressee() throws Exception {
+        // given
         String requester = fixtures.createActiveUser("상세받은요청자");
         String addressee = fixtures.createActiveUser("상세받은당사자");
         sendFriendRequest(requester, addressee);
@@ -75,6 +82,7 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: 거절(REJECTED) 관계 → 관계 없음으로 마스킹(status/id/is_requester=null)")
     void detailRejectedRelationMasked() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("상세거절뷰어");
         String target = fixtures.createActiveUser("상세거절타겟");
         String friendshipId = sendFriendRequest(viewer, target);
@@ -95,10 +103,12 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: 상대가 나를 차단(peer→viewer)하면 존재 은닉 → 404")
     void detailHiddenWhenPeerBlockedViewer() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("피차단뷰어");
         String peer = fixtures.createActiveUser("차단한상대");
         block(peer, viewer); // peer 가 viewer 를 차단
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", peer)
                         .with(auth(viewer)))
                 .andExpect(status().isNotFound());
@@ -107,10 +117,12 @@ class FriendDetailE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("상세: 내가 상대를 차단(viewer→peer)해도 상세는 노출 + i_blocked_peer=true (차단 해제 동선)")
     void detailVisibleWhenViewerBlockedPeer() throws Exception {
+        // given
         String viewer = fixtures.createActiveUser("차단한뷰어");
         String peer = fixtures.createActiveUser("내가차단한상대");
         block(viewer, peer); // viewer 가 peer 를 차단
 
+        // when & then
         mockMvc.perform(get("/api/friend/detail/{userId}", peer)
                         .with(auth(viewer)))
                 .andExpect(status().isOk())

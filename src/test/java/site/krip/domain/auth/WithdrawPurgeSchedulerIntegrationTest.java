@@ -27,12 +27,15 @@ class WithdrawPurgeSchedulerIntegrationTest extends WithdrawPurgeTestSupport {
     @Test
     @DisplayName("DELETED — purge_at 지난 INACTIVE 유저 → RDB hard delete + doc 청소")
     void purgeDeletesDueInactiveUser() {
+        // given
         String userId = fixtures.createActiveUser("퍼지대상");
         withdrawService.requestWithdraw(userId); // INACTIVE + doc
         makeDue(userId);
 
+        // when
         withdrawService.purge(userId);
 
+        // then
         assertThat(userRepository.findById(userId)).isEmpty();
         assertThat(withdrawalDocExists(userId)).isFalse();
     }
@@ -40,12 +43,15 @@ class WithdrawPurgeSchedulerIntegrationTest extends WithdrawPurgeTestSupport {
     @Test
     @DisplayName("STALE_DOC — due doc 이 있어도 status 가 ACTIVE 면 유저 보존, doc 만 청소")
     void purgeSkipsActiveUserButCleansStaleDoc() {
+        // given
         String userId = fixtures.createActiveUser("취소후잔존");
         // 유저는 ACTIVE 유지(취소된 상태) + 잔존하는 due doc 을 직접 주입.
         makeDue(userId);
 
+        // when
         withdrawService.purge(userId);
 
+        // then
         assertThat(userRepository.findById(userId)).isPresent();
         assertThat(userRepository.findById(userId).orElseThrow().getStatus()).isEqualTo(UserStatus.ACTIVE);
         assertThat(withdrawalDocExists(userId)).isFalse();
@@ -54,6 +60,7 @@ class WithdrawPurgeSchedulerIntegrationTest extends WithdrawPurgeTestSupport {
     @Test
     @DisplayName("스케줄러 — due 유저만 삭제, 유예 기간 내 유저는 보존")
     void schedulerPurgesOnlyDueUsers() {
+        // given
         String dueUser = fixtures.createActiveUser("due유저");
         withdrawService.requestWithdraw(dueUser);
         makeDue(dueUser); // due
@@ -61,8 +68,10 @@ class WithdrawPurgeSchedulerIntegrationTest extends WithdrawPurgeTestSupport {
         String graceUser = fixtures.createActiveUser("유예유저");
         withdrawService.requestWithdraw(graceUser); // purge_at = now + 30d → not due
 
+        // when
         int processed = scheduler.purgeDueWithdrawalsOnce();
 
+        // then
         assertThat(processed).isGreaterThanOrEqualTo(1);
         assertThat(userRepository.findById(dueUser)).isEmpty();             // due → 삭제
         assertThat(userRepository.findById(graceUser)).isPresent();         // 유예 내 → 보존

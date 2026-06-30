@@ -34,11 +34,14 @@ class JwtProviderTest {
     @Test
     @DisplayName("issue 한 토큰을 parse 하면 동일한 userId 가 돌아온다")
     void issueParseRoundTrip() {
+        // given
         JwtProvider provider = provider(30);
         String userId = "USER_1717000000_cafebabe";
 
+        // when
         String token = provider.issue(userId);
 
+        // then
         assertThat(token).isNotBlank();
         assertThat(provider.parse(token).userId()).isEqualTo(userId);
     }
@@ -46,7 +49,10 @@ class JwtProviderTest {
     @Test
     @DisplayName("garbage 토큰은 JwtException 을 던진다")
     void garbageTokenThrows() {
+        // given
         JwtProvider provider = provider(30);
+
+        // when & then
         assertThatThrownBy(() -> provider.parse("garbage.token.value"))
                 .isInstanceOf(JwtException.class);
     }
@@ -54,9 +60,11 @@ class JwtProviderTest {
     @Test
     @DisplayName("서명을 변조한 토큰은 JwtException 을 던진다")
     void tamperedSignatureThrows() {
+        // given
         JwtProvider provider = provider(30);
         String tampered = TokenTestSupport.tamperSignature(provider.issue("USER_x"));
 
+        // when & then
         assertThatThrownBy(() -> provider.parse(tampered))
                 .isInstanceOf(JwtException.class);
     }
@@ -64,6 +72,7 @@ class JwtProviderTest {
     @Test
     @DisplayName("다른 secret 으로 서명한 토큰은 JwtException 을 던진다")
     void wrongKeyThrows() {
+        // given
         JwtProvider provider = provider(30);
         SecretKey otherKey = TokenTestSupport.deriveKey("completely-different-login-secret");
         String foreign = Jwts.builder()
@@ -73,6 +82,7 @@ class JwtProviderTest {
                 .signWith(otherKey)
                 .compact();
 
+        // when & then
         assertThatThrownBy(() -> provider.parse(foreign))
                 .isInstanceOf(JwtException.class);
     }
@@ -80,6 +90,7 @@ class JwtProviderTest {
     @Test
     @DisplayName("만료된 토큰은 ExpiredJwtException 을 던진다")
     void expiredTokenThrows() {
+        // given
         JwtProvider provider = provider(30);
         SecretKey key = TokenTestSupport.deriveKey(SECRET);
         Instant past = Instant.now().minusSeconds(3600);
@@ -90,6 +101,7 @@ class JwtProviderTest {
                 .signWith(key)
                 .compact();
 
+        // when & then
         assertThatThrownBy(() -> provider.parse(expired))
                 .isInstanceOf(ExpiredJwtException.class);
     }
@@ -97,7 +109,10 @@ class JwtProviderTest {
     @Test
     @DisplayName("AuthProperties.Jwt.expirationSeconds 는 days * 86400 이다")
     void expirationSecondsComputation() {
+        // given
         AuthProperties.Jwt jwt = new AuthProperties.Jwt(SECRET, 30, "access_token");
+
+        // when & then
         assertThat(jwt.expirationSeconds()).isEqualTo(30L * 24 * 60 * 60);
     }
 }

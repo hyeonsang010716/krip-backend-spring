@@ -32,6 +32,7 @@ class FanoutSelfDeliveryIntegrationTest extends ChatTestSupport {
     @Test
     @DisplayName("활성 노드 명단이 비어도 로컬 구독 세션은 fan-out 을 받는다")
     void deliversToLocalSessionWhenNodeListEmpty() throws Exception {
+        // given
         CountDownLatch delivered = new CountDownLatch(1);
         WebSocketSession ws = mockWsSession("sess-self", "user-self");
         latchOnSend(ws, delivered);
@@ -43,8 +44,10 @@ class FanoutSelfDeliveryIntegrationTest extends ChatTestSupport {
             // 활성 노드 명단을 비운다 — 그래도 자기 노드로는 publish 돼야 한다.
             redis.delete(ChatRedisKeys.NODES_ZSET_KEY);
 
+            // when
             fanout.fanOutToRoom(roomId, Map.of("type", "test_event"));
 
+            // then
             assertThat(delivered.await(5, TimeUnit.SECONDS)).isTrue();
         } finally {
             fanout.unregisterWs(ws);

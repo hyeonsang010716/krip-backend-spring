@@ -56,11 +56,14 @@ class NodeRegistryIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("listActiveNodes 는 읽기 전용 — 만료 노드를 결과에서 제외만 하고 ZSET 에서 삭제하지 않는다")
     void listActiveNodesDoesNotDelete() {
+        // given
         redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE,
                 System.currentTimeMillis() - STALE_PAST_MS);
 
+        // when
         nodeRegistry.listActiveNodes();
 
+        // then
         // 핫패스 조회는 쓰기를 하지 않으므로 ZSET 에는 여전히 남아 있어야 한다(청소는 주기 작업 몫).
         assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE)).isNotNull();
     }
@@ -68,12 +71,15 @@ class NodeRegistryIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("cleanupExpired 는 만료 노드만 ZSET 에서 삭제하고 활성 노드는 보존한다")
     void cleanupExpiredRemovesOnlyDead() {
+        // given
         redis.opsForZSet().add(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE,
                 System.currentTimeMillis() - STALE_PAST_MS);
         nodeRegistry.registerSelf(); // 미래 score 활성 노드
 
+        // when
         nodeRegistry.cleanupExpired();
 
+        // then
         assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, DEAD_NODE)).isNull();
         assertThat(redis.opsForZSet().score(ChatRedisKeys.NODES_ZSET_KEY, chatProperties.nodeId())).isNotNull();
     }
@@ -81,6 +87,7 @@ class NodeRegistryIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("ZSET 유실 후 heartbeat 가 명단에서 빠진 자기 노드를 재등록한다(자가복구)")
     void heartbeatReRegistersSelfAfterZsetLoss() {
+        // given
         nodeRegistry.registerSelf();
         assertThat(nodeRegistry.listActiveNodes()).contains(chatProperties.nodeId());
 
@@ -88,8 +95,10 @@ class NodeRegistryIntegrationTest extends IntegrationTestSupport {
         redis.delete(ChatRedisKeys.NODES_ZSET_KEY);
         assertThat(nodeRegistry.listActiveNodes()).doesNotContain(chatProperties.nodeId());
 
+        // when
         nodeRegistry.heartbeatSelf();
 
+        // then
         assertThat(nodeRegistry.listActiveNodes()).contains(chatProperties.nodeId());
     }
 }

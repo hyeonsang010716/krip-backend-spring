@@ -34,6 +34,7 @@ class RegisterE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("1차 유저가 2차 가입 → 200, 이후 프로필 조회 가능")
     void registerSucceedsThenProfileAccessible() throws Exception {
+        // given
         String userId = fixtures.createPreRegisterUser();
 
         mockMvc.perform(post("/api/auth/register")
@@ -52,8 +53,10 @@ class RegisterE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("이미 2차 가입 완료된 유저가 재가입 → 409")
     void duplicateRegisterConflict() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("이미가입");
 
+        // when & then
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).content(validBody())
                         .with(auth(userId)))
@@ -63,10 +66,13 @@ class RegisterE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("필수 필드 누락(user_name) → 400")
     void missingRequiredFieldBadRequest() throws Exception {
+        // given
         String userId = fixtures.createPreRegisterUser();
         // user_name 누락
         String invalid = json("email", "x@test.local", "phone_number", "010", "age", 20,
                 "gender", "male", "nationality", "KR");
+
+        // when & then
         mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON).content(invalid)
                         .with(auth(userId)))

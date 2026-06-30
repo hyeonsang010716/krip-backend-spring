@@ -39,6 +39,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("게시물 삭제 → 해당 게시물의 인박스 항목이 cascade 로 soft hide(목록에서 제외)")
     void feedPostDeleteCascadeHidesInbox() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("cascade주인");
         String liker = fixtures.createActiveUser("cascade좋아요러");
         String post = seedPost(owner, FeedVisibility.PUBLIC, null);
@@ -46,6 +47,7 @@ class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
         like(liker, post);
         assertFeedLikeCount(owner, 1);
 
+        // when & then
         mockMvc.perform(delete("/api/feed/posts/{post}", post)
                         .with(auth(owner)))
                 .andExpect(status().isOk());

@@ -23,41 +23,51 @@ class MdcTaskDecoratorTest {
     @Test
     @DisplayName("제출 시점의 request_id 를 워커 작업에 전파한다")
     void propagatesRequestId() throws Exception {
+        // given
         MDC.put(MdcTaskDecorator.REQUEST_ID, "req-123");
         AtomicReference<String> seen = new AtomicReference<>();
         Runnable wrapped = MdcTaskDecorator.wrap(
                 () -> seen.set(MDC.get(MdcTaskDecorator.REQUEST_ID)));
 
+        // when
         // 다른 스레드(워커 모사)에서 실행 — 캡처된 MDC 가 적용되어야 한다.
         runOnFreshThread(wrapped);
 
+        // then
         assertThat(seen.get()).isEqualTo("req-123");
     }
 
     @Test
     @DisplayName("request_id 가 없으면(WS/스케줄러 발) 새로 생성한다")
     void generatesWhenAbsent() throws Exception {
+        // given
         // 제출 스레드에 MDC 없음
         AtomicReference<String> seen = new AtomicReference<>();
         Runnable wrapped = MdcTaskDecorator.wrap(
                 () -> seen.set(MDC.get(MdcTaskDecorator.REQUEST_ID)));
 
+        // when
         runOnFreshThread(wrapped);
 
+        // then
         assertThat(seen.get()).isNotBlank();
     }
 
     @Test
     @DisplayName("실행 후 MDC 를 이전 상태로 복원해 풀 스레드 재사용 누수를 막는다")
     void restoresAfterRun() throws Exception {
+        // given
         // 워커 스레드가 직전 작업의 id 를 들고 있다가 새 작업(전파 없음)을 실행하는 상황 모사
         AtomicReference<String> restored = new AtomicReference<>();
+
+        // when
         runOnFreshThread(() -> {
             MDC.put(MdcTaskDecorator.REQUEST_ID, "stale-from-prev-task");
             MdcTaskDecorator.wrap(() -> { /* 새 작업 */ }).run();
             restored.set(MDC.get(MdcTaskDecorator.REQUEST_ID));
         });
 
+        // then
         // 새 작업이 끝나면 워커의 원래 컨텍스트로 복원되어야 한다 (메인 스레드에서 단언).
         assertThat(restored.get()).isEqualTo("stale-from-prev-task");
     }
@@ -65,7 +75,10 @@ class MdcTaskDecoratorTest {
     @Test
     @DisplayName("Supplier 래퍼는 결과를 그대로 반환한다")
     void supplierReturnsValue() {
+        // when
         String result = MdcTaskDecorator.wrap(() -> "ok").get();
+
+        // then
         assertThat(result).isEqualTo("ok");
     }
 

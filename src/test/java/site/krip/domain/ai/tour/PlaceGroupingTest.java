@@ -46,13 +46,18 @@ class PlaceGroupingTest {
     void allCombinationsRespectCap() {
         int n = STYLES.size();
         for (int mask = 0; mask < (1 << n); mask++) {
+            // given
             List<String> combo = new ArrayList<>();
             for (int i = 0; i < n; i++) {
                 if ((mask & (1 << i)) != 0) {
                     combo.add(STYLES.get(i));
                 }
             }
+
+            // when
             Map<String, Integer> caps = PlaceGrouping.computeCaps(combo);
+
+            // then
             assertThat(sum(caps)).as("styles=%s", combo).isLessThanOrEqualTo(HARD_CAP);
             assertThat(caps.values()).as("styles=%s", combo)
                     .allSatisfy(v -> assertThat(v).isGreaterThanOrEqualTo(1));

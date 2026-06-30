@@ -48,8 +48,10 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("웹 콜백 — Google 교환 실패 → status=provider_error 리다이렉트(500 아님)")
     void webProviderError() throws Exception {
+        // given
         OAuthStateService.Issued st = stubFailure("server", new RestClientException("google token endpoint down"));
 
+        // when & then
         mockMvc.perform(get("/api/auth/login/callback")
                         .param("code", "dummy-code")
                         .param("state", st.state())
@@ -62,8 +64,10 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("웹 콜백 — 내부 예외 → status=error 리다이렉트(500 아님)")
     void webInternalError() throws Exception {
+        // given
         OAuthStateService.Issued st = stubFailure("server", new RuntimeException("db down"));
 
+        // when & then
         mockMvc.perform(get("/api/auth/login/callback")
                         .param("code", "dummy-code")
                         .param("state", st.state())
@@ -75,8 +79,10 @@ class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("앱 콜백 — Google 교환 실패 → 딥링크 status=provider_error 리다이렉트")
     void appProviderError() throws Exception {
+        // given
         OAuthStateService.Issued st = stubFailure("app", new RestClientException("google userinfo down"));
 
+        // when & then
         mockMvc.perform(get("/api/auth/login/app/callback")
                         .param("code", "dummy-code")
                         .param("state", st.state())

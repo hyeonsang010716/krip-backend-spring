@@ -18,6 +18,7 @@ class UserBlockFriendshipRepoE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("차단 시 friendship row 가 삭제되고, 해제해도 복원되지 않는다")
     void blockDeletesFriendshipAndUnblockDoesNotRestore() throws Exception {
+        // given
         String a = fixtures.createActiveUser("차단관계A");
         String b = fixtures.createActiveUser("차단관계B");
 

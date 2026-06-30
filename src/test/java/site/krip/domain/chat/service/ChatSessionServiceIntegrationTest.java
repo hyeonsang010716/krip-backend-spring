@@ -56,12 +56,16 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("세션 한도(10): 11번째 생성 시 가장 오래된 세션이 evict 되어 총 10개만 유지")
     void sessionLimitEvictsOldest() {
+        // given
         String u = randomUser();
         List<String> ids = new ArrayList<>();
+
+        // when
         for (int i = 0; i < ChatRedisKeys.MAX_SESSIONS_PER_USER + 1; i++) {
             ids.add(sessionService.createSession(u, "jti-" + i));
         }
 
+        // then
         long alive = ids.stream().filter(sessionService::sessionExists).count();
         assertThat(alive).isEqualTo((long) ChatRedisKeys.MAX_SESSIONS_PER_USER);
         // 가장 최근 세션은 살아있다.
@@ -72,6 +76,7 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @DisplayName("score tie: 갓 만든(사전순 최저) 세션은 보호되고 기존 세션이 evict 된다")
     @SuppressWarnings("unchecked")
     void protectsNewlyCreatedSessionOnScoreTie() {
+        // given
         String u = randomUser();
         String zkey = ChatRedisKeys.sessions(u);
         long score = System.currentTimeMillis() + 90_000; // 모두 동일 score → 순수 member 사전순 tie
@@ -84,6 +89,7 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
         String fresh = "WS_a_new";
         redis.opsForZSet().add(zkey, fresh, score);
 
+        // when
         List<String> evicted = (List<String>) redis.execute(
                 enforceSessionLimitScript,
                 List.of(zkey),
@@ -91,6 +97,7 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
                 String.valueOf(ChatRedisKeys.MAX_SESSIONS_PER_USER),
                 fresh);
 
+        // then
         // 정확히 1개 evict, 그건 fresh 가 아니라 기존 세션. fresh 는 생존, 총 10개 유지.
         assertThat(evicted).hasSize(1);
         assertThat(evicted.get(0)).isNotEqualTo(fresh).startsWith("WS_z_");
@@ -101,6 +108,7 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("동시 접속이 한도(10)를 정확히 지킨다 — 단일 Lua 원자화로 over/under-eviction 없음")
     void concurrentCreateEnforcesExactLimit() throws Exception {
+        // given
         String u = randomUser();
         int n = 30;
         ExecutorService pool = Executors.newFixedThreadPool(16);
@@ -113,6 +121,8 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
                 return sessionService.createSession(u, "jti-" + idx);
             }));
         }
+
+        // when
         start.countDown();
 
         List<String> sids = new ArrayList<>();
@@ -121,6 +131,7 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
         }
         pool.shutdown();
 
+        // then
         long alive = sids.stream().filter(sessionService::sessionExists).count();
         Long zcard = redis.opsForZSet().zCard(ChatRedisKeys.sessions(u));
 
@@ -132,15 +143,18 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("updateTokenJti: 만료된 세션은 부활시키지 않는다 — HSET 좀비 해시 누수 차단")
     void updateTokenJtiDoesNotResurrectExpiredSession() {
+        // given
         String u = randomUser();
         String sid = sessionService.createSession(u, "jti-1");
         // 세션 만료 시뮬레이션 — sess: 해시 삭제.
         redis.delete(ChatRedisKeys.sess(sid));
         assertThat(sessionService.sessionExists(sid)).isFalse();
 
+        // when
         // 만료 후 token refresh 가 들어와도 키가 부활하면 안 된다(과거 HSET 은 TTL 없는 좀비로 부활시켰음).
         sessionService.updateTokenJti(sid, "jti-2");
 
+        // then
         assertThat(redis.hasKey(ChatRedisKeys.sess(sid))).isFalse();
         assertThat(sessionService.sessionExists(sid)).isFalse();
     }
@@ -148,11 +162,14 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("updateTokenJti: 살아있는 세션은 token_jti 갱신 + TTL 유지(좀비 아님)")
     void updateTokenJtiUpdatesLiveSessionAndKeepsTtl() {
+        // given
         String u = randomUser();
         String sid = sessionService.createSession(u, "jti-1");
 
+        // when
         sessionService.updateTokenJti(sid, "jti-2");
 
+        // then
         assertThat(redis.opsForHash().get(ChatRedisKeys.sess(sid), "token_jti")).isEqualTo("jti-2");
         // 갱신이 TTL 을 날리지 않았는지 — 생성 시 건 만료가 그대로 남아 있어야 한다(좀비 방지).
         Long ttl = redis.getExpire(ChatRedisKeys.sess(sid));
@@ -162,13 +179,16 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("revokeSessionsByTokenJti: 해당 토큰(jti) 세션만 끊고 다른 토큰 세션은 유지")
     void revokeSessionsByTokenJtiTerminatesOnlyMatchingToken() {
+        // given
         String u = randomUser();
         String a1 = sessionService.createSession(u, "jti-A"); // 토큰 A 기기
         String a2 = sessionService.createSession(u, "jti-A"); // 토큰 A 재연결(같은 토큰)
         String b1 = sessionService.createSession(u, "jti-B"); // 토큰 B 기기(다른 기기)
 
+        // when
         int revoked = sessionService.revokeSessionsByTokenJti(u, "jti-A");
 
+        // then
         assertThat(revoked).isEqualTo(2);
         assertThat(sessionService.sessionExists(a1)).isFalse();
         assertThat(sessionService.sessionExists(a2)).isFalse();
@@ -190,13 +210,16 @@ class ChatSessionServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("revokeAllSessions: 유저의 모든 세션 제거 후 개수 반환")
     void revokeAllSessions() {
+        // given
         String u = randomUser();
         String s1 = sessionService.createSession(u, "jti-1");
         String s2 = sessionService.createSession(u, "jti-2");
         String s3 = sessionService.createSession(u, "jti-3");
 
+        // when
         int revoked = sessionService.revokeAllSessions(u);
 
+        // then
         assertThat(revoked).isEqualTo(3);
         assertThat(sessionService.sessionExists(s1)).isFalse();
         assertThat(sessionService.sessionExists(s2)).isFalse();

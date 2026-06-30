@@ -45,8 +45,10 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("생성 — 선호 나이 min > max → 400")
     void ageRangeReversed() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("나이역전");
 
+        // when & then
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -58,8 +60,10 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("생성 — 여행 종료일 < 시작일 → 400")
     void dateRangeReversed() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("날짜역전");
 
+        // when & then
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,8 +75,10 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("생성 — 경계 동일값(min==max, start==end) → 201")
     void equalBoundariesAllowed() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("경계동일");
 
+        // when & then
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -83,8 +89,10 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("생성 — 선호 나이 max > 150 → 400 (상한 검증)")
     void preferredAgeOverMax() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("나이상한초과");
 
+        // when & then
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -95,12 +103,14 @@ class TripmatePostValidationE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("생성 — image_urls 11개(>10) → 400 (무한 입력 차단)")
     void imageUrlsOverLimit() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("이미지초과");
 
         List<String> urls = IntStream.range(0, 11)
                 .mapToObj(i -> "https://cdn.test/" + i + ".webp")
                 .toList();
 
+        // when & then
         mockMvc.perform(post(CREATE)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

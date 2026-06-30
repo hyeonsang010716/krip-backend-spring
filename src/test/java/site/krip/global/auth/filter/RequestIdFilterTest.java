@@ -41,7 +41,10 @@ class RequestIdFilterTest {
     @Test
     @DisplayName("CRLF 포함 값은 거부하고 UUID 재생성 — 위조 값 미반영")
     void regeneratesOnCrlf() throws Exception {
+        // when
         String out = runWithHeader("abc\r\nFAKE LOG LINE");
+
+        // then
         assertThat(out).doesNotContain("\n").doesNotContain("\r").doesNotContain("FAKE");
         assertThat(out).matches(UUID_PATTERN);
     }

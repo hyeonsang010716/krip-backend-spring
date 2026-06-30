@@ -25,12 +25,14 @@ class TripmateLikeInboxFanoutE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("외부 유저 좋아요 → 게시자 인박스에 tripmate_like 1건")
     void externalLikeCreatesInboxItem() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("트립주인");
         String liker = fixtures.createActiveUser("트립좋아요러");
         String post = createPost(owner);
 
         like(liker, post);
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(owner)))
                 .andExpect(status().isOk())
@@ -42,11 +44,13 @@ class TripmateLikeInboxFanoutE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("본인 게시물 좋아요 → 인박스 생성 없음(self-skip)")
     void selfLikeCreatesNoInboxItem() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("트립자기좋아요");
         String post = createPost(owner);
 
         like(owner, post);
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(owner)))
                 .andExpect(status().isOk())

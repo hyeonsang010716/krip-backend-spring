@@ -31,15 +31,18 @@ class ImageUploadExecutorIsolationTest {
     void uploadRunsOnPoolWorkerNotCaller() {
         ImageUploadExecutor executor = newExecutor();
         try {
+            // given
             String callerThread = Thread.currentThread().getName();
             AtomicReference<String> uploadThread = new AtomicReference<>();
 
+            // when
             List<String> result = executor.process(() ->
                     executor.uploadInParallel(List.<Supplier<String>>of(() -> {
                         uploadThread.set(Thread.currentThread().getName());
                         return "ok";
                     })));
 
+            // then
             assertThat(result).containsExactly("ok");
             assertThat(uploadThread.get())
                     .isNotEqualTo(callerThread)
@@ -54,7 +57,10 @@ class ImageUploadExecutorIsolationTest {
     void processAllReturnsInInputOrder() {
         ImageUploadExecutor executor = newExecutor();
         try {
+            // given
             List<Supplier<Integer>> tasks = List.of(() -> 1, () -> 2, () -> 3, () -> 4);
+
+            // when & then
             assertThat(executor.processAll(tasks)).containsExactly(1, 2, 3, 4);
         } finally {
             executor.destroy();
@@ -66,12 +72,15 @@ class ImageUploadExecutorIsolationTest {
     void processAllPropagatesTaskFailure() {
         ImageUploadExecutor executor = newExecutor();
         try {
+            // given
             List<Supplier<Integer>> tasks = List.of(
                     () -> 1,
                     () -> {
                         throw new IllegalStateException("boom");
                     },
                     () -> 3);
+
+            // when & then
             assertThatThrownBy(() -> executor.processAll(tasks))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessage("boom");

@@ -18,12 +18,14 @@ class FeedPopupE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("비친구 팝업: 프로필 + PUBLIC 만 노출")
     void strangerPopupPublicOnly() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("팝업주인");
         String stranger = fixtures.createActiveUser("낯선이");
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/popup/{owner}", owner)
                         .with(auth(stranger)))
                 .andExpect(status().isOk())
@@ -37,6 +39,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("친구 팝업: FRIENDS+PUBLIC 노출")
     void friendPopupFriendsAndPublic() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("팝업주인2");
         String friend = fixtures.createActiveUser("친구");
         makeFriends(owner, friend);
@@ -44,6 +47,7 @@ class FeedPopupE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/popup/{owner}", owner)
                         .with(auth(friend)))
                 .andExpect(status().isOk())
@@ -55,10 +59,12 @@ class FeedPopupE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("차단 관계 유저 팝업 → 404 (차단 사실 은닉)")
     void blockedPopupNotFound() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("팝업주인3");
         String blockedViewer = fixtures.createActiveUser("차단된이");
         block(owner, blockedViewer);
 
+        // when & then
         mockMvc.perform(get("/api/feed/popup/{owner}", owner)
                         .with(auth(blockedViewer)))
                 .andExpect(status().isNotFound());

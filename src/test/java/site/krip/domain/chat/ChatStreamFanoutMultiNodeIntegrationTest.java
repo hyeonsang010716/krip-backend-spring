@@ -46,14 +46,17 @@ class ChatStreamFanoutMultiNodeIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("노드가 끊긴 동안 발행된 이벤트도 group 복귀 시 모두 수신 — 유실 없음")
     void eventsPublishedWhileNodeDownAreRedelivered() {
+        // given
         // node B 가 "다운"된 동안(아무도 안 읽음) node A 가 상태 이벤트들을 발행 → Stream 에 영속.
         publish("read:m1");
         publish("edit:m2");
         publish("delete:m3");
 
+        // when
         // node B 복귀 → 자기 커서(>)부터 읽으면 끊긴 동안 것까지 전부 들어와야 한다.
         Set<String> received = readNew("c1");
 
+        // then
         assertThat(received).containsExactlyInAnyOrder("read:m1", "edit:m2", "delete:m3");
     }
 

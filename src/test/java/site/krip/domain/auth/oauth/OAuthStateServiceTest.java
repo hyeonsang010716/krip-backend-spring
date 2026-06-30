@@ -35,9 +35,11 @@ class OAuthStateServiceTest {
     @Test
     @DisplayName("state nonce 와 쿠키가 일치하면 routing/provider 를 복원한다")
     void acceptsMatchingNonce() {
+        // when
         OAuthStateService.Parsed parsed =
                 svc.verify("server:google:nonce123", requestWithCookie("nonce123"));
 
+        // then
         assertThat(parsed.routing()).isEqualTo("server");
         assertThat(parsed.provider()).isEqualTo("google");
     }
@@ -76,11 +78,14 @@ class OAuthStateServiceTest {
     @Test
     @DisplayName("create 가 발급한 state·쿠키는 서로 verify 된다 (round-trip)")
     void issuedStateAndCookieVerify() {
+        // given
         OAuthStateService.Issued issued = svc.create("local", "google");
         String boundNonce = issued.cookie().getValue();
 
+        // when
         OAuthStateService.Parsed parsed = svc.verify(issued.state(), requestWithCookie(boundNonce));
 
+        // then
         assertThat(parsed.routing()).isEqualTo("local");
         assertThat(parsed.provider()).isEqualTo("google");
     }

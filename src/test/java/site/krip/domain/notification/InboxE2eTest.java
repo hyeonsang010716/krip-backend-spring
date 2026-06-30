@@ -63,10 +63,12 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("목록 조회 → 200, items 배열 + next_cursor")
     void listItems() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("수신자");
         String actor = fixtures.createActiveUser("행위자");
         InboxItem item = seedFeedLike(recipient, actor, "post-list-1");
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
@@ -79,11 +81,13 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("미읽음 카운트 → 200, unread_count 반영")
     void unreadCount() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("카운트수신자");
         String actor = fixtures.createActiveUser("카운트행위자");
         seedFeedLike(recipient, actor, "post-count-1");
         seedFeedLike(recipient, actor, "post-count-2");
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox/unread-count")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
@@ -93,8 +97,10 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("빈 인박스 미읽음 카운트 → 200, 0")
     void unreadCountEmpty() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox/unread-count")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
@@ -106,6 +112,7 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("첫 페이지 진입 시 응답은 read 전 상태(is_read=false), 재조회 시 read 반영")
     void firstPageAutoReadReflectsPreReadState() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("자동읽음수신자");
         String actor = fixtures.createActiveUser("자동읽음행위자");
         InboxItem item = seedFeedLike(recipient, actor, "post-autoread-1");
@@ -132,6 +139,7 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("자동 read 는 반환한 페이지 항목만 — 안 본 다음 페이지는 미읽음 유지(unread = 본 것과 일치)")
     void autoReadMarksOnlyReturnedPage() {
+        // given
         String recipient = fixtures.createActiveUser("페이지읽음수신자");
         String actor = fixtures.createActiveUser("페이지읽음행위자");
         int overflow = 5; // 한 페이지를 넘기는 잔여 건수
@@ -153,6 +161,7 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("재조회(이미 읽음)는 추가 쓰기 없음 — markReadByIds 멱등")
     void reReadIsIdempotent() {
+        // given
         String recipient = fixtures.createActiveUser("멱등수신자");
         String actor = fixtures.createActiveUser("멱등행위자");
         seedFeedLike(recipient, actor, "post-idem-1");
@@ -169,11 +178,13 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("본인→본인 fan-out 은 skip — 인박스에 쌓이지 않음")
     void selfActionSkipped() throws Exception {
+        // given
         String user = fixtures.createActiveUser("본인");
 
         // 서비스 fan-out 직접 호출(컨트롤러 진입점 없음) — recipient == actor → skip.
         inboxService.notifyFeedLike(user, user, "본인", null, "post-self-1", "내 글");
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox/unread-count")
                         .with(auth(user)))
                 .andExpect(status().isOk())
@@ -185,6 +196,7 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("본인 항목 hide → 200, 이후 목록에서 제외")
     void hideOwnItem() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("숨김수신자");
         String actor = fixtures.createActiveUser("숨김행위자");
         InboxItem item = seedFeedLike(recipient, actor, "post-hide-1");
@@ -203,8 +215,10 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("잘못된 ObjectId 형식 hide → 404")
     void hideInvalidObjectId() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(patch("/api/notification/inbox/not-an-objectid/hide")
                         .with(auth(recipient)))
                 .andExpect(status().isNotFound());
@@ -213,8 +227,10 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("존재하지 않는(유효 형식) ObjectId hide → 404")
     void hideNotFound() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(patch("/api/notification/inbox/0123456789abcdef01234567/hide")
                         .with(auth(recipient)))
                 .andExpect(status().isNotFound());
@@ -223,11 +239,13 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("타인 항목 hide → 404 (소유자 아님)")
     void hideNonOwner() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("실수신자");
         String actor = fixtures.createActiveUser("실행위자");
         String other = fixtures.createActiveUser("타인");
         InboxItem item = seedFeedLike(recipient, actor, "post-nonowner-1");
 
+        // when & then
         mockMvc.perform(patch("/api/notification/inbox/{itemId}/hide", item.getId())
                         .with(auth(other)))
                 .andExpect(status().isNotFound());
@@ -238,6 +256,7 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("게시글 삭제 cascade → 해당 target 항목 목록에서 제외(soft hide)")
     void cascadePostDeletedHidesItems() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("cascade수신자");
         String actor = fixtures.createActiveUser("cascade행위자");
         String postId = "post-cascade-del";
@@ -245,6 +264,7 @@ class InboxE2eTest extends IntegrationTestSupport {
 
         inboxService.cascadePostDeleted(TargetType.FEED_POST.getValue(), postId);
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient)))
                 .andExpect(status().isOk())
@@ -254,6 +274,7 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("유저 탈퇴 cascade → 수신자 인박스 항목 hard delete")
     void cascadeUserWithdrawnDeletesItems() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser("탈퇴수신자");
         String actor = fixtures.createActiveUser("탈퇴행위자");
         seedFeedLike(recipient, actor, "post-cascade-withdraw");
@@ -278,8 +299,10 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("유효 ISO 커서 → 200")
     void validIsoCursor() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient))
                         .param("cursor", "2026-01-01T00:00:00Z"))
@@ -290,8 +313,10 @@ class InboxE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("쓰레기 커서 → 400")
     void garbageCursorBadRequest() throws Exception {
+        // given
         String recipient = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(get("/api/notification/inbox")
                         .with(auth(recipient))
                         .param("cursor", "not-a-date"))

@@ -40,10 +40,14 @@ class TextPreviewTest {
     @Test
     @DisplayName("경계에서 surrogate pair 를 쪼개지 않는다 — 고립 surrogate 무발생(회귀)")
     void doesNotSplitSurrogateAtBoundary() {
+        // given
         // "ab😀😀" — 옛 substring(0,3) 은 char[2]=상위 surrogate 만 포함해 깨졌다.
         String content = "ab" + EMOJI + EMOJI;
+
+        // when
         String result = TextPreview.truncate(content, 3, "…");
 
+        // then
         assertThat(result).isEqualTo("ab" + EMOJI + "…"); // 3 코드포인트(a,b,😀) + 말줄임표
         assertThat(hasLoneSurrogate(result)).isFalse();
         assertThat(result.codePointCount(0, result.length())).isEqualTo(4); // a,b,😀,…
@@ -52,9 +56,13 @@ class TextPreviewTest {
     @Test
     @DisplayName("순수 이모지 한도 초과 — 코드포인트 경계로 잘리고 고립 surrogate 무발생")
     void allEmojiTruncatedOnCodePointBoundary() {
+        // given
         String content = EMOJI.repeat(150);           // 150 코드포인트(300 char)
+
+        // when
         String result = TextPreview.truncate(content, 100, "…");
 
+        // then
         assertThat(hasLoneSurrogate(result)).isFalse();
         assertThat(result).isEqualTo(EMOJI.repeat(100) + "…");
     }

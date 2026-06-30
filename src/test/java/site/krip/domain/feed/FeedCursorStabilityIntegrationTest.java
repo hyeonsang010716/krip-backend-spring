@@ -38,6 +38,7 @@ class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
     @Test
     @DisplayName("피드 게시글 — 경계 글이 삭제돼도 다음 페이지가 안 잘린다")
     void feedNotTruncatedWhenBoundaryDeleted() {
+        // given
         String me = fixtures.createActiveUser("나");
         seedPost(me, FeedVisibility.PUBLIC, "a");
         seedPost(me, FeedVisibility.PUBLIC, "b");
@@ -52,8 +53,10 @@ class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
         feedPostRepository.deleteById(boundary.getPostId());
         feedPostRepository.flush();
 
+        // when
         FeedPostListResponse page2 = feedPostService.getMyFeed(me, cursor);
 
+        // then
         assertThat(page2.posts())
                 .isNotEmpty()
                 .extracting(FeedPostResponse::postId)
@@ -63,6 +66,7 @@ class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
     @Test
     @DisplayName("피드 댓글 — 경계 댓글이 삭제돼도 다음 페이지가 안 잘린다")
     void commentsNotTruncatedWhenBoundaryDeleted() {
+        // given
         String me = fixtures.createActiveUser("나");
         String postId = seedPost(me, FeedVisibility.PUBLIC, "p");
         commentRepository.saveAndFlush(new FeedPostComment(postId, me, "c1"));
@@ -77,8 +81,10 @@ class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
         commentRepository.deleteById(boundary.getCommentId());
         commentRepository.flush();
 
+        // when
         CommentListResponse page2 = commentService.listComments(me, postId, cursor);
 
+        // then
         assertThat(page2.comments())
                 .isNotEmpty()
                 .extracting(CommentResponse::commentId)

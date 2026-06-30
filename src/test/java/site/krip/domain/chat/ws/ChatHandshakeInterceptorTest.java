@@ -68,11 +68,14 @@ class ChatHandshakeInterceptorTest {
     @Test
     @DisplayName("허용 Origin + 토큰 없음 → 핸드셰이크 403 거부 (401 아님)")
     void noTokenRejectedWith403() {
+        // given
         ServerHttpRequest request = requestWith(ALLOWED_ORIGIN, null);
         ServerHttpResponse response = mock(ServerHttpResponse.class);
 
+        // when
         boolean ok = interceptor.beforeHandshake(request, response, null, new HashMap<>());
 
+        // then
         assertThat(ok).isFalse();
         verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }
@@ -80,11 +83,14 @@ class ChatHandshakeInterceptorTest {
     @Test
     @DisplayName("허용 Origin + 무효 토큰(서명불가) → 핸드셰이크 403 거부")
     void invalidTokenRejectedWith403() {
+        // given
         ServerHttpRequest request = requestWith(ALLOWED_ORIGIN, "krip.chat.v1, auth.not-a-real-jwt");
         ServerHttpResponse response = mock(ServerHttpResponse.class);
 
+        // when
         boolean ok = interceptor.beforeHandshake(request, response, null, new HashMap<>());
 
+        // then
         assertThat(ok).isFalse();
         verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }
@@ -92,11 +98,14 @@ class ChatHandshakeInterceptorTest {
     @Test
     @DisplayName("허용되지 않은 Origin → 403 거부 (모든 핸드셰이크 거부는 403 일관)")
     void disallowedOriginRejectedWith403() {
+        // given
         ServerHttpRequest request = requestWith("https://evil.test", "auth." + jwtProvider.issue("USER_x"));
         ServerHttpResponse response = mock(ServerHttpResponse.class);
 
+        // when
         boolean ok = interceptor.beforeHandshake(request, response, null, new HashMap<>());
 
+        // then
         assertThat(ok).isFalse();
         verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }
@@ -105,6 +114,7 @@ class ChatHandshakeInterceptorTest {
     @ValueSource(strings = {ALLOWED_ORIGIN, APP_ORIGIN})
     @DisplayName("유효 토큰 + ACTIVE — 웹/앱 화이트리스트 Origin 둘 다 통과(true) + user attribute 주입")
     void validTokenActiveUserAccepted(String origin) {
+        // given
         String userId = "USER_active";
         String token = jwtProvider.issue(userId);
         when(registeredCache.exists(userId)).thenReturn(true);
@@ -113,8 +123,10 @@ class ChatHandshakeInterceptorTest {
         ServerHttpResponse response = mock(ServerHttpResponse.class);
         Map<String, Object> attributes = new HashMap<>();
 
+        // when
         boolean ok = interceptor.beforeHandshake(request, response, null, attributes);
 
+        // then
         assertThat(ok).isTrue();
         assertThat(attributes).containsEntry(ChatHandshakeInterceptor.ATTR_WS_USER, userId);
         verify(response, never()).setStatusCode(HttpStatus.FORBIDDEN);
@@ -123,6 +135,7 @@ class ChatHandshakeInterceptorTest {
     @Test
     @DisplayName("유효 토큰 + INACTIVE/미가입(캐시 miss + DB false) → 403 거부")
     void inactiveUserRejectedWith403() {
+        // given
         String userId = "USER_inactive";
         String token = jwtProvider.issue(userId);
         when(registeredCache.exists(userId)).thenReturn(false);
@@ -131,8 +144,10 @@ class ChatHandshakeInterceptorTest {
         ServerHttpRequest request = requestWith(ALLOWED_ORIGIN, "auth." + token);
         ServerHttpResponse response = mock(ServerHttpResponse.class);
 
+        // when
         boolean ok = interceptor.beforeHandshake(request, response, null, new HashMap<>());
 
+        // then
         assertThat(ok).isFalse();
         verify(response).setStatusCode(HttpStatus.FORBIDDEN);
     }

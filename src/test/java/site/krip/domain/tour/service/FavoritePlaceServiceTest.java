@@ -62,11 +62,13 @@ class FavoritePlaceServiceTest {
     @Test
     @DisplayName("동시 추가 race: saveAndFlush UNIQUE 충돌 → 500 이 아니라 400")
     void concurrentInsertMapsTo400() {
+        // given
         placeExists();
         when(favRepo.existsByUserIdAndPlaceId(USER, PLACE)).thenReturn(false);
         when(favRepo.saveAndFlush(any(FavoritePlace.class)))
                 .thenThrow(new DataIntegrityViolationException("uq_user_favorite_place"));
 
+        // when & then
         assertThatThrownBy(() -> service.addFavorite(USER, PLACE))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertApiStatus(e, 400));
@@ -75,9 +77,11 @@ class FavoritePlaceServiceTest {
     @Test
     @DisplayName("순차 중복: existsBy=true → 400, INSERT 시도 안 함")
     void sequentialDuplicateMapsTo400() {
+        // given
         placeExists();
         when(favRepo.existsByUserIdAndPlaceId(USER, PLACE)).thenReturn(true);
 
+        // when & then
         assertThatThrownBy(() -> service.addFavorite(USER, PLACE))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertApiStatus(e, 400));
@@ -87,8 +91,10 @@ class FavoritePlaceServiceTest {
     @Test
     @DisplayName("존재하지 않는 장소 → 400, 트랜잭션 진입 안 함")
     void missingPlaceMapsTo400() {
+        // given
         when(placeRepo.findByPlaceIds(List.of(PLACE))).thenReturn(List.of());
 
+        // when & then
         assertThatThrownBy(() -> service.addFavorite(USER, PLACE))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertApiStatus(e, 400));
@@ -98,12 +104,15 @@ class FavoritePlaceServiceTest {
     @Test
     @DisplayName("정상: 미존재 → 저장 성공(예외 없음)")
     void happyPathSaves() {
+        // given
         placeExists();
         when(favRepo.existsByUserIdAndPlaceId(USER, PLACE)).thenReturn(false);
         when(favRepo.saveAndFlush(any(FavoritePlace.class))).thenReturn(mock(FavoritePlace.class));
 
+        // when
         service.addFavorite(USER, PLACE);
 
+        // then
         verify(favRepo).saveAndFlush(any(FavoritePlace.class));
     }
 }

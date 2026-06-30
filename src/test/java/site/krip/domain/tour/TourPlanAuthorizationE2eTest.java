@@ -36,10 +36,12 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
     @MethodSource("blankTitleRequests")
     @DisplayName("title 공백만 → 400")
     void blankTitleRejected(String label, PlanRequest req) throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("장소");
         String planId = createPlan(userId, placeId);
 
+        // when & then
         mockMvc.perform(req.build(this, planId, null, placeId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON))
@@ -57,7 +59,10 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
     @Test
     @DisplayName("플랜 생성 — 카드 day_number 가 travel_days 초과 → 400")
     void createItemDayOutOfRange() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(post(PLANS)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -71,12 +76,14 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
     @MethodSource("ownerOnlyRequests")
     @DisplayName("남의 플랜 변경 시도 → 403")
     void ownerOnlyForbiddenForOthers(String label, PlanRequest req) throws Exception {
+        // given
         String owner = fixtures.createActiveUser("플랜주인");
         String other = fixtures.createActiveUser("플랜타인");
         String placeId = seedPlace("장소");
         String planId = createPlan(owner, placeId);
         String itemId = firstItemId(owner, planId);
 
+        // when & then
         mockMvc.perform(req.build(this, planId, itemId, placeId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON))
@@ -103,9 +110,11 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
     @Test
     @DisplayName("일차 범위 초과 삭제 → 400")
     void removeDayOutOfRange() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String planId = createPlan(userId, seedPlace("장소"));
 
+        // when & then
         mockMvc.perform(delete(PLANS + "/{planId}/days/99", planId)
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
@@ -114,10 +123,12 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 수정 — 존재하지 않는 장소 → 400")
     void updateItemMissingPlace() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String planId = createPlan(userId, seedPlace("장소"));
         String itemId = firstItemId(userId, planId);
 
+        // when & then
         mockMvc.perform(put(PLANS + "/{planId}/items/{itemId}", planId, itemId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -128,10 +139,12 @@ class TourPlanAuthorizationE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 수정 — 존재하지 않는 카드 → 404")
     void updateMissingItem() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeId = seedPlace("장소");
         String planId = createPlan(userId, placeId);
 
+        // when & then
         mockMvc.perform(put(PLANS + "/{planId}/items/no-such-item", planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

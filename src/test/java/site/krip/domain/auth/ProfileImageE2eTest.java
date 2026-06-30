@@ -61,9 +61,11 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("이미 존재하는데 재추가(POST) → 409")
     void duplicateAddConflict() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img중복");
         addImage(userId);
 
+        // when & then
         mockMvc.perform(multipart(IMAGE).file(jpeg())
                         .with(auth(userId)))
                 .andExpect(status().isConflict());
@@ -72,9 +74,11 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("이미지 수정(PUT) → 200, 새 객체 적재 + 이전 객체 삭제")
     void updateReplacesAndDeletesOld() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img수정");
         String oldUrl = addImage(userId);
 
+        // when & then
         MvcResult res = mockMvc.perform(multipart(IMAGE).file(jpeg()).with(req -> {
                             req.setMethod("PUT");
                             return req;
@@ -93,9 +97,11 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("이미지 삭제(DELETE) → 200, 객체 제거")
     void deleteRemovesObject() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img삭제");
         String url = addImage(userId);
 
+        // when & then
         mockMvc.perform(delete(IMAGE)
                         .with(auth(userId)))
                 .andExpect(status().isOk());
@@ -106,7 +112,10 @@ class ProfileImageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("이미지 없는데 삭제 → 404")
     void deleteWhenNoneNotFound() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img없음");
+
+        // when & then
         mockMvc.perform(delete(IMAGE)
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());

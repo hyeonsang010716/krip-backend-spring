@@ -29,9 +29,11 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("캡션 설정 → 200, 캡션 반영")
     void setCaption() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -44,9 +46,11 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("캡션 삭제(공백만 → null) → 200, caption null")
     void clearCaption() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인2");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, "지울 캡션");
 
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -64,9 +68,11 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @MethodSource("overLimitCaptions")
     @DisplayName("캡션 코드포인트 101 초과(한글/이모지) PATCH → 400")
     void captionOverLimitRejected(String caption) throws Exception {
+        // given
         String owner = fixtures.createActiveUser();
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,11 +83,14 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("이모지 100자(코드포인트 100, UTF-16 200) PATCH → 200 (코드포인트 카운팅 검증)")
     void captionEmojiCodePointCount() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인4");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
         // U+1F600 은 1 코드포인트지만 String.length()는 2 → 코드포인트 카운팅이면 100 으로 통과해야 함.
         String emojiMax = "😀".repeat(CAPTION_MAX);
+
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -93,10 +102,12 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("타인이 캡션 변경 → 404 (비소유자엔 존재 은닉, FeedAccessService 정책과 동일)")
     void captionByOtherNotFound() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인6");
         String other = fixtures.createActiveUser("타인");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/caption", postId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -109,9 +120,11 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("가시성 변경 PUBLIC→PRIVATE → 200")
     void updateVisibility() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인7");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/visibility", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -124,6 +137,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("가시성 PATCH 후 재조회 시 변경이 영속된다 — 생성자 투영 엔티티 dirty checking 검증")
     void updateVisibilityPersists() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인7b");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
@@ -143,9 +157,11 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("잘못된 visibility 값 → 400")
     void updateVisibilityBadValue() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인8");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(patch("/api/feed/posts/{postId}/visibility", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -158,6 +174,7 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("게시물 삭제(200) → 삭제 후 단건 404")
     void deleteThenNotFound() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인9");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
@@ -174,10 +191,12 @@ class FeedPostManageE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("타인이 게시물 삭제 → 404 (비소유자엔 존재 은닉, FeedAccessService 정책과 동일)")
     void deleteByOther() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인10");
         String other = fixtures.createActiveUser("타인2");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(delete("/api/feed/posts/{postId}", postId)
                         .with(auth(other)))
                 .andExpect(status().isNotFound());

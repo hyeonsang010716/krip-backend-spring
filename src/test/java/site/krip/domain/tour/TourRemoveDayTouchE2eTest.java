@@ -21,6 +21,7 @@ class TourRemoveDayTouchE2eTest extends TourTestSupport {
     @Test
     @DisplayName("remove_day → plan.updated_at 갱신(목록 최신순에서 해당 플랜이 맨 앞으로 이동)")
     void removeDayBumpsUpdatedAt() throws Exception {
+        // given
         String user = fixtures.createActiveUser("plan유저");
         String placeId = seedPlace("장소");
 

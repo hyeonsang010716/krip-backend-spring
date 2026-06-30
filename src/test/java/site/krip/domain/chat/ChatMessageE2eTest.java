@@ -57,6 +57,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("before_server_seq 로 과거 메시지 DESC 조회")
     void historyBefore() throws Exception {
+        // given
         String a = fixtures.createActiveUser("히스토리a");
         String b = fixtures.createActiveUser("히스토리b");
         String roomId = createDirectRoom(a, b);
@@ -65,6 +66,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         seedMessage(roomId, 2, b, "두번째");
         seedMessage(roomId, 3, a, "세번째");
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a))
                         .param("before_server_seq", "10")
@@ -80,6 +82,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("after_server_seq 로 이후 메시지 ASC 조회")
     void historyAfter() throws Exception {
+        // given
         String a = fixtures.createActiveUser("이후a");
         String b = fixtures.createActiveUser("이후b");
         String roomId = createDirectRoom(a, b);
@@ -88,6 +91,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         seedMessage(roomId, 2, b, "m2");
         seedMessage(roomId, 3, a, "m3");
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a))
                         .param("after_server_seq", "1")
@@ -102,6 +106,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("limit 보다 많은 메시지 → has_more=true + next_cursor")
     void historyPagination() throws Exception {
+        // given
         String a = fixtures.createActiveUser("페이지a");
         String b = fixtures.createActiveUser("페이지b");
         String roomId = createDirectRoom(a, b);
@@ -110,6 +115,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
             seedMessage(roomId, s, a, "p" + s);
         }
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a))
                         .param("before_server_seq", "100")
@@ -123,10 +129,12 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("before/after 둘 다 지정 → 400")
     void historyBothCursors() throws Exception {
+        // given
         String a = fixtures.createActiveUser("둘다a");
         String b = fixtures.createActiveUser("둘다b");
         String roomId = createDirectRoom(a, b);
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a))
                         .param("before_server_seq", "10")
@@ -138,10 +146,12 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("before/after 둘 다 미지정 → 400")
     void historyNoCursor() throws Exception {
+        // given
         String a = fixtures.createActiveUser("없음a");
         String b = fixtures.createActiveUser("없음b");
         String roomId = createDirectRoom(a, b);
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a)))
                 .andExpect(status().isBadRequest())
@@ -152,10 +162,12 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @ValueSource(strings = {"0", "201"})
     @DisplayName("limit 범위 밖(0/201) → 400")
     void historyLimitOutOfRange(String limit) throws Exception {
+        // given
         String a = fixtures.createActiveUser("limit경계a");
         String b = fixtures.createActiveUser("limit경계b");
         String roomId = createDirectRoom(a, b);
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(a))
                         .param("before_server_seq", "10")
@@ -167,12 +179,14 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("비멤버가 히스토리 조회 → 403")
     void historyNonMember() throws Exception {
+        // given
         String a = fixtures.createActiveUser("멤버a");
         String b = fixtures.createActiveUser("멤버b");
         String outsider = fixtures.createActiveUser("비멤버");
         String roomId = createDirectRoom(a, b);
         seedMessage(roomId, 1, a, "secret");
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/messages", roomId)
                         .with(auth(outsider))
                         .param("before_server_seq", "10"))
@@ -184,11 +198,13 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("본인 메시지 편집(5분 이내) → 200, content 갱신")
     void editOwnMessage() throws Exception {
+        // given
         String a = fixtures.createActiveUser("편집a");
         String b = fixtures.createActiveUser("편집b");
         String roomId = createDirectRoom(a, b);
         String messageId = seedMessage(roomId, 1, a, "원본", Instant.now());
 
+        // when & then
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -202,11 +218,13 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("타인이 메시지 편집 시도 → 403")
     void editOthersMessage() throws Exception {
+        // given
         String a = fixtures.createActiveUser("작성자");
         String b = fixtures.createActiveUser("타인");
         String roomId = createDirectRoom(a, b);
         String messageId = seedMessage(roomId, 1, a, "내것");
 
+        // when & then
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(b))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -217,6 +235,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("5분 편집 제한 시간 경과 후 편집 → 400")
     void editAfterTimeLimit() throws Exception {
+        // given
         String a = fixtures.createActiveUser("늦은편집a");
         String b = fixtures.createActiveUser("늦은편집b");
         String roomId = createDirectRoom(a, b);
@@ -224,6 +243,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
         String messageId = seedMessage(roomId, 1, a, "오래됨",
                 Instant.now().minus(10, ChronoUnit.MINUTES));
 
+        // when & then
         mockMvc.perform(patch("/api/chat/messages/{id}", messageId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -235,8 +255,10 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("존재하지 않는 메시지 편집 → 400")
     void editNonexistentMessage() throws Exception {
+        // given
         String a = fixtures.createActiveUser("편집없음");
 
+        // when & then
         mockMvc.perform(patch("/api/chat/messages/{id}", "no-such-message")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -249,8 +271,10 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @DisplayName("content 빈 문자열 편집 → 400 (검증)")
     void editEmptyContent() throws Exception {
         // content="" 는 DB 조회 전 @NotBlank 검증에서 막히므로 방/메시지 시드 불필요(아무 id 나 가능).
+        // given
         String a = fixtures.createActiveUser("빈편집a");
 
+        // when & then
         mockMvc.perform(patch("/api/chat/messages/{id}", "any-message-id")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -264,6 +288,7 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("본인 메시지 삭제 → 204")
     void deleteOwnMessage() throws Exception {
+        // given
         String a = fixtures.createActiveUser("삭제a");
         String b = fixtures.createActiveUser("삭제b");
         String roomId = createDirectRoom(a, b);
@@ -285,11 +310,13 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("타인이 1:1 메시지 삭제 시도 → 403")
     void deleteOthersMessage() throws Exception {
+        // given
         String a = fixtures.createActiveUser("삭제작성자");
         String b = fixtures.createActiveUser("삭제타인");
         String roomId = createDirectRoom(a, b);
         String messageId = seedMessage(roomId, 1, a, "내메시지");
 
+        // when & then
         mockMvc.perform(delete("/api/chat/messages/{id}", messageId)
                         .with(auth(b)))
                 .andExpect(status().isForbidden());
@@ -298,8 +325,10 @@ class ChatMessageE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("존재하지 않는 메시지 삭제 → 400")
     void deleteNonexistentMessage() throws Exception {
+        // given
         String a = fixtures.createActiveUser("삭제없음");
 
+        // when & then
         mockMvc.perform(delete("/api/chat/messages/{id}", "no-such-message")
                         .with(auth(a)))
                 .andExpect(status().isBadRequest())

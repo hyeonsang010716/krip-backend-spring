@@ -23,10 +23,12 @@ class TripmateDisplayE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("display 토글 — 작성자가 아닌 유저 → 403")
     void toggleDisplayByOtherUser() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("토글주인");
         String other = fixtures.createActiveUser("토글타인");
         String postId = createPost(owner, "토글 권한 글");
 
+        // when & then
         mockMvc.perform(patch("/api/tripmate/posts/{postId}/display", postId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
@@ -35,8 +37,10 @@ class TripmateDisplayE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("display 토글 — 존재하지 않는 게시글 → 404")
     void toggleDisplayMissingPost() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("토글미존재");
 
+        // when & then
         mockMvc.perform(patch("/api/tripmate/posts/no-such-post/display")
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -45,6 +49,7 @@ class TripmateDisplayE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("비표시(display=false)로 토글된 게시글은 공개 목록에서 제외된다")
     void hiddenPostExcludedFromList() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("비표시작성자");
         String viewer = fixtures.createActiveUser("목록뷰어");
         String postId = createPost(owner, "곧 숨길 글");

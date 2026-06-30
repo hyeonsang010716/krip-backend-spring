@@ -20,6 +20,7 @@ class MuteLeftMemberE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("이미 퇴장한 멤버가 방 mute 시도 → 400 (활성 멤버 아님)")
     void leftMemberRoomMuteRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("퇴장한멤버");
         String peerId = fixtures.createActiveUser("남은멤버");
         String roomId = seedRoomWithMember(userId, peerId);
@@ -27,6 +28,7 @@ class MuteLeftMemberE2eTest extends MuteTestSupport {
         // @Modifying 쿼리라 tx 필요 — 생산(RoomService.leave/kick)과 동일하게 txTemplate 로 감싼다.
         txTemplate.execute(s -> memberRepo.markLeftIfActive(roomId, userId));
 
+        // when & then
         putRoomMute(userId, roomId, true).andExpect(status().isBadRequest());
     }
 }

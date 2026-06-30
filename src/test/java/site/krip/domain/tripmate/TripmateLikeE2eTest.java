@@ -19,6 +19,7 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("좋아요 추가(201)→중복추가(400)→유저목록→취소(200)→재취소(400)")
     void likeLifecycle() throws Exception {
+        // given
         String author = fixtures.createActiveUser("글쓴이");
         String liker = fixtures.createActiveUser("좋아요누른이");
         String postId = createPost(author);
@@ -57,9 +58,11 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("본인 게시글 self-like 는 허용된다(201)")
     void selfLikeAllowed() throws Exception {
+        // given
         String author = fixtures.createActiveUser("셀프좋아요");
         String postId = createPost(author);
 
+        // when & then
         mockMvc.perform(post("/api/tripmate/posts/{postId}/like", postId)
                         .with(auth(author)))
                 .andExpect(status().isCreated())
@@ -69,6 +72,7 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("좋아요 후 단건 조회 시 is_liked=true, like_count 반영")
     void likeReflectedInDetail() throws Exception {
+        // given
         String author = fixtures.createActiveUser("작성자L");
         String liker = fixtures.createActiveUser("좋아요L");
         String postId = createPost(author);
@@ -87,7 +91,10 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("존재하지 않는 게시글 좋아요 추가 → 404 (단건 조회와 동일한 존재 은닉)")
     void likeMissingPost() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(post("/api/tripmate/posts/no-such-post/like")
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -96,7 +103,10 @@ class TripmateLikeE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("존재하지 않는 게시글 좋아요 유저 목록 → 404")
     void likedUsersMissingPost() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get("/api/tripmate/posts/no-such-post/likes")
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());

@@ -33,10 +33,13 @@ class TourPlanItemTest {
     @Test
     @DisplayName("replace: display_name/address 가 null 이면 빈 문자열로 보정")
     void replaceCoalescesNullSnapshot() {
+        // given
         TourPlanItem item = new TourPlanItem("plan-1", 1, 100.0, "place-1", "경복궁", "서울 종로구", "10:00");
 
+        // when
         item.replace("place-2", null, null, "11:00");
 
+        // then
         assertThat(item.getDisplayName()).isEmpty();
         assertThat(item.getAddress()).isEmpty();
     }

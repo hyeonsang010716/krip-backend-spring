@@ -34,6 +34,7 @@ class WithdrawPurgePortIsolationIntegrationTest extends WithdrawPurgeTestSupport
     @Test
     @DisplayName("외부 purge 포트 하나가 실패해도 나머지 포트는 격리돼 실행되고, 작업 큐(doc)는 보존된다")
     void portFailureIsolatedAndDocRetained() {
+        // given
         String userId = fixtures.createActiveUser("포트격리");
         withdrawService.requestWithdraw(userId);
         makeDue(userId);
@@ -41,8 +42,10 @@ class WithdrawPurgePortIsolationIntegrationTest extends WithdrawPurgeTestSupport
         doThrow(new RuntimeException("tripmate purge down"))
                 .when(tripmatePurge).purgeUserMongoData(userId);
 
+        // when
         withdrawService.purge(userId);
 
+        // then
         // 한 포트 실패가 나머지 포트를 건너뛰지 않는다(격리).
         verify(tourPurge).purgeUserMongoData(userId);
         verify(friendPurge).purgeUserMongoData(userId);

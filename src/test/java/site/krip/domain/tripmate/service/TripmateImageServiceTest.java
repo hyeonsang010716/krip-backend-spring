@@ -54,11 +54,13 @@ class TripmateImageServiceTest {
     @Test
     @DisplayName("업로드: Mongo 저장 실패 시 방금 올린 S3 객체를 보상 삭제하고 예외 전파")
     void compensatesStorageWhenSaveFails() {
+        // given
         when(imageProcessor.sanitize(any())).thenReturn(new ProcessedVariant(new byte[]{1}, "image/jpeg", "jpg"));
         when(storage.uploadPerm(any(), anyLong(), anyString(), anyString(), anyString()))
                 .thenReturn("https://s3/uploads/perm/u/x.jpg");
         when(imageRepository.save(any())).thenThrow(new RuntimeException("mongo down"));
 
+        // when & then
         assertThatThrownBy(() -> service.uploadImages("u", List.of(new byte[]{1})))
                 .isInstanceOf(RuntimeException.class);
 

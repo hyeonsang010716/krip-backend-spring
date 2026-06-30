@@ -31,6 +31,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("검색: 제목/내용에 없어도 작성자 닉네임 부분일치로 글이 검색된다")
     void searchByAuthorName() throws Exception {
+        // given
         String author = fixtures.createActiveUser("김탐험가");
         String searcher = fixtures.createActiveUser("검색자");
         // 제목/내용에는 '탐험가' 가 없음 — 작성자 닉네임 분기로만 매칭되어야 한다.
@@ -54,6 +55,7 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("생성→단건→목록→검색→수정→display 토글→삭제→삭제후 404 전체 흐름")
     void fullLifecycle() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("작성자");
 
         // 생성 (201)
@@ -126,7 +128,10 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("존재하지 않는 게시글 단건 조회 → 404")
     void getMissingPost() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get("/api/tripmate/posts/no-such-post")
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -135,10 +140,12 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("다른 유저가 남의 글 수정 → 403")
     void updateByOtherUserForbidden() throws Exception {
+        // given
         String author = fixtures.createActiveUser("원작성자");
         String other = fixtures.createActiveUser("타인");
         String postId = createPost(author, "원본 글", "원본 글 본문 내용입니다.", "서울");
 
+        // when & then
         mockMvc.perform(put("/api/tripmate/posts/{postId}", postId)
                         .with(auth(other))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -149,10 +156,12 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("다른 유저가 남의 글 삭제 → 403")
     void deleteByOtherUserForbidden() throws Exception {
+        // given
         String author = fixtures.createActiveUser("원작성자2");
         String other = fixtures.createActiveUser("타인2");
         String postId = createPost(author, "삭제대상 글", "삭제 권한 테스트용 본문입니다.", "대구");
 
+        // when & then
         mockMvc.perform(delete("/api/tripmate/posts/{postId}", postId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
@@ -161,7 +170,10 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @Test
     @DisplayName("존재하지 않는 게시글 수정 → 404")
     void updateMissingPost() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(put("/api/tripmate/posts/no-such-post")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -179,7 +191,10 @@ class TripmatePostE2eTest extends TripmateTestSupport {
     @MethodSource("invalidPostBodies")
     @DisplayName("단일 필드 유효성 위반 → 400")
     void createInvalidBodyRejected(String label, BodyFn body) throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(post(POSTS)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

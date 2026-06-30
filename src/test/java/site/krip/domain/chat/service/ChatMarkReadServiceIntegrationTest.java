@@ -34,6 +34,7 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("markRead 는 GREATEST 라 더 작은 seq 로는 내려가지 않는다")
     void markReadGreatestPreventsRegression() {
+        // given
         String a = fixtures.createActiveUser("readA");
         String b = fixtures.createActiveUser("readB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
@@ -63,6 +64,7 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("현재 seq 를 넘는 up_to 는 현재 seq 로 클램프된다 — 미래 seq 주입 차단")
     void markReadClampsBeyondCurrentSeq() {
+        // given
         String a = fixtures.createActiveUser("clampA");
         String b = fixtures.createActiveUser("clampB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
@@ -70,7 +72,10 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
         messageService.sendMessage(b, "sess-b", room, "c1", MessageType.TEXT, "1");
         MessageSentAck m2 = messageService.sendMessage(b, "sess-b", room, "c2", MessageType.TEXT, "2");
 
+        // when
         long f = roomService.markRead(a, "sess-a", room, 9_999_999_999L);
+
+        // then
         assertThat(f).isEqualTo(m2.serverSeq());
         assertThat(memberRepo.findLastReadSeq(room, a)).contains(m2.serverSeq());
     }
@@ -78,6 +83,7 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("최신까지 읽으면 unread 0, 부분만 읽으면 잔여 개수가 남는다")
     void markReadSyncsUnreadCache() {
+        // given
         String a = fixtures.createActiveUser("uA");
         String b = fixtures.createActiveUser("uB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
@@ -103,11 +109,13 @@ class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("비멤버가 markRead 하면 403")
     void markReadByNonMemberForbidden() {
+        // given
         String a = fixtures.createActiveUser("rdA");
         String b = fixtures.createActiveUser("rdB");
         String stranger = fixtures.createActiveUser("rdStranger");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
 
+        // when & then
         assertThatThrownBy(() -> roomService.markRead(stranger, "sess-x", room, 1))
                 .isInstanceOf(ApiException.class)
                 .extracting(e -> ((ApiException) e).getStatus())

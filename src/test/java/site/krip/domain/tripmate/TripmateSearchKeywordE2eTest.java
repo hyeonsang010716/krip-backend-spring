@@ -20,7 +20,10 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("빈 검색어(keyword=) → 400")
     void emptyKeyword() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get(SEARCH).param("keyword", "")
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
@@ -29,7 +32,10 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("공백만 검색어 → 400")
     void blankKeyword() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get(SEARCH).param("keyword", "   ")
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
@@ -38,7 +44,10 @@ class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("정상 검색어 → 200, posts 배열 반환")
     void validKeyword() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get(SEARCH).param("keyword", "서울")
                         .with(auth(userId)))
                 .andExpect(status().isOk())

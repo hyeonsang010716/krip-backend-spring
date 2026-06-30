@@ -44,6 +44,7 @@ class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("동시 추가 — 하나만 성공(나머지 409), DB 는 승자 URL, 고아 S3 없음")
     void concurrentAddProfileImage() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("프로필동시");
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
@@ -52,11 +53,14 @@ class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
         Callable<Object> b = () -> attempt(userId, start);
         Future<Object> fa = pool.submit(a);
         Future<Object> fb = pool.submit(b);
+
+        // when
         start.countDown();                      // 동시 출발
 
         List<Object> results = List.of(fa.get(), fb.get());
         pool.shutdown();
 
+        // then
         long success = results.stream().filter(r -> r instanceof ProfileImageResponse).count();
         long conflict = results.stream().filter(r -> r instanceof ProfileImageAlreadyExistsException).count();
         assertThat(success).isEqualTo(1);

@@ -20,6 +20,7 @@ class TourRemoveDayGapE2eTest extends TourTestSupport {
     @Test
     @DisplayName("remove_day → travel_days 불변(gap 보존), 다른 day 항목 유지, 이후 add_day 는 max+1")
     void removeDayPreservesGapThenAddDayIsMaxPlusOne() throws Exception {
+        // given
         String user = fixtures.createActiveUser("plan유저");
         String placeId = seedPlace("장소");
 

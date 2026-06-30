@@ -34,6 +34,7 @@ class ChatWebSocketHandlerLivenessTest extends ChatTestSupport {
     @Test
     @DisplayName("pong 최근 세션 — ping 전송 + Redis TTL 연장, 닫지 않음")
     void freshSessionPingedAndTtlExtended() throws Exception {
+        // given
         String sid = "WS-live-fresh";
         String uid = "user-live-fresh";
         redis.opsForValue().set(ChatRedisKeys.sess(sid), "x", Duration.ofSeconds(10));
@@ -42,8 +43,10 @@ class ChatWebSocketHandlerLivenessTest extends ChatTestSupport {
         handler.lastPongAt.put(sid, System.currentTimeMillis()); // 방금 pong
 
         try {
+            // when
             handler.sweepLiveness();
 
+            // then
             verify(ws).sendMessage(isA(PingMessage.class));
             verify(ws, never()).close(any(CloseStatus.class));
             Long ttl = redis.getExpire(ChatRedisKeys.sess(sid));
@@ -58,6 +61,7 @@ class ChatWebSocketHandlerLivenessTest extends ChatTestSupport {
     @Test
     @DisplayName("pong 끊긴 세션 — 닫고 Redis TTL 연장하지 않음")
     void staleSessionClosedAndTtlNotExtended() throws Exception {
+        // given
         String sid = "WS-live-stale";
         String uid = "user-live-stale";
         redis.opsForValue().set(ChatRedisKeys.sess(sid), "x", Duration.ofSeconds(10));
@@ -66,8 +70,10 @@ class ChatWebSocketHandlerLivenessTest extends ChatTestSupport {
         handler.lastPongAt.put(sid, System.currentTimeMillis() - 200_000); // 200s 전 — 타임아웃 초과
 
         try {
+            // when
             handler.sweepLiveness();
 
+            // then
             verify(ws).close(any(CloseStatus.class));
             Long ttl = redis.getExpire(ChatRedisKeys.sess(sid));
             assertThat(ttl).isLessThanOrEqualTo(10L); // 연장 안 됨

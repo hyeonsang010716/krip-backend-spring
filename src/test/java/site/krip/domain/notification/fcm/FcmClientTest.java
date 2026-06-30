@@ -46,9 +46,13 @@ class FcmClientTest {
         @Test
         @DisplayName("1250 개 분할: 모든 배치 ≤500, 합쳐서 원본과 순서·내용 동일")
         void splitsLargeListLosslessly() {
+            // given
             List<String> all = tokens(1250);
+
+            // when
             List<List<String>> chunks = FcmClient.partition(all, FcmClient.MAX_MULTICAST_BATCH);
 
+            // then
             assertThat(chunks).hasSize(3);
             assertThat(chunks).allSatisfy(c -> assertThat(c.size()).isLessThanOrEqualTo(500));
 
@@ -136,22 +140,32 @@ class FcmClientTest {
         @Test
         @DisplayName("성공 0건이라도 전건 토큰 무효(UNREGISTERED 등)면 서킷에 실패로 반영 안 함 — 멀쩡한 FCM 보호")
         void allTokenInvalidNeverOpensCircuit() {
+            // given
             FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
+
+            // when
             for (int i = 0; i < 10; i++) {
                 FcmClient.recordBatchOutcome(cb, 0, true, false); // 응답은 있으나 전건 토큰 무효
             }
+
+            // then
             assertThat(cb.tryAcquire()).isTrue(); // 아무리 반복해도 open 되지 않음
         }
 
         @Test
         @DisplayName("성공 1건이라도 있으면 close + 실패 카운트 리셋")
         void anySuccessResetsCircuit() {
+            // given
             FcmCircuitBreaker cb = new FcmCircuitBreaker(3, 60_000);
+
+            // when
             FcmClient.recordBatchOutcome(cb, 0, true, true);
             FcmClient.recordBatchOutcome(cb, 0, true, true);
             FcmClient.recordBatchOutcome(cb, 3, true, true); // 일부 성공 → 리셋
             FcmClient.recordBatchOutcome(cb, 0, true, true);
             FcmClient.recordBatchOutcome(cb, 0, true, true);
+
+            // then
             assertThat(cb.tryAcquire()).isTrue(); // 리셋 덕분에 아직 3연속 아님
         }
 

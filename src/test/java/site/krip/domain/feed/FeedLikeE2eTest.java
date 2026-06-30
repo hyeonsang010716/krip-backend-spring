@@ -22,6 +22,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("좋아요 추가(201)→중복(400)→목록→취소(200)→재취소(400)")
     void likeLifecycle() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("작성자");
         String liker = fixtures.createActiveUser("좋아요유저");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
@@ -60,9 +61,11 @@ class FeedLikeE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("본인 글 본인 좋아요 허용 (201)")
     void selfLikeAllowed() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("자기좋아요");
         String postId = seedPost(owner, FeedVisibility.PRIVATE, null);
 
+        // when & then
         mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(owner)))
                 .andExpect(status().isCreated())
@@ -72,10 +75,12 @@ class FeedLikeE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("가시성 미충족 글 좋아요 → 404")
     void likeNotVisible() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인");
         String stranger = fixtures.createActiveUser("낯선이");
         String postId = seedPost(owner, FeedVisibility.FRIENDS, null);
 
+        // when & then
         mockMvc.perform(post("/api/feed/posts/{postId}/like", postId)
                         .with(auth(stranger)))
                 .andExpect(status().isNotFound());
@@ -93,6 +98,7 @@ class FeedLikeE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("좋아요 목록 커서 페이지네이션 — 31명: 첫 페이지 30명+커서, 다음 페이지 1명+null 커서")
     void likedUsersPaginates() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("페이지작성자");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 

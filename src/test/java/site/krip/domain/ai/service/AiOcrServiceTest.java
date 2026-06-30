@@ -44,7 +44,10 @@ class AiOcrServiceTest {
     @Test
     @DisplayName("batch 5개 초과 → 400, AI 미호출")
     void tooManyFilesRejected() {
+        // given
         List<MultipartFile> files = Collections.nCopies(6, mock(MultipartFile.class));
+
+        // when & then
         assertThatThrownBy(() -> service.ocrBatch(files))
                 .isInstanceOf(ApiException.class)
                 .satisfies(e -> assertThat(((ApiException) e).getStatus()).isEqualTo(BAD_REQUEST));

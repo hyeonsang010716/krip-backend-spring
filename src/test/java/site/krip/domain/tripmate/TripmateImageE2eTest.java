@@ -49,8 +49,10 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("다건 업로드 → 201, 응답 URL 들이 스토리지에 적재된다")
     void uploadStoresAllFiles() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img업로드");
 
+        // when & then
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))
                         .with(auth(userId)))
                 .andExpect(status().isCreated())
@@ -65,11 +67,14 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("11개 초과 업로드 → 400")
     void tooManyFilesRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img과다");
         MockMultipartHttpServletRequestBuilder req = multipart(IMAGES);
         for (int i = 0; i < 11; i++) {
             req.file(jpeg("f" + i + ".jpg"));
         }
+
+        // when & then
         mockMvc.perform(req
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
@@ -78,7 +83,10 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("허용되지 않는 content-type → 400")
     void wrongContentTypeRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img타입");
+
+        // when & then
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "x.pdf", "application/pdf", new byte[]{1}))
                         .with(auth(userId)))
@@ -88,7 +96,10 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("content-type 은 이미지지만 실제 이미지 바이트가 아니면 → 400 (재인코딩 파이프라인 거절)")
     void nonImageBytesRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img위장");
+
+        // when & then
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "fake.jpg", "image/jpeg", new byte[]{1, 2, 3}))
                         .with(auth(userId)))
@@ -98,7 +109,10 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("gif 는 허용 목록에서 제외 → 400")
     void gifRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("imggif");
+
+        // when & then
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "a.gif", "image/gif", new byte[]{1}))
                         .with(auth(userId)))
@@ -108,8 +122,11 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("10MB 초과 파일 → 400 (컨트롤러 검증)")
     void oversizeRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img크기");
         byte[] big = new byte[10 * 1024 * 1024 + 1024];
+
+        // when & then
         mockMvc.perform(multipart(IMAGES)
                         .file(new MockMultipartFile("files", "big.jpg", "image/jpeg", big))
                         .with(auth(userId)))
@@ -119,6 +136,7 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("고아 정리: 유예기간 지난 미참조 이미지를 삭제(deleted_count), 재실행은 0")
     void cleanupRemovesOrphans() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img정리");
 
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))
@@ -155,6 +173,7 @@ class TripmateImageE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("고아 정리: S3 삭제 부분 실패 시 해당 메타데이터는 보존돼 다음 호출에서 재시도된다")
     void cleanupPreservesMetadataOnPartialS3Failure() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("img부분실패");
 
         MvcResult res = mockMvc.perform(multipart(IMAGES).file(jpeg("a.jpg")).file(jpeg("b.jpg"))

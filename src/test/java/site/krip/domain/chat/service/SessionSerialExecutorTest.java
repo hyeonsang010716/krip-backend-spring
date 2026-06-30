@@ -29,10 +29,13 @@ class SessionSerialExecutorTest {
     @Test
     @DisplayName("제출 순서대로 직렬 실행한다")
     void runsTasksInSubmissionOrder() throws Exception {
+        // given
         ExecutorService pool = Executors.newSingleThreadExecutor();
         SessionSerialExecutor exec = new SessionSerialExecutor(pool, 1000);
         List<Integer> order = new CopyOnWriteArrayList<>();
         CountDownLatch done = new CountDownLatch(5);
+
+        // when
         for (int i = 0; i < 5; i++) {
             int n = i;
             exec.submit(() -> {
@@ -40,6 +43,8 @@ class SessionSerialExecutorTest {
                 done.countDown();
             });
         }
+
+        // then
         assertThat(done.await(5, TimeUnit.SECONDS)).isTrue();
         assertThat(order).containsExactly(0, 1, 2, 3, 4);
         pool.shutdownNow();
@@ -48,6 +53,7 @@ class SessionSerialExecutorTest {
     @Test
     @DisplayName("execute 가 reject 돼도 executor 는 깨지지 않고 다음 submit 이 정상 드레인한다")
     void recoversAfterPoolRejection() throws Exception {
+        // given
         ExecutorService real = Executors.newSingleThreadExecutor();
         AtomicInteger executeCalls = new AtomicInteger();
         Executor flaky = r -> {
@@ -80,6 +86,7 @@ class SessionSerialExecutorTest {
     void noTaskLostUnderContentionWithRejectingPool() throws Exception {
         // 작은 풀 + AbortPolicy → 부하 시 execute 가 reject. 여러 세션·스레드가 같은 executor 에 동시 제출해도
         // submit 이 예외 없이 반환한(수락된) 작업은 전부 실행돼야 한다. 구버그면 일부가 strand 돼 executed < accepted.
+        // given
         ThreadPoolExecutor pool = new ThreadPoolExecutor(4, 4, 0, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(8), new ThreadPoolExecutor.AbortPolicy());
 
@@ -123,9 +130,12 @@ class SessionSerialExecutorTest {
                 }
             });
         }
+
+        // when
         start.countDown();
         assertThat(finished.await(30, TimeUnit.SECONDS)).isTrue();
 
+        // then
         // 수락된 작업이 전부 실행될 때까지 대기 — strand 면 영영 도달 못 해 타임아웃.
         await().atMost(10, TimeUnit.SECONDS)
                 .untilAsserted(() -> assertThat(executed.get()).isEqualTo(accepted.get()));

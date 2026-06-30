@@ -62,8 +62,10 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("정상 PNG -> 원본 + small(240) + medium(720) 3종 변형을 생성한다")
     void validPngProducesThreeVariants() throws Exception {
+        // when
         ProcessedImageSet result = processor.process(png(1000, 800));
 
+        // then
         assertThat(result.original()).isNotNull();
         assertThat(result.small()).isNotNull();
         assertThat(result.medium()).isNotNull();
@@ -81,8 +83,10 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("정상 JPEG -> 3종 변형, small/medium 정사각형")
     void validJpegProducesThreeVariants() throws Exception {
+        // when
         ProcessedImageSet result = processor.process(jpeg(1200, 900));
 
+        // then
         assertThat(dims(result.small().data())).containsExactly(240, 240);
         assertThat(dims(result.medium().data())).containsExactly(720, 720);
         assertThat(result.original().contentType()).isEqualTo("image/jpeg");
@@ -91,11 +95,14 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("작은 JPEG(2048 이하, 미회전) 원본 — EXIF 메타데이터를 무손실 제거하고 픽셀은 보존한다")
     void smallJpegOriginalStripsMetadata() throws Exception {
+        // given
         byte[] src = jpegWithExif(800, 600, MARKER);
         assertThat(indexOf(src, MARKER)).as("입력 EXIF 에 마커 존재").isGreaterThan(0);
 
+        // when
         byte[] original = processor.process(src).original().data();
 
+        // then
         assertThat(indexOf(original, MARKER)).as("EXIF 메타데이터가 제거돼야").isEqualTo(-1);
         assertThat(original).isNotSameAs(src);
         assertThat(dims(original)).containsExactly(800, 600); // 픽셀 무손실
@@ -105,11 +112,14 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("작은 PNG(미회전) 원본 — tEXt 메타데이터 청크를 제거하고 픽셀은 보존한다")
     void smallPngOriginalStripsMetadata() throws Exception {
+        // given
         byte[] src = pngWithTextChunk(500, 500, MARKER);
         assertThat(indexOf(src, MARKER)).as("입력 tEXt 에 마커 존재").isGreaterThan(0);
 
+        // when
         byte[] original = processor.process(src).original().data();
 
+        // then
         assertThat(indexOf(original, MARKER)).as("텍스트 청크가 제거돼야").isEqualTo(-1);
         assertThat(original).isNotSameAs(src);
         assertThat(dims(original)).containsExactly(500, 500);
@@ -119,8 +129,11 @@ class FeedImageProcessorTest {
     @Test
     @DisplayName("2048 초과 원본은 한 변 <= 2048 로 축소된다")
     void oversizedOriginalIsShrunkTo2048() throws Exception {
+        // when
         // 3000x1500 -> longest side 2048.
         ProcessedImageSet result = processor.process(jpeg(3000, 1500));
+
+        // then
         int[] d = dims(result.original().data());
         assertThat(Math.max(d[0], d[1])).isLessThanOrEqualTo(2048);
         // 종횡비 유지 -> 2048 x 1024 근처.

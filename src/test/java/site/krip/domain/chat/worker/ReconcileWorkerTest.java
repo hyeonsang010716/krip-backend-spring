@@ -60,8 +60,10 @@ class ReconcileWorkerTest {
     @Test
     @DisplayName("dirty 가 비면 진전 0 반환, 저장소 미접근")
     void emptyDirtyIsNoOp() {
+        // given
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(Set.of());
 
+        // when & then
         assertThat(worker.reconcileOnce().resolved()).isZero();
         verifyNoInteractions(messageRepo, roomRepo);
     }
@@ -69,10 +71,12 @@ class ReconcileWorkerTest {
     @Test
     @DisplayName("정상: 읽은 방의 last_message 를 Mongo 값으로 갱신하고 해소분만 SREM")
     void happyPathUpdatesAndRemoves() {
+        // given
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(Set.of("r1"));
         when(messageRepo.findLastByRooms(List.of("r1")))
                 .thenReturn(Map.of("r1", new LastMessage("m1", 5L, new Date())));
 
+        // when & then
         assertThat(worker.reconcileOnce().resolved()).isEqualTo(1);
         verify(roomRepo).updateLastMessageIfGreater(eq("r1"), eq("m1"), eq(5L), any());
         verify(setOps).remove(KEY, "r1");
@@ -81,9 +85,11 @@ class ReconcileWorkerTest {
     @Test
     @DisplayName("Mongo aggregate 실패 → set 에 그대로 유지(SREM 없음), 진전 0")
     void mongoFailureKeepsInSet() {
+        // given
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(Set.of("r1", "r2"));
         when(messageRepo.findLastByRooms(any())).thenThrow(new RuntimeException("mongo down"));
 
+        // when & then
         assertThat(worker.reconcileOnce().resolved()).isZero();
         verify(setOps, never()).remove(any(), any());
         verify(roomRepo, never()).updateLastMessageIfGreater(any(), any(), anyLong(), any());
@@ -92,12 +98,14 @@ class ReconcileWorkerTest {
     @Test
     @DisplayName("방별 UPDATE 실패 → 실패분은 set 에 유지(SREM 없음)")
     void perRoomFailureKeepsInSet() {
+        // given
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(Set.of("r1"));
         when(messageRepo.findLastByRooms(List.of("r1")))
                 .thenReturn(Map.of("r1", new LastMessage("m1", 5L, new Date())));
         doThrow(new RuntimeException("rdb down"))
                 .when(roomRepo).updateLastMessageIfGreater(eq("r1"), any(), anyLong(), any());
 
+        // when & then
         assertThat(worker.reconcileOnce().resolved()).isZero();
         verify(setOps, never()).remove(any(), any());
     }
@@ -118,12 +126,15 @@ class ReconcileWorkerTest {
     @DisplayName("백로그가 끝없어도 tick 은 배치 예산(50회)에서 멈춘다 — 무한 drain 방지")
     void tickIsBoundedByBatchBudget() {
         // 매 배치가 가득 차고(500) Mongo hit 0 → 전건 해소 → reconcileOnce 가 매번 BATCH_SIZE 반환 → 끝없이 drain 가능
+        // given
         Set<String> full = fullDirtySet();
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(full);
         when(messageRepo.findLastByRooms(any())).thenReturn(Map.of());
 
+        // when
         worker.reconcileTick();
 
+        // then
         // MAX_BATCHES_PER_TICK(50) 에서 멈춰야 한다 — 무한 루프면 @Timeout 으로 실패.
         verify(setOps, times(50)).distinctRandomMembers(eq(KEY), anyLong());
     }
@@ -132,6 +143,7 @@ class ReconcileWorkerTest {
     @Timeout(10)
     @DisplayName("full 배치 + 일부 UPDATE 실패라도 진전이 있으면 계속 drain (조기 종료 회귀)")
     void partialFailureStillDrainsWithinBudget() {
+        // given
         Set<String> full = fullDirtySet();
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(full);
         when(messageRepo.findLastByRooms(any())).thenReturn(docsFor(full));
@@ -139,8 +151,10 @@ class ReconcileWorkerTest {
         doThrow(new RuntimeException("rdb hiccup"))
                 .when(roomRepo).updateLastMessageIfGreater(eq("r0"), any(), anyLong(), any());
 
+        // when
         worker.reconcileTick();
 
+        // then
         // 옛 구현(resolved>=BATCH_SIZE 기준)이면 1배치 후 멈췄다. 새 구현은 진전이 있으니 예산(50)까지 계속.
         verify(setOps, times(50)).distinctRandomMembers(eq(KEY), anyLong());
     }
@@ -149,6 +163,7 @@ class ReconcileWorkerTest {
     @Timeout(10)
     @DisplayName("full 배치라도 전건 실패(진전 0)면 1배치 후 백오프 — 죽은 DB 를 예산까지 두들기지 않음")
     void totalFailureBacksOffAfterOneBatch() {
+        // given
         Set<String> full = fullDirtySet();
         when(setOps.distinctRandomMembers(eq(KEY), anyLong())).thenReturn(full);
         when(messageRepo.findLastByRooms(any())).thenReturn(docsFor(full));
@@ -156,8 +171,10 @@ class ReconcileWorkerTest {
         doThrow(new RuntimeException("rdb down"))
                 .when(roomRepo).updateLastMessageIfGreater(any(), any(), anyLong(), any());
 
+        // when
         worker.reconcileTick();
 
+        // then
         verify(setOps, times(1)).distinctRandomMembers(eq(KEY), anyLong());
     }
 }

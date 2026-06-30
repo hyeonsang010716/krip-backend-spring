@@ -19,10 +19,13 @@ class KeysetCursorTest {
     @Test
     @DisplayName("encode↔decode 라운드트립 — id 에 '_' 가 있어도 첫 '_' 로만 분리해 보존")
     void encodeDecodeRoundTrip() {
+        // given
         Instant t = Instant.parse("2024-01-02T03:04:05.123Z");
 
+        // when
         KeysetCursor.Decoded d = KeysetCursor.decode(KeysetCursor.encode(t, "fr_abc_123"));
 
+        // then
         assertThat(d.sortKey()).isEqualTo(t);
         assertThat(d.id()).isEqualTo("fr_abc_123");
     }

@@ -44,8 +44,10 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("토큰 등록 → 201, fcm_token_id/created_at 반환")
     void register() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("토큰등록자");
 
+        // when & then
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -58,12 +60,15 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("동일 유저가 같은 토큰 재등록 → 멱등(같은 fcm_token_id)")
     void reRegisterSameTokenIdempotent() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("재등록자");
         String token = "device-token-idem";
 
+        // when
         String firstId = idFrom(registerToken(userId, token), "fcm_token_id");
         String secondId = idFrom(registerToken(userId, token), "fcm_token_id");
 
+        // then
         assertThat(secondId).as("같은 토큰 재등록은 동일 fcm_token_id 를 돌려줘야 한다").isEqualTo(firstId);
     }
 
@@ -91,13 +96,16 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("다른 유저가 같은 토큰 등록 → owner 교체(같은 행, 소유자만 바뀜)")
     void reRegisterSwapsOwner() throws Exception {
+        // given
         String ownerA = fixtures.createActiveUser("소유자A");
         String ownerB = fixtures.createActiveUser("소유자B");
         String token = "device-token-swap";
 
+        // when
         String firstId = idFrom(registerToken(ownerA, token), "fcm_token_id");
         String secondId = idFrom(registerToken(ownerB, token), "fcm_token_id");
 
+        // then
         // 같은 토큰 → 같은 행(같은 id), 소유자만 B 로 교체.
         assertThat(secondId).as("동일 토큰은 owner 교체일 뿐 새 행이 아니다").isEqualTo(firstId);
         FcmToken row = tokenRepo.findByToken(token).orElseThrow();
@@ -107,11 +115,13 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("본인 소유 토큰 해제 → 200, 메시지 + 실제 삭제")
     void unregister() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("해제자");
         String token = "device-token-del";
 
         registerToken(userId, token);
 
+        // when & then
         mockMvc.perform(delete("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -125,8 +135,10 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("등록된 적 없는 토큰 해제 → 멱등 200")
     void unregisterAbsentIdempotent() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("미존재해제자");
 
+        // when & then
         mockMvc.perform(delete("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,9 +151,11 @@ class FcmTokenE2eTest extends IntegrationTestSupport {
     @MethodSource("invalidTokenBodies")
     @DisplayName("토큰 검증 실패 본문 → 400")
     void invalidTokenBodyBadRequest(String desc, boolean includeToken, String value) throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String body = includeToken ? json("token", value) : json();
 
+        // when & then
         mockMvc.perform(post("/api/notification/fcm-token")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

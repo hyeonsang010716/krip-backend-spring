@@ -21,6 +21,7 @@ class WithdrawE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("탈퇴 요청 → 200 + scheduled_purge_at + 쿠키 만료, 이후 INACTIVE 라 프로필은 419")
     void withdrawThenPendingBlocksProfile() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("탈퇴유저");
 
         mockMvc.perform(delete("/api/auth/withdraw")
@@ -39,6 +40,7 @@ class WithdrawE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("탈퇴 후 유예 내 취소 → ACTIVE 복구, 프로필 다시 200")
     void cancelRestoresActive() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("복구유저");
 
         mockMvc.perform(delete("/api/auth/withdraw")
@@ -58,6 +60,7 @@ class WithdrawE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("이미 탈퇴 진행 중인 유저가 재탈퇴 → 409")
     void doubleWithdrawConflict() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("중복탈퇴");
 
         mockMvc.perform(delete("/api/auth/withdraw")

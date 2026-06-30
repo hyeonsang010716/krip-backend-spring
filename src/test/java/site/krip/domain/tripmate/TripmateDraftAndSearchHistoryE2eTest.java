@@ -30,6 +30,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("draft 저장(PUT)→조회(GET)→삭제(DELETE) 흐름")
     void draftLifecycle() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("임시저장유저");
 
         String draftBody = json(
@@ -68,6 +69,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("저장한 적 없는 draft 조회 → 200 (본문 JSON null)")
     void getEmptyDraft() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         // 저장된 draft 가 없으면 Optional.empty → 200 + JSON null 직렬화.
         mockMvc.perform(get(DRAFT)
@@ -79,7 +81,10 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("draft 는 모든 필드 선택 — 빈 본문으로 저장 가능(200)")
     void saveEmptyDraft() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(put(DRAFT)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -100,6 +105,7 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("검색→기록 목록→한 건 삭제→전체 삭제 흐름")
     void searchHistoryLifecycle() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("검색유저");
 
         search(userId, "부산");
@@ -141,7 +147,10 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("검색 keyword 파라미터 누락 → 400")
     void searchMissingKeyword() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get(SEARCH)
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());
@@ -150,7 +159,10 @@ class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("검색 기록 한 건 삭제 시 search_name 누락 → 400")
     void deleteOneMissingParam() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(delete(SEARCH_HISTORY + "/one")
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());

@@ -27,6 +27,7 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("플랜 생성→조회→목록→제목수정→일차추가→카드추가/수정/이동/삭제→일차삭제→삭제 전체 흐름")
     void fullLifecycle() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("플랜작성자");
         String placeA = seedPlace("경복궁", "서울 종로구");
         String placeB = seedPlace("남산타워", "서울 용산구");
@@ -170,6 +171,7 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 이동 — 존재하지 않는 after_item_id(bogus position) → 400")
     void moveItemBogusPosition() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeA = seedPlace("place A", "addr A");
         String planId = createPlan(userId, "이동 테스트", 2, placeA);
@@ -194,6 +196,7 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 이동 — after_item_id 가 자기 자신 → no-op 200 (오해성 400 아님)")
     void moveItemAfterSelfIsNoop() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeA = seedPlace("place A", "addr A");
         String planId = createPlan(userId, "자기이동 테스트", 2, placeA);
@@ -219,6 +222,7 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 이동 — after_item_id 가 자기 자신이어도 다른 day 면 제자리 no-op 이 아니라 실제 이동")
     void moveItemAfterSelfToOtherDayMoves() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeA = seedPlace("place A", "addr A");
         String planId = createPlan(userId, "타day 자기이동", 2, placeA);
@@ -244,6 +248,7 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 이동 — 같은 슬롯 반복 삽입으로 position 갭이 붕괴해도 재정규화로 계속 성공·순서 보존")
     void moveItemRenormalizesOnGapCollapse() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String planId = createPlan(userId, "갭 붕괴", 1, seedPlace("c0", "addr0"));
 
@@ -275,10 +280,12 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 추가 — day_number 가 travel_days 범위 초과 → 400")
     void addItemDayOutOfRange() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeA = seedPlace("place B", "addr B");
         String planId = createPlan(userId, "범위 테스트", 2, placeA);
 
+        // when & then
         mockMvc.perform(post(PLANS + "/{planId}/items", planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -289,10 +296,12 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("카드 추가 — 존재하지 않는 place_id → 400")
     void addItemMissingPlace() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeA = seedPlace("place C", "addr C");
         String planId = createPlan(userId, "장소 누락", 2, placeA);
 
+        // when & then
         mockMvc.perform(post(PLANS + "/{planId}/items", planId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -303,7 +312,10 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("플랜 생성 — items 비어있음 → 400")
     void createPlanEmptyItems() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(post(PLANS)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -316,11 +328,13 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("다른 유저가 남의 플랜 조회 → 403")
     void getPlanByOtherUserForbidden() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("소유자");
         String other = fixtures.createActiveUser("타인");
         String placeA = seedPlace("place D", "addr D");
         String planId = createPlan(owner, "비공개 플랜", 2, placeA);
 
+        // when & then
         mockMvc.perform(get(PLANS + "/{planId}", planId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
@@ -329,11 +343,13 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("다른 유저가 남의 플랜 삭제 → 403")
     void deletePlanByOtherUserForbidden() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("소유자2");
         String other = fixtures.createActiveUser("타인2");
         String placeA = seedPlace("place E", "addr E");
         String planId = createPlan(owner, "삭제 권한", 2, placeA);
 
+        // when & then
         mockMvc.perform(delete(PLANS + "/{planId}", planId)
                         .with(auth(other)))
                 .andExpect(status().isForbidden());
@@ -342,7 +358,10 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("존재하지 않는 플랜 조회 → 404")
     void getMissingPlan() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
+
+        // when & then
         mockMvc.perform(get(PLANS + "/no-such-plan")
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -351,10 +370,12 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("존재하지 않는 카드 삭제 → 404")
     void removeMissingItem() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         String placeA = seedPlace("place F", "addr F");
         String planId = createPlan(userId, "카드 미존재", 2, placeA);
 
+        // when & then
         mockMvc.perform(delete(PLANS + "/{planId}/items/no-such-item", planId)
                         .with(auth(userId)))
                 .andExpect(status().isNotFound());
@@ -370,6 +391,7 @@ class TourPlanE2eTest extends TourTestSupport {
     @Test
     @DisplayName("생성 — travel_days > 365 → 400 (비현실적 거대 플랜 차단)")
     void travelDaysOverMax() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("거대플랜");
 
         // @Max(365) 가 place 조회 이전에 거부하므로 더미 place_id 로 충분.

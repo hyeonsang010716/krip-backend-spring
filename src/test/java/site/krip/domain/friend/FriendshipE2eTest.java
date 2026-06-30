@@ -22,9 +22,11 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("친구 요청 생성 → 201, status=pending·is_requester=true·peer 노출")
     void createRequestReturnsPendingShape() throws Exception {
+        // given
         String a = fixtures.createActiveUser("요청생성자");
         String b = fixtures.createActiveUser("요청대상");
 
+        // when & then
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -38,6 +40,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("A→B 요청 → B 받은목록 노출 → B 수락 → 양쪽 친구목록 노출 → A stats friend=1")
     void fullAcceptFlow() throws Exception {
+        // given
         String a = fixtures.createActiveUser("앨리스");
         String b = fixtures.createActiveUser("밥");
 
@@ -90,6 +93,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("친구 삭제 → 친구 목록 비고, stats friend=0")
     void deleteFriendship() throws Exception {
+        // given
         String a = fixtures.createActiveUser("정한");
         String b = fixtures.createActiveUser("준");
 
@@ -116,6 +120,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("B 가 요청 거절 → 양쪽 PENDING 목록에서 사라짐")
     void rejectRequest() throws Exception {
+        // given
         String a = fixtures.createActiveUser("리쿠");
         String b = fixtures.createActiveUser("샤오");
 
@@ -142,6 +147,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("A 가 보낸 요청 취소 → B 받은목록 비고")
     void cancelRequest() throws Exception {
+        // given
         String a = fixtures.createActiveUser("호시");
         String b = fixtures.createActiveUser("원우");
 
@@ -161,6 +167,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("거절된 뒤 B→A 재요청 시 방향 전환(B 가 requester)")
     void reRequestAfterRejectDirectionSwitch() throws Exception {
+        // given
         String a = fixtures.createActiveUser("디에잇");
         String b = fixtures.createActiveUser("민규");
 
@@ -191,8 +198,10 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("자기 자신에게 요청 → 400")
     void selfRequestRejected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("승철");
 
+        // when & then
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -204,11 +213,13 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PENDING 상태에서 중복 요청 → 400")
     void duplicatePendingRequest() throws Exception {
+        // given
         String a = fixtures.createActiveUser("버논");
         String b = fixtures.createActiveUser("도겸");
 
         sendFriendRequest(a, b);
 
+        // when & then
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -220,6 +231,7 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("권한 없는 유저가 수락 → 403")
     void acceptWithoutPermission() throws Exception {
+        // given
         String a = fixtures.createActiveUser("우지");
         String b = fixtures.createActiveUser("에스쿱스");
 
@@ -234,8 +246,10 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("addressee_id 누락 → 400")
     void missingAddresseeId() throws Exception {
+        // given
         String a = fixtures.createActiveUser("디노");
 
+        // when & then
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -246,9 +260,11 @@ class FriendshipE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("2차 미완료(detail==null) 유저에게 친구 요청 → 400 (보낸목록 매퍼 NPE 방지)")
     void requestToPreRegisterUserRejected() throws Exception {
+        // given
         String requester = fixtures.createActiveUser("요청자에코");
         String preRegister = fixtures.createPreRegisterUser();
 
+        // when & then
         mockMvc.perform(post("/api/friend/friendships/requests")
                         .with(auth(requester))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -22,8 +22,10 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("tour 장소 — 잘못된 형식의 cursor → 400 (500 아님)")
     void tourPlaceMalformedCursor() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(get("/api/tour/places")
                         .param("keyword", "cafe")
                         .param("cursor", "garbage-no-colon")
@@ -38,8 +40,10 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
             "/api/tripmate/search-history/one"})
     @DisplayName("검색기록 — 빈 search_name 삭제 → 400 (friend·tour·tripmate)")
     void searchHistoryBlankDelete(String path) throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(delete(path)
                         .param("search_name", " ")
                         .with(auth(userId)))
@@ -49,8 +53,10 @@ class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("tripmate 이미지 — 파일 없는 업로드 → 400")
     void tripmateImageEmptyUpload() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(multipart("/api/tripmate/images")
                         .with(auth(userId)))
                 .andExpect(status().isBadRequest());

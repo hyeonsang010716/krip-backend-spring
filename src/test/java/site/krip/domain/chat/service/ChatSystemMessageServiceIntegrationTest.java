@@ -34,12 +34,15 @@ class ChatSystemMessageServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("sendSystemMessage 는 system 타입 + action/target_ids 로 적재된다")
     void persistsSystemMessageWithActionAndTargets() {
+        // given
         String a = fixtures.createActiveUser("sysA");
         String b = fixtures.createActiveUser("sysB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
 
+        // when
         messageService.sendSystemMessage(room, "join", a, List.of(b));
 
+        // then
         List<Document> docs = messageRepo.findAfter(room, 0, 100);
         Document sys = docs.stream()
                 .filter(d -> MessageType.SYSTEM.getValue().equals(d.getString("type")))
@@ -56,6 +59,7 @@ class ChatSystemMessageServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("시스템 메시지는 unread 를 올리지 않지만, 일반 텍스트는 올린다")
     void systemMessageDoesNotBumpUnreadButTextDoes() {
+        // given
         String a = fixtures.createActiveUser("bumpA");
         String b = fixtures.createActiveUser("bumpB");
         String room = roomService.createDirectRoom(a, b).chatRoomId();

@@ -21,6 +21,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("A 가 B 차단(201) → 친구관계 제거 → 차단목록 노출")
     void blockRemovesFriendshipAndListsBlock() throws Exception {
+        // given
         String a = fixtures.createActiveUser("블로커앨리스");
         String b = fixtures.createActiveUser("타겟밥");
 
@@ -55,6 +56,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("차단 시 검색에서 양방향 제외 → 해제 후 다시 노출")
     void blockExcludesFromSearchBothDirectionsThenUnblock() throws Exception {
+        // given
         String a = fixtures.createActiveUser("검색차단A");
         String b = fixtures.createActiveUser("검색차단B");
 
@@ -108,6 +110,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("차단된 상대에게 친구 요청 → 400")
     void cannotRequestBlockedUser() throws Exception {
+        // given
         String a = fixtures.createActiveUser("차단요청A");
         String b = fixtures.createActiveUser("차단요청B");
 
@@ -128,8 +131,10 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("자기 자신 차단 → 400")
     void cannotBlockSelf() throws Exception {
+        // given
         String a = fixtures.createActiveUser("자기차단");
 
+        // when & then
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -141,6 +146,7 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("중복 차단 → 400")
     void duplicateBlock() throws Exception {
+        // given
         String a = fixtures.createActiveUser("중복차단A");
         String b = fixtures.createActiveUser("중복차단B");
 
@@ -161,9 +167,11 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("2차 미완료(detail==null) 유저 차단 → 400 (목록 매퍼 NPE 방지)")
     void blockPreRegisterUserRejected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("차단시도A");
         String preRegister = fixtures.createPreRegisterUser();
 
+        // when & then
         mockMvc.perform(post("/api/friend/blocks")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -175,9 +183,11 @@ class UserBlockE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("차단 상태가 아닌데 해제 시도 → 404")
     void unblockWhenNotBlocked() throws Exception {
+        // given
         String a = fixtures.createActiveUser("미차단A");
         String b = fixtures.createActiveUser("미차단B");
 
+        // when & then
         mockMvc.perform(delete("/api/friend/blocks/{targetUserId}", b)
                         .with(auth(a)))
                 .andExpect(status().isNotFound())

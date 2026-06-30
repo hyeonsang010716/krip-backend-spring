@@ -18,6 +18,7 @@ class FriendshipOptimisticLockTest extends IntegrationTestSupport {
     @Test
     @DisplayName("stale 버전으로 수정 시 OptimisticLockingFailureException")
     void staleUpdateThrows() {
+        // given
         String a = fixtures.createActiveUser("락A");
         String b = fixtures.createActiveUser("락B");
         Friendship stale = friendshipRepository.saveAndFlush(new Friendship(a, b)); // version 0
@@ -27,8 +28,11 @@ class FriendshipOptimisticLockTest extends IntegrationTestSupport {
         concurrent.accept();
         friendshipRepository.saveAndFlush(concurrent);
 
+        // when
         // 보관해 둔 stale 핸들(version 0)로 수정 → 충돌
         stale.accept();
+
+        // then
         assertThatThrownBy(() -> friendshipRepository.saveAndFlush(stale))
                 .isInstanceOf(OptimisticLockingFailureException.class);
     }

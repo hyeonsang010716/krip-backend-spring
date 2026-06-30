@@ -106,6 +106,7 @@ class FcmCircuitBreakerTest {
     @Test
     @DisplayName("동시: 임계치 도달 실패와 stale 성공이 경쟁해도 open 이 풀리지 않는다(latch 경합)")
     void concurrentStaleSuccessNeverClobbersOpen() throws Exception {
+        // given
         int rounds = 2000; // latch 경합은 드물게 재현되므로 충분한 반복으로 스트레스
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
@@ -116,9 +117,13 @@ class FcmCircuitBreakerTest {
                 Runnable ok = () -> { await(start); cb.recordSuccess(); };
                 var f1 = pool.submit(fail);
                 var f2 = pool.submit(ok);
+
+                // when
                 start.countDown();
                 f1.get(5, TimeUnit.SECONDS);
                 f2.get(5, TimeUnit.SECONDS);
+
+                // then
                 // 임계치=1 → 어떤 인터리빙이든 최종은 open.
                 assertThat(cb.tryAcquire()).as("round %d", i).isFalse();
             }
@@ -169,6 +174,7 @@ class FcmCircuitBreakerTest {
     @Test
     @DisplayName("cooldown 경과 직후 다수 스레드가 동시에 진입해도 probe 는 정확히 1건만 통과")
     void concurrentProbeIsSingleFlight() throws Exception {
+        // given
         FcmCircuitBreaker cb = breaker(3, 1000);
         trip(cb);
         now.addAndGet(ONE_SECOND_NANOS); // cooldown 경과 — half-open
@@ -193,6 +199,8 @@ class FcmCircuitBreakerTest {
                     }
                 });
             }
+
+            // when
             ready.await();
             start.countDown();
             pool.shutdown();
@@ -200,6 +208,8 @@ class FcmCircuitBreakerTest {
         } finally {
             pool.shutdownNow();
         }
+
+        // then
         assertThat(acquired.get()).isEqualTo(1);
     }
 }

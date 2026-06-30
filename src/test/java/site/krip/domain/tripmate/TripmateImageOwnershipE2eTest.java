@@ -42,10 +42,12 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("게시글 생성: 타인 이미지 URL 첨부 → 403, 피해자 이미지는 스토리지/Mongo 에 보존")
     void createWithOthersImageRejected() throws Exception {
+        // given
         String victim = fixtures.createActiveUser("피해자");
         String attacker = fixtures.createActiveUser("공격자");
         String victimUrl = uploadImage(victim, "victim.jpg");
 
+        // when & then
         mockMvc.perform(post(POSTS)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -60,6 +62,7 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("게시글 수정: 타인 이미지 URL 첨부 → 403 (교차 삭제 출발점 차단)")
     void updateWithOthersImageRejected() throws Exception {
+        // given
         String victim = fixtures.createActiveUser("피해자2");
         String attacker = fixtures.createActiveUser("공격자2");
         String victimUrl = uploadImage(victim, "victim2.jpg");
@@ -87,10 +90,12 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("임시저장: 타인 이미지 URL 첨부 → 403")
     void saveDraftWithOthersImageRejected() throws Exception {
+        // given
         String victim = fixtures.createActiveUser("피해자3");
         String attacker = fixtures.createActiveUser("공격자3");
         String victimUrl = uploadImage(victim, "victim3.jpg");
 
+        // when & then
         mockMvc.perform(put(POSTS + "/draft")
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -103,6 +108,7 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("정상 경로: 본인이 업로드한 이미지로 생성/임시저장 → 성공 (회귀 방지)")
     void ownImageAccepted() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("정상유저");
         String ownUrl = uploadImage(owner, "own.jpg");
 
@@ -122,11 +128,13 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("부분 위조: 본인+타인 URL 혼합 첨부 → 403 (containsAll 검증)")
     void mixedOwnAndOthersRejected() throws Exception {
+        // given
         String victim = fixtures.createActiveUser("피해자4");
         String attacker = fixtures.createActiveUser("공격자4");
         String victimUrl = uploadImage(victim, "victim4.jpg");
         String ownUrl = uploadImage(attacker, "own4.jpg");
 
+        // when & then
         mockMvc.perform(post(POSTS)
                         .with(auth(attacker))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,11 +147,13 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("게시글 삭제: 같은 이미지를 쓰는 다른 글이 있으면 공유 이미지는 보존된다")
     void deletePreservesImageSharedByAnotherPost() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("공유삭제");
         String sharedUrl = uploadImage(owner, "shared.jpg");
         String p1 = createPost(owner, List.of(sharedUrl));
         createPost(owner, List.of(sharedUrl)); // P2 도 같은 이미지 사용
 
+        // when & then
         mockMvc.perform(delete(POSTS + "/{p1}", p1)
                         .with(auth(owner)))
                 .andExpect(status().isOk());
@@ -156,6 +166,7 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("게시글 수정: 제거한 이미지가 드래프트에 남아있으면 보존된다")
     void updatePreservesImageStillInDraft() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("공유수정");
         String sharedUrl = uploadImage(owner, "shared2.jpg");
         String postId = createPost(owner, List.of(sharedUrl));
@@ -180,10 +191,12 @@ class TripmateImageOwnershipE2eTest extends TripmateImageTestSupport {
     @Test
     @DisplayName("게시글 삭제: 공유 없는 이미지는 정상 정리된다 (과교정 방지)")
     void deleteCleansUpUnsharedImage() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("단독삭제");
         String soloUrl = uploadImage(owner, "solo.jpg");
         String postId = createPost(owner, List.of(soloUrl));
 
+        // when & then
         mockMvc.perform(delete(POSTS + "/{postId}", postId)
                         .with(auth(owner)))
                 .andExpect(status().isOk());

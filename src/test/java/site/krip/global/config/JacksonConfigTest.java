@@ -62,11 +62,15 @@ class JacksonConfigTest {
     @Test
     @DisplayName("SNAKE_CASE 가 레코드 필드명에 적용된다")
     void snakeCaseApplied() throws Exception {
+        // given
         record Sample(String userId, Instant createdAt) {
         }
         Sample sample = new Sample("USER_1", Instant.parse("2026-07-03T12:34:56Z"));
+
+        // when
         String json = mapper().writeValueAsString(sample);
 
+        // then
         assertThat(json).contains("\"user_id\":\"USER_1\"");
         assertThat(json).contains("\"created_at\":\"2026-07-03T12:34:56Z\"");
         assertThat(json).doesNotContain("userId").doesNotContain("createdAt");

@@ -26,6 +26,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("1:1 방 생성 → 201, type=DIRECT + peer 노출; 재생성 시 동일 방(idempotent)")
     void createDirectIdempotent() throws Exception {
+        // given
         String a = fixtures.createActiveUser("앨리스");
         String b = fixtures.createActiveUser("밥");
 
@@ -58,9 +59,13 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("자기 자신과 1:1 방 → 400")
     void createDirectSelf() throws Exception {
+        // given
         String a = fixtures.createActiveUser("이브");
 
+        // when
         MvcResult res = createDirect(a, a);
+
+        // then
         assertThat(res.getResponse().getStatus()).isEqualTo(400);
         assertThat(readJson(res).has("detail")).isTrue();
     }
@@ -68,9 +73,13 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("존재하지 않는 상대와 1:1 방 → 400")
     void createDirectNonexistentPeer() throws Exception {
+        // given
         String a = fixtures.createActiveUser("프랭크");
 
+        // when
         MvcResult res = createDirect(a, "nonexistent-user-id");
+
+        // then
         assertThat(res.getResponse().getStatus()).isEqualTo(400);
         assertThat(readJson(res).has("detail")).isTrue();
     }
@@ -78,11 +87,15 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("차단한 상대와 1:1 방 → 400")
     void createDirectBlockedPeer() throws Exception {
+        // given
         String a = fixtures.createActiveUser("그레이스");
         String b = fixtures.createActiveUser("헨리");
         block(a, b);
 
+        // when
         MvcResult res = createDirect(a, b);
+
+        // then
         assertThat(res.getResponse().getStatus()).isEqualTo(400);
         assertThat(readJson(res).has("detail")).isTrue();
     }
@@ -90,8 +103,10 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("peer_user_id 누락 → 400")
     void createDirectMissingPeer() throws Exception {
+        // given
         String a = fixtures.createActiveUser("아이비");
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/direct")
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -104,6 +119,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("그룹 방 생성(친구 멤버) → 201, type=GROUP + title")
     void createGroupOk() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("방장");
         String m1 = fixtures.createActiveUser("멤버1");
         String m2 = fixtures.createActiveUser("멤버2");
@@ -124,8 +140,10 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("본인만 멤버인 그룹 방(=본인 제외 시 빈 멤버) → 400")
     void createGroupSelfOnly() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("외톨이");
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -137,9 +155,11 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("친구가 아닌 유저를 그룹 멤버로 → 400")
     void createGroupNonFriend() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주최자");
         String stranger = fixtures.createActiveUser("낯선이");
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -151,8 +171,10 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("member_ids 빈 배열 → 400 (검증)")
     void createGroupEmptyMembers() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("빈방장");
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/group")
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -165,6 +187,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("그룹 방에 친구 초대 → invited 에 포함")
     void inviteFriend() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("초대장방장");
         String m1 = fixtures.createActiveUser("초대원1");
         String invitee = fixtures.createActiveUser("초대대상");
@@ -173,6 +196,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
 
         String roomId = createGroup(owner, "초대테스트", m1);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -184,6 +208,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("친구가 아닌 유저 초대 → 400")
     void inviteNonFriend() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("방장x");
         String m1 = fixtures.createActiveUser("기존멤버");
         String stranger = fixtures.createActiveUser("초대불가");
@@ -191,6 +216,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
 
         String roomId = createGroup(owner, "초대거부", m1);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -202,6 +228,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("비멤버가 초대 시도 → 403")
     void inviteByNonMember() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("진짜방장");
         String m1 = fixtures.createActiveUser("멤버a");
         String outsider = fixtures.createActiveUser("외부인");
@@ -211,6 +238,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
 
         String roomId = createGroup(owner, "권한방", m1);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/invite", roomId)
                         .with(auth(outsider))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -221,6 +249,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("그룹 방 퇴장 → 204")
     void leaveGroup() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("퇴장방장");
         String leaver = fixtures.createActiveUser("나가는사람");
         makeFriends(owner, leaver);
@@ -240,12 +269,14 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("방장이 멤버 강퇴 → 204")
     void kickByOwner() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("강퇴방장");
         String target = fixtures.createActiveUser("강퇴대상");
         makeFriends(owner, target);
 
         String roomId = createGroup(owner, "강퇴방", target);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -256,6 +287,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("방장이 아닌 멤버가 강퇴 시도 → 403")
     void kickByNonOwner() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("원래방장");
         String m1 = fixtures.createActiveUser("일반멤버");
         String m2 = fixtures.createActiveUser("강퇴될뻔");
@@ -277,12 +309,14 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("방 리스트 조회 → 참여 중인 방 노출")
     void listRooms() throws Exception {
+        // given
         String a = fixtures.createActiveUser("리스트a");
         String b = fixtures.createActiveUser("리스트b");
 
         MvcResult res = createDirect(a, b);
         String roomId = idFrom(res, "chat_room_id");
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms")
                         .with(auth(a)))
                 .andExpect(status().isOk())
@@ -292,12 +326,14 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("그룹 방 참여자 목록 조회 → 멤버 노출")
     void listMembers() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("멤버조회방장");
         String m1 = fixtures.createActiveUser("조회멤버1");
         makeFriends(owner, m1);
 
         String roomId = createGroup(owner, "멤버조회방", m1);
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/members", roomId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
@@ -308,6 +344,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("초대 가능 친구 목록 → 미참여 친구 노출 / 이미 멤버는 제외")
     void invitableFriends() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("초대가능방장");
         String member = fixtures.createActiveUser("이미멤버");
         String candidate = fixtures.createActiveUser("초대후보");
@@ -316,6 +353,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
 
         String roomId = createGroup(owner, "초대가능방", member);
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}/invitable-friends", roomId)
                         .with(auth(owner)))
                 .andExpect(status().isOk())
@@ -326,6 +364,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("비멤버가 방 상세 접근 → 403")
     void nonMemberGetRoom() throws Exception {
+        // given
         String a = fixtures.createActiveUser("방주인");
         String b = fixtures.createActiveUser("방상대");
         String outsider = fixtures.createActiveUser("외부자");
@@ -333,6 +372,7 @@ class ChatRoomE2eTest extends ChatTestSupport {
         MvcResult res = createDirect(a, b);
         String roomId = idFrom(res, "chat_room_id");
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}", roomId)
                         .with(auth(outsider)))
                 .andExpect(status().isForbidden());
@@ -341,8 +381,10 @@ class ChatRoomE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("존재하지 않는 방 상세 → 404")
     void getRoomNotFound() throws Exception {
+        // given
         String a = fixtures.createActiveUser("조회자");
 
+        // when & then
         mockMvc.perform(get("/api/chat/rooms/{id}", "no-such-room")
                         .with(auth(a)))
                 .andExpect(status().isNotFound());

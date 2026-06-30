@@ -38,7 +38,10 @@ class AuthFilterChainE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("Bearer 헤더 없음 → 401")
     void bearerMissingRejected() throws Exception {
+        // given
         String u = fixtures.createActiveUser("bearerless");
+
+        // when & then
         mockMvc.perform(get("/api/friend/friendships")
                         .header("X-Auth-Token", userToken(u)))
                 .andExpect(status().isUnauthorized());
@@ -55,7 +58,10 @@ class AuthFilterChainE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("utk 쿠키만으로도 인증된다(헤더 부재 시 쿠키 fallback)")
     void utkCookieAuthenticates() throws Exception {
+        // given
         String u = fixtures.createActiveUser("쿠키유저");
+
+        // when & then
         mockMvc.perform(get("/api/friend/friendships")
                         .header("Authorization", bearer())
                         .cookie(new Cookie("utk", userToken(u))))
@@ -81,7 +87,10 @@ class AuthFilterChainE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("정적 토큰(Bearer) 불일치 → 401")
     void wrongStaticTokenRejected() throws Exception {
+        // given
         String u = fixtures.createActiveUser("정적토큰틀림");
+
+        // when & then
         mockMvc.perform(get("/api/friend/friendships")
                         .header("Authorization", "Bearer wrong-token")
                         .header("X-Auth-Token", userToken(u)))
@@ -101,7 +110,10 @@ class AuthFilterChainE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("2차 회원가입 미완료(detail=null) → 403")
     void preRegisterUserGets403() throws Exception {
+        // given
         String u = fixtures.createPreRegisterUser();
+
+        // when & then
         mockMvc.perform(get("/api/friend/friendships")
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(u)))
@@ -119,12 +131,14 @@ class AuthFilterChainE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("INACTIVE(탈퇴 유예) 유저 → 419 + status=withdrawal_pending")
     void inactiveUserGets419() throws Exception {
+        // given
         String u = fixtures.createActiveUser("탈퇴유예유저");
         User user = userRepository.findById(u).orElseThrow();
         user.changeStatus(UserStatus.INACTIVE);
         userRepository.save(user);
         registeredCache.invalidate(u);
 
+        // when & then
         mockMvc.perform(get("/api/friend/friendships")
                         .header("Authorization", bearer())
                         .header("X-Auth-Token", userToken(u)))

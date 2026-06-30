@@ -34,6 +34,7 @@ class InboxPaginationIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("동일 created_at 항목이 페이지 경계를 가로질러도 skip/중복 없이 전부 반환된다")
     void keysetCursorLosesNothingAtEqualTimestampBoundary() {
+        // given
         String recipient = "RCPT_" + new ObjectId().toHexString();
         int total = InboxRepository.PAGE_SIZE + 5; // 한 페이지 + 경계 넘어가는 5건
         Instant sharedAt = Instant.parse("2026-03-01T00:00:00Z"); // 전 항목 동일 시각
@@ -52,6 +53,7 @@ class InboxPaginationIntegrationTest extends IntegrationTestSupport {
                     .append("created_at", Date.from(sharedAt)));
         }
 
+        // when
         // 1페이지: 커서 없음 → PAGE_SIZE 만큼 + has_more 판정용 1건.
         List<InboxItem> page1 = inboxRepo.findByRecipient(recipient, null, null, InboxRepository.PAGE_SIZE);
         assertThat(page1).hasSize(InboxRepository.PAGE_SIZE + 1);
@@ -62,6 +64,7 @@ class InboxPaginationIntegrationTest extends IntegrationTestSupport {
         List<InboxItem> page2 = inboxRepo.findByRecipient(
                 recipient, last.getCreatedAt(), new ObjectId(last.getId()), InboxRepository.PAGE_SIZE);
 
+        // then
         Set<String> returned = new LinkedHashSet<>();
         page1.forEach(it -> returned.add(it.getId()));
         int beforePage2 = returned.size();

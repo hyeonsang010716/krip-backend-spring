@@ -53,6 +53,7 @@ class FcmServiceTest {
     @Test
     @DisplayName("reassign 0행(동시 삭제) → insert 폴백, 토큰 무음 유실 없음")
     void zeroRowReassignFallsBackToInsert() {
+        // given
         FcmToken existing = mock(FcmToken.class);
         when(tokenRepo.findByToken("T")).thenReturn(Optional.of(existing));
         when(tokenRepo.reassignOwner(eq("T"), eq("B"), any())).thenReturn(0);
@@ -61,8 +62,10 @@ class FcmServiceTest {
         when(inserted.getCreatedAt()).thenReturn(Instant.EPOCH);
         when(tokenRepo.saveAndFlush(any())).thenReturn(inserted);
 
+        // when
         FcmTokenResponse res = service.registerToken("B", "T");
 
+        // then
         verify(tokenRepo).saveAndFlush(any(FcmToken.class));
         assertThat(res.fcmTokenId()).isEqualTo("NEW");
     }
@@ -70,14 +73,17 @@ class FcmServiceTest {
     @Test
     @DisplayName("reassign 1행 → 기존 토큰 갱신, insert 안 함")
     void oneRowReassignReusesExisting() {
+        // given
         FcmToken existing = mock(FcmToken.class);
         when(existing.getFcmTokenId()).thenReturn("OLD");
         when(existing.getCreatedAt()).thenReturn(Instant.EPOCH);
         when(tokenRepo.findByToken("T")).thenReturn(Optional.of(existing));
         when(tokenRepo.reassignOwner(eq("T"), eq("B"), any())).thenReturn(1);
 
+        // when
         FcmTokenResponse res = service.registerToken("B", "T");
 
+        // then
         verify(tokenRepo, never()).saveAndFlush(any());
         assertThat(res.fcmTokenId()).isEqualTo("OLD");
     }
@@ -85,13 +91,16 @@ class FcmServiceTest {
     @Test
     @DisplayName("기존 토큰 없으면 reassign 없이 insert")
     void noExistingInserts() {
+        // given
         when(tokenRepo.findByToken("T")).thenReturn(Optional.empty());
         FcmToken inserted = mock(FcmToken.class);
         when(inserted.getFcmTokenId()).thenReturn("NEW");
         when(tokenRepo.saveAndFlush(any())).thenReturn(inserted);
 
+        // when
         FcmTokenResponse res = service.registerToken("B", "T");
 
+        // then
         verify(tokenRepo, never()).reassignOwner(any(), any(), any());
         verify(tokenRepo).saveAndFlush(any(FcmToken.class));
         assertThat(res.fcmTokenId()).isEqualTo("NEW");

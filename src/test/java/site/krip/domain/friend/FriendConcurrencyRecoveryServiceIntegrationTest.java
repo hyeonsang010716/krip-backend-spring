@@ -68,11 +68,14 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
     @Test
     @DisplayName("동시 친구요청: 정확히 하나만 성공, 나머지는 400(500 아님), 최종 1건")
     void concurrentSendRequest() throws Exception {
+        // given
         String a = fixtures.createActiveUser("concReqA");
         String b = fixtures.createActiveUser("concReqB");
 
+        // when
         Result r = runConcurrently(() -> friendshipService.sendRequest(a, b));
 
+        // then
         assertThat(r.successCount()).isEqualTo(1);
         assertThat(r.lastError()).isInstanceOf(ApiException.class);
         assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());
@@ -83,11 +86,14 @@ class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSup
     @Test
     @DisplayName("동시 차단: 정확히 하나만 성공, 나머지는 400(500 아님), 최종 1건")
     void concurrentBlock() throws Exception {
+        // given
         String a = fixtures.createActiveUser("concBlkA");
         String b = fixtures.createActiveUser("concBlkB");
 
+        // when
         Result r = runConcurrently(() -> userBlockService.blockUser(a, b));
 
+        // then
         assertThat(r.successCount()).isEqualTo(1);
         assertThat(r.lastError()).isInstanceOf(ApiException.class);
         assertThat(((ApiException) r.lastError()).getStatus()).isEqualTo(HttpStatus.BAD_REQUEST.value());

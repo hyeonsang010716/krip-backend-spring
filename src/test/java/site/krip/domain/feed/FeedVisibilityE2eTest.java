@@ -20,11 +20,13 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("owner 는 자기 PRIVATE/FRIENDS/PUBLIC 단건 모두 조회 (200)")
     void ownerSeesAllOwnPosts() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인");
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
         String friends = seedPost(owner, FeedVisibility.FRIENDS, null);
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         for (String postId : new String[]{priv, friends, pub}) {
             mockMvc.perform(get("/api/feed/posts/{postId}", postId)
                             .with(auth(owner)))
@@ -37,9 +39,11 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("owner 본인 피드 목록(/me) 에 PRIVATE 포함 (200)")
     void ownerMyFeedIncludesPrivate() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인2");
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/me")
                         .with(auth(owner)))
                 .andExpect(status().isOk())
@@ -51,6 +55,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("친구 피드 목록: FRIENDS+PUBLIC 노출, PRIVATE 숨김")
     void friendSeesFriendsAndPublic() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인3");
         String friend = fixtures.createActiveUser("친구");
         makeFriends(owner, friend);
@@ -59,6 +64,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/users/{owner}", owner)
                         .with(auth(friend)))
                 .andExpect(status().isOk())
@@ -72,6 +78,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("비친구 피드 목록: PUBLIC 만 노출, FRIENDS/PRIVATE 숨김")
     void strangerSeesOnlyPublic() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인4");
         String stranger = fixtures.createActiveUser("낯선이");
 
@@ -79,6 +86,7 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/users/{owner}", owner)
                         .with(auth(stranger)))
                 .andExpect(status().isOk())
@@ -92,10 +100,12 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("비친구가 FRIENDS 글 접근 → 404 (가시성 미충족)")
     void strangerFriendsPostNotVisible() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인5");
         String stranger = fixtures.createActiveUser("낯선이2");
         String fr = seedPost(owner, FeedVisibility.FRIENDS, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/posts/{fr}/likes", fr)
                         .with(auth(stranger)))
                 .andExpect(status().isNotFound());
@@ -104,10 +114,12 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("비친구가 PRIVATE 글 접근 → 404")
     void strangerPrivatePostNotVisible() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인6");
         String stranger = fixtures.createActiveUser("낯선이3");
         String priv = seedPost(owner, FeedVisibility.PRIVATE, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/posts/{priv}/likes", priv)
                         .with(auth(stranger)))
                 .andExpect(status().isNotFound());
@@ -116,10 +128,12 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("비친구가 PUBLIC 글 접근 → 200 (likes 조회 가능)")
     void strangerPublicPostVisible() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인7");
         String stranger = fixtures.createActiveUser("낯선이4");
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/posts/{pub}/likes", pub)
                         .with(auth(stranger)))
                 .andExpect(status().isOk())
@@ -129,11 +143,13 @@ class FeedVisibilityE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("차단 관계 유저의 PUBLIC 글 접근 → 404 (차단 사실 은닉)")
     void blockedUserNotFound() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인8");
         String blockedViewer = fixtures.createActiveUser("차단된이");
         block(owner, blockedViewer); // owner 가 viewer 를 단방향 차단 (가시성 체크는 차단 방향 무관)
         String pub = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(get("/api/feed/posts/{pub}/likes", pub)
                         .with(auth(blockedViewer)))
                 .andExpect(status().isNotFound());

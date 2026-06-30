@@ -23,6 +23,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("댓글 작성(201)→목록→작성자 삭제(200)")
     void commentLifecycle() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("작성자");
         String commenter = fixtures.createActiveUser("댓글러");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
@@ -48,9 +49,11 @@ class FeedCommentE2eTest extends FeedTestSupport {
     @ValueSource(strings = {"", "   "})
     @DisplayName("빈/공백 댓글 → 400")
     void blankOrEmptyComment(String content) throws Exception {
+        // given
         String owner = fixtures.createActiveUser();
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -61,6 +64,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("작성자 아닌 유저(게시물 owner 포함)가 삭제 → 403")
     void onlyAuthorCanDelete() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("게시물주인");
         String commenter = fixtures.createActiveUser("댓글작성자");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
@@ -75,6 +79,7 @@ class FeedCommentE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("post_id 불일치로 댓글 삭제 → 404")
     void deleteCommentPostIdMismatch() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인");
         String commenter = fixtures.createActiveUser("댓글러2");
         String postA = seedPost(owner, FeedVisibility.PUBLIC, null);
@@ -90,9 +95,11 @@ class FeedCommentE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("존재하지 않는 댓글 삭제 → 404")
     void deleteMissingComment() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인2");
         String postId = seedPost(owner, FeedVisibility.PUBLIC, null);
 
+        // when & then
         mockMvc.perform(delete("/api/feed/posts/{postId}/comments/no-such-comment", postId)
                         .with(auth(owner)))
                 .andExpect(status().isNotFound());
@@ -101,10 +108,12 @@ class FeedCommentE2eTest extends FeedTestSupport {
     @Test
     @DisplayName("가시성 미충족 글에 댓글 작성 → 404")
     void commentNotVisible() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("주인3");
         String stranger = fixtures.createActiveUser("낯선이");
         String postId = seedPost(owner, FeedVisibility.PRIVATE, null);
 
+        // when & then
         mockMvc.perform(post("/api/feed/posts/{postId}/comments", postId)
                         .with(auth(stranger))
                         .contentType(MediaType.APPLICATION_JSON)

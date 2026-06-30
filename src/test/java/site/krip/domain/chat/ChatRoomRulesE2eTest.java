@@ -17,10 +17,12 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("DIRECT 방 퇴장 시도 → 400 (그룹 방만 퇴장 가능)")
     void leaveDirectRoomRejected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("다이렉트퇴장A");
         String b = fixtures.createActiveUser("다이렉트퇴장B");
         String roomId = createDirectRoom(a, b);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/leave", roomId)
                         .with(auth(a)))
                 .andExpect(status().isBadRequest())
@@ -30,10 +32,12 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("DIRECT 방 강퇴 시도 → 400 (그룹 방에서만 강퇴 가능)")
     void kickInDirectRoomRejected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("다이렉트강퇴A");
         String b = fixtures.createActiveUser("다이렉트강퇴B");
         String roomId = createDirectRoom(a, b);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(a))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -45,11 +49,13 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("방장이 자기 자신을 강퇴 → 400 (퇴장 API 사용)")
     void kickSelfRejected() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("자기강퇴방장");
         String member = fixtures.createActiveUser("자기강퇴멤버");
         makeFriends(owner, member);
         String roomId = createGroup(owner, "자기강퇴방", member);
 
+        // when & then
         mockMvc.perform(post("/api/chat/rooms/{id}/kick", roomId)
                         .with(auth(owner))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -61,6 +67,7 @@ class ChatRoomRulesE2eTest extends ChatTestSupport {
     @Test
     @DisplayName("이미 떠난 멤버 강퇴 → 400 (활성 멤버 아님)")
     void kickAlreadyLeftMember() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("재강퇴방장");
         String member = fixtures.createActiveUser("먼저나간멤버");
         makeFriends(owner, member);

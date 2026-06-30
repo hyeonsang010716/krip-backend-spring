@@ -32,9 +32,11 @@ class ChatStreamConfigReaperTest {
     @Test
     @DisplayName("부재 1틱째는 제거하지 않고, 연속 2틱째에 제거")
     void reapsOnlyAfterConsecutiveAbsence() {
+        // given
         Set<String> active = Set.of("self");
         Set<String> existing = Set.of("self", "orphan");
 
+        // when & then
         assertThat(config.selectGroupsToReap(active, existing)).isEmpty();         // 1틱: 유예
         assertThat(config.selectGroupsToReap(active, existing)).containsExactly("orphan"); // 2틱: 제거
     }
@@ -42,6 +44,7 @@ class ChatStreamConfigReaperTest {
     @Test
     @DisplayName("합류 직후 한 틱 빠져도 다음 틱에 명단에 들어오면 제거되지 않는다(경합 방어)")
     void doesNotReapNodeThatRejoins() {
+        // given
         Set<String> existing = Set.of("self", "joining");
 
         // 1틱: joining 이 스냅샷에 아직 없음(부재 1) — 제거 안 함.

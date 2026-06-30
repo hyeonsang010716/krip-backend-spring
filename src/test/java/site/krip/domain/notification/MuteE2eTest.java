@@ -39,8 +39,10 @@ class MuteE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("전역 mute true 저장 → 200, true 영속")
     void globalMuteTruePersists() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("전역차단자");
 
+        // when & then
         putGlobalMute(userId, true)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -52,6 +54,7 @@ class MuteE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("전역 mute false → 200, NULL 로 정규화(해제)")
     void globalMuteFalseClearsToNull() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("전역해제자");
 
         putGlobalMute(userId, true).andExpect(status().isOk());   // 먼저 차단
@@ -63,8 +66,10 @@ class MuteE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("전역 mute muted 필드 누락 → 400 (@NotNull)")
     void globalMuteMissingFieldBadRequest() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(put("/api/notification/mute/global")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,10 +82,12 @@ class MuteE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("활성 멤버가 방 mute true → 200, 멤버 notification_muted=true")
     void roomMuteActiveMemberPersists() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("방멤버");
         String peerId = fixtures.createActiveUser("상대방");
         String roomId = seedRoomWithMember(userId, peerId);
 
+        // when & then
         putRoomMute(userId, roomId, true)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").exists());
@@ -92,6 +99,7 @@ class MuteE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("활성 멤버가 방 mute false → 200, NULL 로 정규화")
     void roomMuteFalseClearsToNull() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("방멤버2");
         String peerId = fixtures.createActiveUser("상대방2");
         String roomId = seedRoomWithMember(userId, peerId);
@@ -106,29 +114,35 @@ class MuteE2eTest extends MuteTestSupport {
     @Test
     @DisplayName("비멤버가 방 mute 시도 → 400 (활성 멤버 아님)")
     void roomMuteNonMemberBadRequest() throws Exception {
+        // given
         String memberUser = fixtures.createActiveUser("진짜멤버");
         String peerId = fixtures.createActiveUser("상대방3");
         String outsider = fixtures.createActiveUser("외부인");
         String roomId = seedRoomWithMember(memberUser, peerId);
 
+        // when & then
         putRoomMute(outsider, roomId, true).andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("존재하지 않는 방 mute → 400 (멤버 행 없음)")
     void roomMuteNonExistentRoomBadRequest() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
+        // when & then
         putRoomMute(userId, "no-such-room", true).andExpect(status().isBadRequest());
     }
 
     @Test
     @DisplayName("방 mute muted 필드 누락 → 400 (@NotNull)")
     void roomMuteMissingFieldBadRequest() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("방멤버3");
         String peerId = fixtures.createActiveUser("상대방4");
         String roomId = seedRoomWithMember(userId, peerId);
 
+        // when & then
         mockMvc.perform(put("/api/notification/mute/rooms/{roomId}", roomId)
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)

@@ -85,11 +85,14 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("유효 토큰(auth 서브프로토콜) + 허용 Origin → 핸드셰이크 성공 + connected 수신")
     void connectsAndReceivesConnected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("ws접속유저");
         CollectingHandler h = new CollectingHandler();
 
+        // when
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
 
+        // then
         JsonNode connected = awaitType(h, "connected", WAIT_MS);
         assertThat(connected.path("session_id").asText()).isNotBlank();
 
@@ -99,6 +102,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("send op → message.sent ACK, 이어서 read op → read_ack")
     void sendThenReadOverWebSocket() throws Exception {
+        // given
         String a = fixtures.createActiveUser("ws발신");
         String b = fixtures.createActiveUser("ws수신");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
@@ -126,6 +130,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("send op 에 type=system → server_error 로 거부 (SYSTEM 위조 차단)")
     void clientSystemTypeRejected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("ws위조발신");
         String b = fixtures.createActiveUser("ws위조수신");
         String room = roomService.createDirectRoom(a, b).chatRoomId();
@@ -134,11 +139,13 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
         WebSocketSession session = connect(h, List.of("krip.chat.v1", "auth." + userToken(a)));
         awaitType(h, "connected", WAIT_MS);
 
+        // when
         // room_id/client_msg_id/content 는 유효 — SYSTEM 가드에 도달하도록. 가드 없으면 message.sent 가 와 타임아웃 실패.
         session.sendMessage(new TextMessage(json(
                 "op", "send", "room_id", room, "client_msg_id", "cm-sys",
                 "content", "forged", "type", "system")));
 
+        // then
         JsonNode err = awaitType(h, "server_error", WAIT_MS);
         assertThat(err.path("reason").asText()).contains("system");
 
@@ -156,6 +163,7 @@ class ChatWebSocketE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("refresh op — 폐기된 토큰이면 auth_expired 로 거절한다 (폐기 jti 재무장 차단)")
     void refreshWithRevokedTokenRejected() throws Exception {
+        // given
         String a = fixtures.createActiveUser("ws리프레시");
         String token = userToken(a);
         CollectingHandler h = new CollectingHandler();

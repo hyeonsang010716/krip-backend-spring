@@ -43,17 +43,23 @@ class GlobalExceptionHandlerTest {
     @MethodSource("integrityCases")
     @DisplayName("무결성 위반은 SQLState 에 따라 409(UNIQUE) 또는 500 으로 매핑된다")
     void dataIntegrityMapsBySqlState(String sqlState, HttpStatus expected) {
+        // given
         DataIntegrityViolationException e = sqlState == null
                 ? new DataIntegrityViolationException("x")
                 : new DataIntegrityViolationException("constraint", new SQLException("violation", sqlState));
+
+        // when & then
         assertThat(handler.handleDataIntegrity(e).getStatusCode()).isEqualTo(expected);
     }
 
     @Test
     @DisplayName("낙관적 락 충돌 → 409")
     void optimisticLockReturns409() {
+        // given
         OptimisticLockingFailureException e =
                 new ObjectOptimisticLockingFailureException(Object.class, "id");
+
+        // when & then
         assertThat(handler.handleOptimisticLock(e).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
     }
 }

@@ -41,8 +41,10 @@ class AuthProfileE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("Bearer + 유효 유저 JWT + ACTIVE+detail 유저 → 200, 프로필 반환")
     void authenticatedProfile() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("프로필테스터");
 
+        // when & then
         mockMvc.perform(get("/api/auth/profile/me")
                         .with(auth(userId)))
                 .andExpect(status().isOk())

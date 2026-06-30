@@ -40,37 +40,46 @@ class TokenRevocationServiceTest {
     @Test
     @DisplayName("exp 가 주입 clock 기준 미래면 ttl 을 그 시계로 계산해 폐기 등록한다 (wall-clock 과 무관)")
     void revokeUsesInjectedClock() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
 
+        // when
         // exp = clock + 60s. wall-clock(Instant.now())로 계산하면 2020 기준이라 음수 → 구버전은 스킵됐다.
         svc.revoke("jti1", FIXED.plusSeconds(60));
 
+        // then
         verify(ops).set(eq("jwt:revoked:jti1"), eq("1"), eq(Duration.ofSeconds(60)));
     }
 
     @Test
     @DisplayName("exp 가 주입 clock 기준 이미 만료면 등록을 스킵한다")
     void revokeSkipsWhenAlreadyExpired() {
+        // when
         svc.revoke("jti2", FIXED.minusSeconds(10));
 
+        // then
         verify(ops, never()).set(anyString(), anyString(), any(Duration.class));
     }
 
     @Test
     @DisplayName("jti/exp 누락이면 Redis 를 건드리지 않는다")
     void revokeNoopOnNullInput() {
+        // when
         svc.revoke(null, FIXED.plusSeconds(60));
         svc.revoke("jti3", null);
 
+        // then
         verifyNoInteractions(redis);
     }
 
     @Test
     @DisplayName("isRevoked: 키 존재 → true, 부재 → false")
     void isRevokedReflectsKeyPresence() {
+        // given
         when(redis.hasKey("jwt:revoked:jtiA")).thenReturn(true);
         when(redis.hasKey("jwt:revoked:jtiB")).thenReturn(false);
 
+        // when & then
         assertThat(svc.isRevoked("jtiA")).isTrue();
         assertThat(svc.isRevoked("jtiB")).isFalse();
     }
@@ -78,14 +87,17 @@ class TokenRevocationServiceTest {
     @Test
     @DisplayName("isRevoked: Redis 장애 시 false(미폐기) 로 fail-open — 예외를 삼키고 인증을 막지 않는다")
     void isRevokedFailsOpenOnRedisError() {
+        // given
         when(redis.hasKey(any())).thenThrow(new RuntimeException("redis down"));
 
+        // when & then
         assertThat(svc.isRevoked("jtiX")).isFalse();
     }
 
     @Test
     @DisplayName("isRevoked: jti 가 null 이면 Redis 조회 없이 false")
     void isRevokedFalseOnNullJti() {
+        // when & then
         assertThat(svc.isRevoked(null)).isFalse();
         verifyNoInteractions(redis);
     }
@@ -93,10 +105,12 @@ class TokenRevocationServiceTest {
     @Test
     @DisplayName("revoke: Redis set 실패는 삼켜 예외를 전파하지 않는다(로그아웃이 깨지지 않게)")
     void revokeSwallowsRedisError() {
+        // given
         when(redis.opsForValue()).thenReturn(ops);
         doThrow(new RuntimeException("redis down")).when(ops)
                 .set(any(), any(), any(Duration.class));
 
+        // when & then
         assertThatCode(() -> svc.revoke("jtiY", FIXED.plusSeconds(60)))
                 .doesNotThrowAnyException();
     }

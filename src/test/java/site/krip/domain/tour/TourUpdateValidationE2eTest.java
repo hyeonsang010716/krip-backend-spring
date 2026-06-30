@@ -55,9 +55,11 @@ class TourUpdateValidationE2eTest extends IntegrationTestSupport {
     @MethodSource("requiredKeyCases")
     @DisplayName("수정 요청 필수 키 — 누락 → 400 / 값 null 은 검증 통과(미존재라 404)")
     void requiredKeyValidation(String label, Req req, int expectedStatus) throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
         seedPlace("p1"); // visit_time=null 케이스가 장소 조회를 통과해 404 에 닿도록(타 케이스엔 무해).
 
+        // when & then
         mockMvc.perform(req.build(this)
                         .contentType(MediaType.APPLICATION_JSON)
                         .with(auth(userId)))

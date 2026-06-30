@@ -34,6 +34,7 @@ class FriendSearchNameMatchOrderingIntegrationTest extends IntegrationTestSuppor
     @Test
     @DisplayName("매치가 상한을 넘으면 가장 최근 가입 유저만 보존되고 최신순으로 반환된다")
     void capKeepsNewestMatchesInOrder() {
+        // given
         // 같은 이름 3명 생성 후 created_at 을 명시적 증가 값으로 고정 → sleep 없이 정렬 결정성 확보.
         String name = "namematchtest-" + UUID.randomUUID();
         String oldest = fixtures.createActiveUser(name);
@@ -44,9 +45,11 @@ class FriendSearchNameMatchOrderingIntegrationTest extends IntegrationTestSuppor
         setCreatedAt(mid, base.plusSeconds(1));
         setCreatedAt(newest, base.plusSeconds(2));
 
+        // when
         // 상한 < 매치(3) — 최신순 정렬이라 가장 오래된 oldest 만 잘려야 한다.
         List<String> capped = searchRepository.findUserIdsByNameLike("%" + name + "%", PageRequest.of(0, MATCH_CAP));
 
+        // then
         assertThat(capped).containsExactly(newest, mid);
         assertThat(capped).doesNotContain(oldest);
     }

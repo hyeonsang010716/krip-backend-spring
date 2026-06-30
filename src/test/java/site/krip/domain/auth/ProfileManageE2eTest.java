@@ -25,6 +25,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PATCH /me — 이름·나이·여행스타일 부분 수정 반영")
     void updateProfilePartial() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("수정전이름");
 
         mockMvc.perform(patch("/api/auth/profile/me")
@@ -48,6 +49,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PATCH /me — travel_styles 빈 배열 → 전체 삭제")
     void updateProfileClearStyles() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("스타일삭제유저");
 
         // 먼저 스타일 세팅
@@ -69,8 +71,10 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PATCH /me — 잘못된 이메일 형식 → 400")
     void updateProfileInvalidEmail() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("이메일형식");
 
+        // when & then
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -81,8 +85,10 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("PATCH /me — 컬럼 길이 초과 전화번호(21자) → 400 (구 동작은 DB 위반 500)")
     void updateProfileOversizedPhoneIs400() throws Exception {
+        // given
         String userId = fixtures.createActiveUser();
 
+        // when & then
         mockMvc.perform(patch("/api/auth/profile/me")
                         .with(auth(userId))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -93,9 +99,11 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("GET /all — 본인 제외, 타 ACTIVE 유저 노출")
     void getAllOtherUsersExcludesSelf() throws Exception {
+        // given
         String me = fixtures.createActiveUser("탐색본인");
         String other = fixtures.createActiveUser("탐색대상유저");
 
+        // when & then
         mockMvc.perform(get("/api/auth/profile/all")
                         .with(auth(me)))
                 .andExpect(status().isOk())
@@ -106,8 +114,10 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("GET /me/stats — 신규 유저 좋아요/친구 0")
     void statsForNewUser() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("통계신규");
 
+        // when & then
         mockMvc.perform(get("/api/auth/profile/me/stats")
                         .with(auth(userId)))
                 .andExpect(status().isOk())
@@ -118,6 +128,7 @@ class ProfileManageE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("POST /logout → 200 + Set-Cookie, 그리고 그 토큰은 폐기돼 재사용 시 401")
     void logoutRevokesToken() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("로그아웃유저");
         String token = userToken(userId); // 한 번 발급해 캡처 — 같은 jti 로 폐기·재사용을 검증
 

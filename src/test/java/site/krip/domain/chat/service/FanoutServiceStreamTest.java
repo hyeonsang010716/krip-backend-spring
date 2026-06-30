@@ -54,6 +54,7 @@ class FanoutServiceStreamTest {
     @Test
     @DisplayName("dispatchEnvelope(op=room) — 로컬 구독 세션에 전달")
     void dispatchRoomDeliversToLocalSubscriber() throws Exception {
+        // given
         WebSocketSession ws = mock(WebSocketSession.class);
         Map<String, Object> attrs = new HashMap<>();
         attrs.put(FanoutService.ATTR_SESSION_ID, "sess-1");
@@ -69,8 +70,11 @@ class FanoutServiceStreamTest {
         envelope.put("op", "room");
         envelope.put("room_id", "room-9");
         envelope.put("payload", Map.of("type", "message.new"));
+
+        // when
         fanout.dispatchEnvelope(envelope);
 
+        // then
         verify(ws).sendMessage(any(TextMessage.class));
     }
 }

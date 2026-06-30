@@ -71,13 +71,16 @@ class AiServiceClientTest {
     @Test
     @DisplayName("동시 호출이 상한에 도달하면 추가 호출은 즉시 503, 슬롯 해제 후 재허용")
     void rejectsWhenSaturatedThenRecovers() throws Exception {
+        // given
         AiServiceClient client = new AiServiceClient(restClient, props(2));
 
+        // when
         // permit 2개를 점유한 채 핸들러에서 블록.
         Future<Object> f1 = clientPool.submit(() -> client.postJson("/ok", Map.of(), Object.class));
         Future<Object> f2 = clientPool.submit(() -> client.postJson("/ok", Map.of(), Object.class));
         assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 
+        // then
         // 3번째 호출 — HTTP 도달 전에 세마포어에서 즉시 거부.
         assertThatThrownBy(() -> client.postJson("/ok", Map.of(), Object.class))
                 .isInstanceOf(AiServiceException.class)
@@ -95,6 +98,7 @@ class AiServiceClientTest {
     @Test
     @DisplayName("upstream 실패(500)로 예외가 나도 permit 은 반납되어 다음 호출이 막히지 않음")
     void releasesPermitOnFailure() {
+        // given
         AiServiceClient client = new AiServiceClient(restClient, props(1));
 
         // 첫 호출: 500 → 502 매핑(혼잡 503 아님).

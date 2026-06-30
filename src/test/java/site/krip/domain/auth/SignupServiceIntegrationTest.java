@@ -44,10 +44,13 @@ class SignupServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("신규 provider id → NEW, 유저 생성")
     void newUserCreated() {
+        // given
         String sub = uniqueSub();
 
+        // when
         SignupResult result = signupService.checkAndRegister(OAuthProvider.GOOGLE, sub);
 
+        // then
         assertThat(result.status()).isEqualTo(SignupStatus.NEW);
         assertThat(result.userId()).isNotBlank();
         assertThat(userRepository.findByAuthProviderAndAuthProviderId(OAuthProvider.GOOGLE, sub))
@@ -57,13 +60,16 @@ class SignupServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("기존 유저 + detail 있음 → COMPLETE")
     void existingWithDetailComplete() {
+        // given
         String sub = uniqueSub();
         User user = userRepository.save(User.createNew(OAuthProvider.GOOGLE, sub));
         detailRepository.save(new UserDetailInform(
                 user, user.getUserId() + "@test.local", "완료유저", null, 25, Gender.MALE, "KR"));
 
+        // when
         SignupResult result = signupService.checkAndRegister(OAuthProvider.GOOGLE, sub);
 
+        // then
         assertThat(result.status()).isEqualTo(SignupStatus.COMPLETE);
         assertThat(result.userId()).isEqualTo(user.getUserId());
     }
@@ -71,11 +77,14 @@ class SignupServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("기존 유저 + detail 없음(1차만) → IN_PROGRESS")
     void existingWithoutDetailInProgress() {
+        // given
         String sub = uniqueSub();
         User user = userRepository.save(User.createNew(OAuthProvider.GOOGLE, sub));
 
+        // when
         SignupResult result = signupService.checkAndRegister(OAuthProvider.GOOGLE, sub);
 
+        // then
         assertThat(result.status()).isEqualTo(SignupStatus.IN_PROGRESS);
         assertThat(result.userId()).isEqualTo(user.getUserId());
     }
@@ -83,13 +92,16 @@ class SignupServiceIntegrationTest extends IntegrationTestSupport {
     @Test
     @DisplayName("탈퇴 유예(INACTIVE) 유저 → WITHDRAWAL_PENDING (detail 무관)")
     void inactiveUserWithdrawalPending() {
+        // given
         String sub = uniqueSub();
         User user = User.createNew(OAuthProvider.GOOGLE, sub);
         user.changeStatus(UserStatus.INACTIVE);
         userRepository.save(user);
 
+        // when
         SignupResult result = signupService.checkAndRegister(OAuthProvider.GOOGLE, sub);
 
+        // then
         assertThat(result.status()).isEqualTo(SignupStatus.WITHDRAWAL_PENDING);
         assertThat(result.userId()).isEqualTo(user.getUserId());
     }

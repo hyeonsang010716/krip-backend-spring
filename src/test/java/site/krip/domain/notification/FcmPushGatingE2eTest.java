@@ -87,11 +87,14 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("방 뮤트된 유저는 push 대상에서 제외된다")
     void roomMutedUserExcluded() throws Exception {
+        // given
         Group g = setupGroupWithTokens("rm");
         muteService.setRoomMute(g.b(), g.room(), true);
 
+        // when
         fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
+        // then
         ArgumentCaptor<List<String>> cap = tokenCaptor();
         verify(fcmClient).sendMulticast(cap.capture(), anyString(), anyString(), anyMap());
         assertThat(cap.getValue()).containsExactly(g.tokenC());
@@ -100,11 +103,14 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("전역 뮤트된 유저는 push 대상에서 제외된다")
     void globalMutedUserExcluded() throws Exception {
+        // given
         Group g = setupGroupWithTokens("gm");
         muteService.setGlobalMute(g.c(), true);
 
+        // when
         fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
+        // then
         ArgumentCaptor<List<String>> cap = tokenCaptor();
         verify(fcmClient).sendMulticast(cap.capture(), anyString(), anyString(), anyMap());
         assertThat(cap.getValue()).containsExactly(g.tokenB());
@@ -113,6 +119,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("토큰이 없으면 multicast 를 호출하지 않고 0 반환")
     void noTokensSkipsMulticast() throws Exception {
+        // given
         String owner = fixtures.createActiveUser("ntOwner");
         String d = fixtures.createActiveUser("ntD");
         String e = fixtures.createActiveUser("ntE");
@@ -120,8 +127,10 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
         befriendViaApi(owner, e);
         String room = roomService.createGroupRoom(owner, "무토큰방", List.of(d, e)).chatRoomId();
 
+        // when
         int sent = fcmService.sendChatPush(List.of(d, e), room, owner, BODY, TITLE);
 
+        // then
         assertThat(sent).isZero();
         verify(fcmClient, never()).sendMulticast(anyList(), anyString(), anyString(), anyMap());
     }
@@ -129,12 +138,15 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("만료(UNREGISTERED) 토큰은 발송 후 삭제된다")
     void invalidTokensDeleted() throws Exception {
+        // given
         Group g = setupGroupWithTokens("inv");
         when(fcmClient.sendMulticast(anyList(), anyString(), anyString(), anyMap()))
                 .thenReturn(new FcmClient.SendResult(1, List.of(g.tokenC())));
 
+        // when
         fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
+        // then
         assertThat(tokenRepo.findByToken(g.tokenC())).isEmpty();
         assertThat(tokenRepo.findByToken(g.tokenB())).isPresent();
     }
@@ -142,6 +154,7 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("발송 중 재등록된 토큰은 무효 정리에서 제외된다(race 가드)")
     void reRegisteredTokenSpared() throws Exception {
+        // given
         Group g = setupGroupWithTokens("race");
         when(fcmClient.sendMulticast(anyList(), anyString(), anyString(), anyMap()))
                 .thenAnswer(inv -> {
@@ -149,19 +162,24 @@ class FcmPushGatingE2eTest extends IntegrationTestSupport {
                     return new FcmClient.SendResult(1, List.of(g.tokenC()));
                 });
 
+        // when
         fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
+        // then
         assertThat(tokenRepo.findByToken(g.tokenC())).isPresent();
     }
 
     @Test
     @DisplayName("FCM 비활성 모드면 게이팅 통과해도 multicast 없이 0 반환")
     void disabledModeReturnsZero() throws Exception {
+        // given
         Group g = setupGroupWithTokens("dis");
         when(fcmClient.isEnabled()).thenReturn(false);
 
+        // when
         int sent = fcmService.sendChatPush(List.of(g.b(), g.c()), g.room(), g.owner(), BODY, TITLE);
 
+        // then
         assertThat(sent).isZero();
         verify(fcmClient, never()).sendMulticast(anyList(), anyString(), anyString(), anyMap());
     }

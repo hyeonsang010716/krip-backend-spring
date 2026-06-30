@@ -38,17 +38,27 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("임계치 미만 연속 실패는 통과(closed)")
     void belowThresholdStaysClosed() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
+
+        // when
         cb.recordFailure();
         cb.recordFailure();
+
+        // then
         assertThat(cb.tryAcquire()).isTrue();
     }
 
     @Test
     @DisplayName("임계치 도달 시 cooldown 동안 차단(open)")
     void opensAtThreshold() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
+
+        // when
         open(cb);
+
+        // then
         assertThat(cb.tryAcquire()).isFalse();
 
         now.addAndGet(HALF_SECOND_NANOS); // cooldown(1s) 중간
@@ -58,10 +68,14 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("cooldown 경과 후 probe 1건만 통과(half-open single-flight)")
     void halfOpenAllowsSingleProbe() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
         open(cb);
 
+        // when
         now.addAndGet(ONE_SECOND_NANOS); // cooldown 1s 경과
+
+        // then
         assertThat(cb.tryAcquire()).isTrue();  // 첫 호출 = probe
         assertThat(cb.tryAcquire()).isFalse(); // 후속은 probe 결과 전까지 차단
     }
@@ -69,6 +83,7 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("half-open probe 성공 시 close + 실패 카운트 리셋")
     void probeSuccessClosesAndResets() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
         open(cb);
         assertThat(cb.tryAcquire()).isFalse(); // open
@@ -89,12 +104,16 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("open(cooldown 중) 도착한 성공은 open 을 풀지 않는다 — latch 경합 회귀(#3)")
     void successDuringOpenDoesNotClobberOpen() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
         open(cb);
         assertThat(cb.tryAcquire()).isFalse();  // open, cooldown 중
 
+        // when
         // stale 성공 모사 — 옛 구현이면 여기서 open 이 풀렸다.
         cb.recordSuccess();
+
+        // then
         assertThat(cb.tryAcquire()).isFalse();  // 여전히 open (latch 보존)
 
         now.addAndGet(ONE_SECOND_NANOS);          // 정상 cooldown 경과 후에만 probe 허용
@@ -108,15 +127,20 @@ class AiCircuitBreakerTest {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             for (int i = 0; i < rounds; i++) {
+                // given
                 AiCircuitBreaker cb = breaker(1, 1000); // 실패 1건이면 즉시 open
                 CountDownLatch start = new CountDownLatch(1);
                 Runnable fail = () -> { await(start); cb.recordFailure(); };
                 Runnable ok = () -> { await(start); cb.recordSuccess(); };
+
+                // when
                 var f1 = pool.submit(fail);
                 var f2 = pool.submit(ok);
                 start.countDown();
                 f1.get(5, TimeUnit.SECONDS);
                 f2.get(5, TimeUnit.SECONDS);
+
+                // then
                 // 임계치=1 → 어떤 인터리빙이든 최종은 open.
                 assertThat(cb.tryAcquire()).as("round %d", i).isFalse();
             }
@@ -136,12 +160,16 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("half-open probe 실패 시 재open, 다음 cooldown 후 다시 probe 1건")
     void failureWhileHalfOpenReopens() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
         open(cb);
         now.addAndGet(ONE_SECOND_NANOS);
         assertThat(cb.tryAcquire()).isTrue(); // probe 획득
 
+        // when
         cb.recordFailure(); // probe 실패 → 재open
+
+        // then
         assertThat(cb.tryAcquire()).isFalse();
 
         now.addAndGet(ONE_SECOND_NANOS); // 새 cooldown 경과
@@ -151,6 +179,7 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("release: probe 획득 후 결과 미기록(클라이언트 4xx 등) 중단 시 probe 해제로 재probe 가능 — 영구 고착 방지")
     void releaseFreesStuckProbe() {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
         open(cb);
         now.addAndGet(ONE_SECOND_NANOS);          // cooldown 경과 — half-open
@@ -158,8 +187,10 @@ class AiCircuitBreakerTest {
         assertThat(cb.tryAcquire()).isTrue();    // probe 획득 (probeInFlight=true)
         assertThat(cb.tryAcquire()).isFalse();   // single-flight — in-flight 동안 차단
 
+        // when
         cb.release();                            // 결과 미기록 — probe 만 해제(카운터/open 불변)
 
+        // then
         // release 없으면 probeInFlight 가 고착돼 이후 영원히 false. release 로 재probe 가능해야 한다.
         assertThat(cb.tryAcquire()).isTrue();
     }
@@ -167,6 +198,7 @@ class AiCircuitBreakerTest {
     @Test
     @DisplayName("cooldown 경과 직후 다수 스레드가 동시에 진입해도 probe 는 정확히 1건만 통과")
     void concurrentProbeIsSingleFlight() throws Exception {
+        // given
         AiCircuitBreaker cb = breaker(3, 1000);
         open(cb);
         now.addAndGet(ONE_SECOND_NANOS); // cooldown 경과 — half-open
@@ -191,6 +223,8 @@ class AiCircuitBreakerTest {
                     }
                 });
             }
+
+            // when
             ready.await();
             start.countDown();
             pool.shutdown();
@@ -198,6 +232,8 @@ class AiCircuitBreakerTest {
         } finally {
             pool.shutdownNow();
         }
+
+        // then
         assertThat(acquired.get()).isEqualTo(1);
     }
 }

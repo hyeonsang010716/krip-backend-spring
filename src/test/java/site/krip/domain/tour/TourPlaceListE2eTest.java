@@ -48,11 +48,13 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("거리순 정렬: 가까운 장소가 먼저, 전부 반환")
     void nearbyOrderedByDistance() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("place정렬");
         seedPlace("ZZORDER0", "ZZORDER place 0", 0);
         seedPlace("ZZORDER1", "ZZORDER place 1", 1);
         seedPlace("ZZORDER2", "ZZORDER place 2", 2);
 
+        // when & then
         mockMvc.perform(get(PLACES).param("keyword", "ZZORDER")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
                         .with(auth(userId)))
@@ -66,11 +68,13 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("is_favorite 병합: 즐겨찾기한 장소만 true")
     void favoriteMergedIntoList() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("place즐찾");
         seedPlace("ZZFAV0", "ZZFAV place 0", 0);
         seedPlace("ZZFAV1", "ZZFAV place 1", 1);
         favoriteService.addFavorite(userId, "ZZFAV0"); // 가장 가까운(=[0]) 장소를 즐겨찾기
 
+        // when & then
         mockMvc.perform(get(PLACES).param("keyword", "ZZFAV")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
                         .with(auth(userId)))
@@ -82,6 +86,7 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("커서 페이지네이션: 첫 페이지 30 + next_cursor, 둘째 페이지 나머지 1 + cursor 없음")
     void cursorPagination() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("place커서");
         for (int i = 0; i <= PAGE_SIZE; i++) { // PAGE_SIZE + 1 개 → 둘째 페이지에 1개 남김
             seedPlace(String.format("ZZCUR%02d", i), "ZZCUR place " + i, i);
@@ -108,11 +113,13 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("마지막 페이지가 정확히 30개면 next_cursor 없음 (phantom 커서 회귀)")
     void exactlyFullLastPageHasNoCursor() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("place딱30");
         for (int i = 0; i < PAGE_SIZE; i++) { // 정확히 한 페이지
             seedPlace(String.format("ZZEXACT%02d", i), "ZZEXACT place " + i, i);
         }
 
+        // when & then
         mockMvc.perform(get(PLACES).param("keyword", "ZZEXACT")
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
                         .with(auth(userId)))
@@ -124,9 +131,11 @@ class TourPlaceListE2eTest extends IntegrationTestSupport {
     @Test
     @DisplayName("100자 초과 keyword → 400 (Mongo $regex+geoNear 직행 방지 바운드)")
     void overLongKeywordRejected() throws Exception {
+        // given
         String userId = fixtures.createActiveUser("place길이");
         String tooLong = "가".repeat(101);
 
+        // when & then
         mockMvc.perform(get(PLACES).param("keyword", tooLong)
                         .param("lat", String.valueOf(LAT)).param("lng", String.valueOf(LNG))
                         .with(auth(userId)))

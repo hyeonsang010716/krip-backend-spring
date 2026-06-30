@@ -48,11 +48,14 @@ class UnreadServiceTest {
     @Test
     @DisplayName("miss 방을 단일 aggregate 로 배치 계산하고 캐시에 기록한다")
     void batchComputesMissesAndCaches() {
+        // given
         seedRooms();
         when(messageRepo.countAfterSeqByRooms(anyMap())).thenReturn(Map.of("R1", 5L, "R2", 2L, "R3", 7L));
 
+        // when
         Map<String, Integer> result = service.countsForUser("U");
 
+        // then
         assertThat(result).containsEntry("R1", 5).containsEntry("R2", 2).containsEntry("R3", 7);
         verify(messageRepo, times(1)).countAfterSeqByRooms(anyMap());
         verify(hashOps).put(anyString(), eq("R1"), eq("5"));
@@ -63,12 +66,15 @@ class UnreadServiceTest {
     @Test
     @DisplayName("aggregate 결과에 없는 방(미읽음 0)은 0 으로 채워지고 0 으로 캐시된다")
     void roomsAbsentFromAggregateDefaultToZero() {
+        // given
         seedRooms();
         // R2 는 미읽음 0 이라 aggregate 가 반환하지 않는다 → 호출측이 0 처리.
         when(messageRepo.countAfterSeqByRooms(anyMap())).thenReturn(Map.of("R1", 5L, "R3", 7L));
 
+        // when
         Map<String, Integer> result = service.countsForUser("U");
 
+        // then
         assertThat(result).containsEntry("R1", 5).containsEntry("R2", 0).containsEntry("R3", 7);
         verify(hashOps).put(anyString(), eq("R2"), eq("0"));
     }
@@ -76,22 +82,28 @@ class UnreadServiceTest {
     @Test
     @DisplayName("999 캡: aggregate count 가 캡을 초과해도 999 로 클램프된다")
     void countCappedAt999() {
+        // given
         seedRooms();
         when(messageRepo.countAfterSeqByRooms(anyMap())).thenReturn(Map.of("R1", 1000L, "R2", 5000L, "R3", 1000L));
 
+        // when
         Map<String, Integer> result = service.countsForUser("U");
 
+        // then
         assertThat(result).containsEntry("R1", 999).containsEntry("R2", 999).containsEntry("R3", 999);
     }
 
     @Test
     @DisplayName("배치 aggregate 실패 시 miss 방 전체 skip — 빈 map 반환 + Redis 미기록")
     void batchFailureReturnsEmpty() {
+        // given
         seedRooms();
         when(messageRepo.countAfterSeqByRooms(anyMap())).thenThrow(new RuntimeException("mongo down"));
 
+        // when
         Map<String, Integer> result = service.countsForUser("U");
 
+        // then
         assertThat(result).isEmpty();
         verify(hashOps, never()).put(anyString(), anyString(), anyString());
     }
@@ -99,6 +111,7 @@ class UnreadServiceTest {
     @Test
     @DisplayName("캐시 hit 방은 배치를 우회하고, miss 방만 aggregate 로 계산된다")
     void cacheHitsBypassBatch() {
+        // given
         when(memberRepo.findLastReadSeqsAll("U")).thenReturn(List.of(
                 new LastReadSeq("R1", 0L),
                 new LastReadSeq("R2", 0L),
@@ -109,8 +122,10 @@ class UnreadServiceTest {
         when(messageRepo.countAfterSeqByRooms(eq(Map.of("R2", 0L, "R3", 0L))))
                 .thenReturn(Map.of("R2", 4L, "R3", 6L));
 
+        // when
         Map<String, Integer> result = service.countsForUser("U");
 
+        // then
         assertThat(result).containsEntry("R1", 3).containsEntry("R2", 4).containsEntry("R3", 6);
         verify(messageRepo, times(1)).countAfterSeqByRooms(eq(Map.of("R2", 0L, "R3", 0L)));
         // 캐시 hit 인 R1 은 재계산·재기록하지 않는다.
