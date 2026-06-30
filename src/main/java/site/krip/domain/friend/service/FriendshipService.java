@@ -2,9 +2,6 @@ package site.krip.domain.friend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -38,8 +35,6 @@ public class FriendshipService {
     private static final int PAGE_SIZE = 30;
     // hasMore 판정용 +1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
     private static final int FETCH_SIZE = PAGE_SIZE + 1;
-    private static final Sort PAGE_SORT =
-            Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("friendshipId"));
 
     private final FriendshipRepository friendshipRepository;
     private final UserBlockRepository userBlockRepository;
@@ -174,31 +169,28 @@ public class FriendshipService {
 
     @Transactional(readOnly = true)
     public FriendshipListResponse getFriends(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
-                ? friendshipRepository.findFriendsFirstPage(userId, FriendshipStatus.ACCEPTED, p)
-                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findFriendsAfterCursor(
-                        userId, FriendshipStatus.ACCEPTED, cAt, cId, p));
+                ? friendshipRepository.findFriends(userId, FriendshipStatus.ACCEPTED, null, null, FETCH_SIZE)
+                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findFriends(
+                        userId, FriendshipStatus.ACCEPTED, cAt, cId, FETCH_SIZE));
         return buildListResponse(items, userId);
     }
 
     @Transactional(readOnly = true)
     public FriendshipListResponse getReceivedRequests(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
-                ? friendshipRepository.findReceivedFirstPage(userId, FriendshipStatus.PENDING, p)
-                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findReceivedAfterCursor(
-                        userId, FriendshipStatus.PENDING, cAt, cId, p));
+                ? friendshipRepository.findReceived(userId, FriendshipStatus.PENDING, null, null, FETCH_SIZE)
+                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findReceived(
+                        userId, FriendshipStatus.PENDING, cAt, cId, FETCH_SIZE));
         return buildListResponse(items, userId);
     }
 
     @Transactional(readOnly = true)
     public FriendshipListResponse getSentRequests(String userId, String cursor) {
-        Pageable p = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
         List<Friendship> items = (cursor == null || cursor.isBlank())
-                ? friendshipRepository.findSentFirstPage(userId, FriendshipStatus.PENDING, p)
-                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findSentAfterCursor(
-                        userId, FriendshipStatus.PENDING, cAt, cId, p));
+                ? friendshipRepository.findSent(userId, FriendshipStatus.PENDING, null, null, FETCH_SIZE)
+                : afterCursor(cursor, (cAt, cId) -> friendshipRepository.findSent(
+                        userId, FriendshipStatus.PENDING, cAt, cId, FETCH_SIZE));
         return buildListResponse(items, userId);
     }
 

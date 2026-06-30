@@ -2,8 +2,6 @@ package site.krip.domain.tripmate.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -41,10 +39,10 @@ public class TripmatePostLikeService {
     @Transactional(readOnly = true)
     public LikedUsersResponse getLikedUsers(String viewerId, String postId, String cursor) {
         accessGuard.loadViewablePost(viewerId, postId);
-        Pageable page = PageRequest.of(0, PAGE_SIZE + 1);
-        List<TripmatePostLike> fetched = (cursor == null || cursor.isBlank())
-                ? likeRepository.findLikesFirstPage(postId, page)
-                : likesAfterCursor(postId, cursor, page);
+        // 커서가 없으면 키셋 파트를 null 로 — Custom 쿼리가 첫 페이지로 분기. PAGE_SIZE+1 fetch 로 phantom 커서 방지.
+        KeysetCursor.Decoded c = (cursor == null || cursor.isBlank()) ? null : KeysetCursor.decode(cursor);
+        List<TripmatePostLike> fetched = likeRepository.findLikes(
+                postId, c == null ? null : c.sortKey(), c == null ? null : c.id(), PAGE_SIZE + 1);
 
         boolean hasMore = fetched.size() > PAGE_SIZE;
         List<TripmatePostLike> likes = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
@@ -55,11 +53,6 @@ public class TripmatePostLikeService {
                         likes.get(likes.size() - 1).getUserId())
                 : null;
         return new LikedUsersResponse(postId, userIds, nextCursor);
-    }
-
-    private List<TripmatePostLike> likesAfterCursor(String postId, String cursor, Pageable page) {
-        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-        return likeRepository.findLikesAfterCursor(postId, c.sortKey(), c.id(), page);
     }
 
     public long addLike(String userId, String postId) {

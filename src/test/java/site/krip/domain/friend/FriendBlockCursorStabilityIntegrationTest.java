@@ -3,8 +3,6 @@ package site.krip.domain.friend;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import site.krip.domain.friend.dto.response.FriendshipListResponse;
 import site.krip.domain.friend.dto.response.FriendshipResponse;
 import site.krip.domain.friend.dto.response.UserBlockListResponse;
@@ -47,8 +45,8 @@ class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
         makeFriends(me, f2);
 
         // 서비스와 동일 정렬로 정렬해 1페이지 경계(첫 행)/그 다음 행을 정한다.
-        List<Friendship> sorted = friendshipRepository.findFriendsFirstPage(me, FriendshipStatus.ACCEPTED,
-                PageRequest.of(0, FIRST_PAGE_SIZE, Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("friendshipId"))));
+        List<Friendship> sorted = friendshipRepository.findFriends(me, FriendshipStatus.ACCEPTED,
+                null, null, FIRST_PAGE_SIZE);
         assertThat(sorted).hasSize(2);
         Friendship boundary = sorted.get(0);
         Friendship next = sorted.get(1);

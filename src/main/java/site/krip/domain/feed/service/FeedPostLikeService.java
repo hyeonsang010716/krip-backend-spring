@@ -14,8 +14,6 @@ import site.krip.domain.feed.entity.FeedPost;
 import site.krip.domain.feed.entity.FeedPostLike;
 import site.krip.domain.feed.port.FeedInboxPort;
 import site.krip.domain.feed.repository.FeedPostLikeRepository;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import site.krip.global.common.exception.ApiException;
 import site.krip.global.support.AfterCommit;
 import site.krip.global.support.KeysetCursor;
@@ -86,10 +84,10 @@ public class FeedPostLikeService {
     @Transactional(readOnly = true)
     public LikedUsersResponse getLikedUsers(String viewerId, String postId, String cursor) {
         FeedPost post = access.loadViewablePost(viewerId, postId).post();
-        Pageable page = PageRequest.of(0, PAGE_SIZE + 1);
-        List<FeedPostLike> fetched = (cursor == null || cursor.isBlank())
-                ? likeRepo.findLikesFirstPage(post.getPostId(), page)
-                : likesAfterCursor(post.getPostId(), cursor, page);
+        // 커서가 없으면 키셋 파트를 null 로 — Custom 쿼리가 첫 페이지로 분기. PAGE_SIZE+1 fetch 로 phantom 커서 방지.
+        KeysetCursor.Decoded c = (cursor == null || cursor.isBlank()) ? null : KeysetCursor.decode(cursor);
+        List<FeedPostLike> fetched = likeRepo.findLikes(
+                post.getPostId(), c == null ? null : c.sortKey(), c == null ? null : c.id(), PAGE_SIZE + 1);
 
         boolean hasMore = fetched.size() > PAGE_SIZE;
         List<FeedPostLike> likes = hasMore ? fetched.subList(0, PAGE_SIZE) : fetched;
@@ -108,10 +106,5 @@ public class FeedPostLikeService {
                         likes.get(likes.size() - 1).getUserId())
                 : null;
         return new LikedUsersResponse(postId, items, nextCursor);
-    }
-
-    private List<FeedPostLike> likesAfterCursor(String postId, String cursor, Pageable page) {
-        KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-        return likeRepo.findLikesAfterCursor(postId, c.sortKey(), c.id(), page);
     }
 }

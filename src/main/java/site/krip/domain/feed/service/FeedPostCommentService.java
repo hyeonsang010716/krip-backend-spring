@@ -2,7 +2,6 @@ package site.krip.domain.feed.service;
 
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -69,15 +68,11 @@ public class FeedPostCommentService {
     @Transactional(readOnly = true)
     public CommentListResponse listComments(String viewerId, String postId, String cursor) {
         FeedPost post = access.loadViewablePost(viewerId, postId).post();
+        KeysetCursor.Decoded cur = (cursor == null || cursor.isBlank()) ? null : KeysetCursor.decode(cursor);
         // PAGE_SIZE+1 fetch — 총 개수가 PAGE_SIZE 배수일 때 빈 다음 페이지를 가리키는 phantom 커서 방지.
-        PageRequest page = PageRequest.of(0, FeedPostCommentRepository.PAGE_SIZE + 1);
-        List<FeedPostComment> fetched;
-        if (cursor == null || cursor.isBlank()) {
-            fetched = commentRepo.findByPostFirstPage(post.getPostId(), page);
-        } else {
-            KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-            fetched = commentRepo.findByPostAfterCursor(post.getPostId(), c.sortKey(), c.id(), page);
-        }
+        List<FeedPostComment> fetched = commentRepo.findByPost(post.getPostId(),
+                cur == null ? null : cur.sortKey(), cur == null ? null : cur.id(),
+                FeedPostCommentRepository.PAGE_SIZE + 1);
         boolean hasMore = fetched.size() > FeedPostCommentRepository.PAGE_SIZE;
         List<FeedPostComment> comments = hasMore
                 ? fetched.subList(0, FeedPostCommentRepository.PAGE_SIZE) : fetched;

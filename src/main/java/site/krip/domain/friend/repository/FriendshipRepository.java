@@ -1,14 +1,11 @@
 package site.krip.domain.friend.repository;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import site.krip.domain.friend.entity.Friendship;
-import site.krip.domain.friend.entity.FriendshipStatus;
 
-import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -16,10 +13,10 @@ import java.util.Optional;
 /**
  * 친구 관계 RDB 접근.
  *
- * <p>목록은 (updated_at, friendship_id) 커서 페이지네이션. peer 프로필은 to-one fetch join.
+ * <p>목록은 (updated_at, friendship_id) 커서 페이지네이션 — {@link FriendshipRepositoryCustom} 참고.
  * 방향 무관 관계 조회는 {@code findBetween}.
  */
-public interface FriendshipRepository extends JpaRepository<Friendship, String> {
+public interface FriendshipRepository extends JpaRepository<Friendship, String>, FriendshipRepositoryCustom {
 
     @Query("select f from Friendship f where "
             + "(f.requesterId = :a and f.addresseeId = :b) "
@@ -63,64 +60,4 @@ public interface FriendshipRepository extends JpaRepository<Friendship, String> 
             + "or (f.addresseeId = :me and f.requesterId in :targets)")
     List<Friendship> findFriendshipsWith(@Param("me") String meId,
                                          @Param("targets") Collection<String> targetIds);
-
-
-    // ──────────────────── 친구 목록 (ACCEPTED) ────────────────────
-
-    @Query("select f from Friendship f "
-            + "left join fetch f.requester ru left join fetch ru.detail "
-            + "left join fetch f.addressee au left join fetch au.detail "
-            + "where f.status = :status and (f.requesterId = :userId or f.addresseeId = :userId)")
-    List<Friendship> findFriendsFirstPage(@Param("userId") String userId,
-                                          @Param("status") FriendshipStatus status,
-                                          Pageable pageable);
-
-    @Query("select f from Friendship f "
-            + "left join fetch f.requester ru left join fetch ru.detail "
-            + "left join fetch f.addressee au left join fetch au.detail "
-            + "where f.status = :status and (f.requesterId = :userId or f.addresseeId = :userId) "
-            + "and (f.updatedAt < :cursorAt or (f.updatedAt = :cursorAt and f.friendshipId < :cursor))")
-    List<Friendship> findFriendsAfterCursor(@Param("userId") String userId,
-                                            @Param("status") FriendshipStatus status,
-                                            @Param("cursorAt") Instant cursorAt,
-                                            @Param("cursor") String cursor,
-                                            Pageable pageable);
-
-    // ──────────────────── 받은 요청 (PENDING, addressee=me) ────────────────────
-
-    @Query("select f from Friendship f "
-            + "left join fetch f.requester ru left join fetch ru.detail "
-            + "where f.addresseeId = :userId and f.status = :status")
-    List<Friendship> findReceivedFirstPage(@Param("userId") String userId,
-                                           @Param("status") FriendshipStatus status,
-                                           Pageable pageable);
-
-    @Query("select f from Friendship f "
-            + "left join fetch f.requester ru left join fetch ru.detail "
-            + "where f.addresseeId = :userId and f.status = :status "
-            + "and (f.updatedAt < :cursorAt or (f.updatedAt = :cursorAt and f.friendshipId < :cursor))")
-    List<Friendship> findReceivedAfterCursor(@Param("userId") String userId,
-                                             @Param("status") FriendshipStatus status,
-                                             @Param("cursorAt") Instant cursorAt,
-                                             @Param("cursor") String cursor,
-                                             Pageable pageable);
-
-    // ──────────────────── 보낸 요청 (PENDING, requester=me) ────────────────────
-
-    @Query("select f from Friendship f "
-            + "left join fetch f.addressee au left join fetch au.detail "
-            + "where f.requesterId = :userId and f.status = :status")
-    List<Friendship> findSentFirstPage(@Param("userId") String userId,
-                                       @Param("status") FriendshipStatus status,
-                                       Pageable pageable);
-
-    @Query("select f from Friendship f "
-            + "left join fetch f.addressee au left join fetch au.detail "
-            + "where f.requesterId = :userId and f.status = :status "
-            + "and (f.updatedAt < :cursorAt or (f.updatedAt = :cursorAt and f.friendshipId < :cursor))")
-    List<Friendship> findSentAfterCursor(@Param("userId") String userId,
-                                         @Param("status") FriendshipStatus status,
-                                         @Param("cursorAt") Instant cursorAt,
-                                         @Param("cursor") String cursor,
-                                         Pageable pageable);
 }

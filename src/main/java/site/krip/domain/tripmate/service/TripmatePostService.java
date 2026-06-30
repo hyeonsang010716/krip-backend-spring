@@ -273,12 +273,12 @@ public class TripmatePostService {
     }
 
     private List<TripmatePost> fetchDisplayedPage(String cursor, String viewerId) {
-        Pageable pageable = PageRequest.of(0, FETCH_SIZE, PAGE_SORT);
+        // 정렬은 findDisplayed 가 (createdAt desc, postId desc) 고정 — PAGE_SORT 와 동일.
         if (cursor == null || cursor.isBlank()) {
-            return postRepository.findDisplayedFirstPage(viewerId, pageable);
+            return postRepository.findDisplayed(viewerId, null, null, FETCH_SIZE);
         }
         KeysetCursor.Decoded c = KeysetCursor.decode(cursor);
-        return postRepository.findDisplayedAfterCursor(c.sortKey(), c.id(), viewerId, pageable);
+        return postRepository.findDisplayed(viewerId, c.sortKey(), c.id(), FETCH_SIZE);
     }
 
     private PostListResponse buildListResponse(List<TripmatePost> fetched, String userId) {

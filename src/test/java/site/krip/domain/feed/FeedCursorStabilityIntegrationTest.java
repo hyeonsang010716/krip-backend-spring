@@ -72,7 +72,7 @@ class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
         commentRepository.saveAndFlush(new FeedPostComment(postId, me, "c1"));
         commentRepository.saveAndFlush(new FeedPostComment(postId, me, "c2"));
 
-        List<FeedPostComment> sorted = commentRepository.findByPostFirstPage(postId, PageRequest.of(0, 20));
+        List<FeedPostComment> sorted = commentRepository.findByPost(postId, null, null, 20);
         assertThat(sorted).hasSize(2);
         FeedPostComment boundary = sorted.get(0);
         FeedPostComment next = sorted.get(1);

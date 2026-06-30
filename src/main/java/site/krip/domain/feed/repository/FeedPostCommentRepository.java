@@ -1,30 +1,13 @@
 package site.krip.domain.feed.repository;
 
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 import site.krip.domain.feed.entity.FeedPostComment;
 
-import java.time.Instant;
-import java.util.List;
-
 /**
- * FeedPostComment RDB 접근. 커서: (created_at DESC, comment_id DESC).
+ * FeedPostComment RDB 접근. 커서 페이지네이션은 {@link FeedPostCommentRepositoryCustom} 참고.
  */
-public interface FeedPostCommentRepository extends JpaRepository<FeedPostComment, String> {
+public interface FeedPostCommentRepository extends JpaRepository<FeedPostComment, String>, FeedPostCommentRepositoryCustom {
 
     /** 모바일 한 화면 fit. */
     int PAGE_SIZE = 20;
-
-    @Query("select c from FeedPostComment c where c.postId = :postId "
-            + "order by c.createdAt desc, c.commentId desc")
-    List<FeedPostComment> findByPostFirstPage(@Param("postId") String postId, Pageable pageable);
-
-    @Query("select c from FeedPostComment c where c.postId = :postId "
-            + "and (c.createdAt < :cursorAt or (c.createdAt = :cursorAt and c.commentId < :cursor)) "
-            + "order by c.createdAt desc, c.commentId desc")
-    List<FeedPostComment> findByPostAfterCursor(@Param("postId") String postId,
-                                                @Param("cursorAt") Instant cursorAt,
-                                                @Param("cursor") String cursor, Pageable pageable);
 }

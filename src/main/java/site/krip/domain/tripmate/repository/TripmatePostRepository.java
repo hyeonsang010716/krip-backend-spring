@@ -19,7 +19,7 @@ import java.util.Optional;
  *
  * <p>차단 관계(방향 무관) 작성자의 글은 {@code not exists} 서브쿼리로 DB 에서 제외한다.
  */
-public interface TripmatePostRepository extends JpaRepository<TripmatePost, String> {
+public interface TripmatePostRepository extends JpaRepository<TripmatePost, String>, TripmatePostRepositoryCustom {
 
     @Query("select p from TripmatePost p "
             + "left join fetch p.user u left join fetch u.detail "
@@ -33,22 +33,7 @@ public interface TripmatePostRepository extends JpaRepository<TripmatePost, Stri
             + "  (b.blockerId = :viewerId and b.blockedId = p.userId) "
             + "  or (b.blockerId = p.userId and b.blockedId = :viewerId)) ";
 
-    // ──────────────────── 목록 (최신순) ────────────────────
-
-    @Query("select p from TripmatePost p "
-            + "left join fetch p.user u left join fetch u.detail "
-            + "where p.displayed = true " + NOT_BLOCKED)
-    List<TripmatePost> findDisplayedFirstPage(@Param("viewerId") String viewerId, Pageable pageable);
-
-    @Query("select p from TripmatePost p "
-            + "left join fetch p.user u left join fetch u.detail "
-            + "where p.displayed = true "
-            + "and (p.createdAt < :cursorAt or (p.createdAt = :cursorAt and p.postId < :cursor)) "
-            + NOT_BLOCKED)
-    List<TripmatePost> findDisplayedAfterCursor(@Param("cursorAt") Instant cursorAt,
-                                                @Param("cursor") String cursor,
-                                                @Param("viewerId") String viewerId,
-                                                Pageable pageable);
+    // 목록(최신순)은 {@link TripmatePostRepositoryCustom#findDisplayed} 로 이전 — 커서 분기 동적 쿼리.
 
     // ──────────────────── 검색 (제목·내용·작성자 닉네임) ────────────────────
     // OR 분기를 모두 tripmate_post 컬럼(title/content/user_id)으로 모아 BitmapOr 인덱스 스캔을 가능하게 한다.
