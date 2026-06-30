@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 친구/차단 목록 커서 안정성 — 경계 행이 동시 삭제돼도 다음 페이지가 안 잘리는지 검증(회귀).
  * 구버그: 커서가 id만 담아 행 소실 시 List.of() 반환 → 클라가 "끝"으로 오인. (정렬키, id) 인코딩으로 수정.
  */
+@DisplayName("친구/차단 커서 안정성 — 경계 행 삭제에도 페이지 무손실")
 class FriendBlockCursorStabilityIntegrationTest extends IntegrationTestSupport {
 
     /** 서비스 첫 페이지와 동일한 크기 — 2행을 한 페이지에 담아 경계/다음 행을 가린다. */

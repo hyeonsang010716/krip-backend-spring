@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * {@link S3ObjectStorage} 단위 테스트 (S3Client 목) — 키 스킴/URL 파생 및 파싱불가 URL 의 안전 처리 검증.
  * delete/deleteMany 가 perm 키가 아닌 URL 을 SDK 호출 없이 건너뛰는지 본다.
  */
+@DisplayName("S3 스토리지 — 업로드 키·삭제·배치 부분 실패 환원")
 class S3ObjectStorageTest {
 
     private S3Client s3;

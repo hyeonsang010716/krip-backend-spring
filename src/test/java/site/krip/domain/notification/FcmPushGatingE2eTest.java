@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * FCM 채팅 푸시 게이팅 E2E — 실 DB + mock {@link FcmClient} 로 sendChatPush 게이팅
  * 캐스케이드(방 뮤트 → 전역 뮤트 → 토큰 → multicast → 만료 정리)를 검증한다.
  */
+@DisplayName("FCM push 게이팅 — 뮤트/토큰 부재/만료/비활성 제외")
 class FcmPushGatingE2eTest extends IntegrationTestSupport {
 
     private static final String BODY = "본문";

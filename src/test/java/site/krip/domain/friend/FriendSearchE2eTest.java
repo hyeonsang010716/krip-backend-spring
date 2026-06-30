@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 친구 검색/검색기록/상세 E2E — 검색(ILIKE, 본인/차단 제외, 기록 저장), 검색기록(목록/삭제, Mongo), 상세(공개 프로필 + 관계).
  */
+@DisplayName("친구 검색 — 부분일치·본인 제외·관계 노출·검색 기록")
 class FriendSearchE2eTest extends IntegrationTestSupport {
 
     @Test

@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 구버그: READ_COMMITTED 에서 둘 다 null 읽고 각자 저장 → 나중 것이 덮어써 고아 S3 + 409 없음. 잠금으로 하나만 성공·나머지 409.
  */
 @Import(FakeStorageConfig.class)
+@DisplayName("프로필 이미지 동시 추가 — 단일 승자·고아 S3 없음")
 class ProfileImageConcurrencyIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

@@ -21,6 +21,7 @@ import static site.krip.domain.feed.service.image.ImageTestSupport.realJpeg;
  * ImageProcessor.sanitize 보안 검증 — "항상 재인코딩"으로 폴리글랏(이미지+트레일링 페이로드)을 무력화하는지 실 바이트로 확인.
  * 기존엔 mock·비이미지 입력으로만 닿아 재인코딩 누락 회귀를 못 잡는 false-green 이었다.
  */
+@DisplayName("이미지 새니타이즈 — 폴리글랏 무력화·항상 재인코딩")
 class ImageSanitizeTest {
 
     private static final byte[] MARKER = "__POLYGLOT_PAYLOAD_MARKER__".getBytes(StandardCharsets.US_ASCII);

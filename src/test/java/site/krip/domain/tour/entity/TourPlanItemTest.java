@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link TourPlanItem} 스냅샷 null 가드 — Place(외부 Google 데이터)의 display_name/address 가 없을 때
  * NOT NULL 컬럼 제약 위반 대신 빈 문자열로 보정되는지 검증(회귀).
  */
+@DisplayName("플랜 카드 — null display_name/address 빈 문자열 보정")
 class TourPlanItemTest {
 
     @Test

@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 헬스/레디니스 프로브 E2E — 모두 인증 필터 제외라 토큰 없이 접근 가능해야 한다(K8s liveness/readiness).
  */
+@DisplayName("헬스 체크 — 무인증 200·세부 비노출")
 class HealthControllerE2eTest extends IntegrationTestSupport {
 
     @Test

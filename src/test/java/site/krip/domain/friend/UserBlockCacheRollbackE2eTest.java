@@ -18,6 +18,7 @@ import static org.mockito.Mockito.doThrow;
  * 차단 캐시 무효화 트랜잭션 경계 회귀 — invalidateBlockCache 는 커밋 전 호출이라 Redis 실패 시
  * 예외 전파로 블록 INSERT + friendship 삭제까지 롤백돼야 한다(fail-closed). BlockCacheService mock 으로 Redis 장애 시뮬.
  */
+@DisplayName("차단 캐시 롤백 — 무효화 실패 시 fail-closed 롤백")
 class UserBlockCacheRollbackE2eTest extends IntegrationTestSupport {
 
     @MockitoBean

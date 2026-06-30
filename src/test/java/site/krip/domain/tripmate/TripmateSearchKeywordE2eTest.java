@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 여행메이트 검색어 검증 E2E.
  * 빈/공백 검색어는 400(전체조회·빈 검색기록 저장 방지), 정상 검색어는 200.
  */
+@DisplayName("트립메이트 검색어 검증 — 빈/공백 keyword 400")
 class TripmateSearchKeywordE2eTest extends IntegrationTestSupport {
 
     private static final String SEARCH = "/api/tripmate/posts/search";

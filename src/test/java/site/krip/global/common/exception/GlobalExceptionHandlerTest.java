@@ -20,12 +20,13 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link GlobalExceptionHandler} DB 무결성 위반 분기 단위 테스트 —
  * UNIQUE 위반(SQLState 23505)·DuplicateKeyException 만 409, 그 외(NOT NULL 등)는 500.
  */
+@DisplayName("전역 예외 처리 — DB 무결성/락 충돌 → 409")
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
 
     @Test
-    @DisplayName("DuplicateKeyException → 409")
+    @DisplayName("중복 키 위반(DuplicateKeyException) → 409")
     void duplicateKeyReturns409() {
         assertThat(handler.handleDataIntegrity(new DuplicateKeyException("dup")).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);

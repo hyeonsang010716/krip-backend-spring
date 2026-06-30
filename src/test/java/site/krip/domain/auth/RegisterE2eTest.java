@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 2차 회원가입 E2E.
  * 경로: {@code POST /api/auth/register} (RegisterCheckFilter 제외 경로).
  */
+@DisplayName("2차 회원가입 — 완료·재가입·필수 필드")
 class RegisterE2eTest extends IntegrationTestSupport {
 
     /** 모든 필수 필드를 채운 유효 가입 본문. */

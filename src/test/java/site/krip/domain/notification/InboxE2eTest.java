@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 인박스 E2E — 경로 {@code /api/notification/inbox}. Mongo 단독. 항목은 {@link InboxRepository}
  * static 팩토리(feedLike 등)로 직접 시드. 응답 JSON snake_case.
  */
+@DisplayName("인박스 — 목록·자동 read 멱등·hide·cascade·커서")
 class InboxE2eTest extends IntegrationTestSupport {
 
     @Autowired

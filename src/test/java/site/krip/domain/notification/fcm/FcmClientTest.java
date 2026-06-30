@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * FcmClient 순수 헬퍼 단위 테스트 — 실제 발송(Firebase 자격증명 필요)은 통합 테스트에서 비활성이므로,
  * multicast 분할 경계와 무효 토큰 판정만 순수 함수로 검증한다.
  */
+@DisplayName("FCM 클라이언트 — 배치 분할·토큰 무효 판정·서킷 반영")
 class FcmClientTest {
 
     @Nested

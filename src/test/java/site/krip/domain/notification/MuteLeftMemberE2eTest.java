@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 방별 mute — 떠난(left) 멤버 경계 E2E. 멤버 행은 있으나 이미 퇴장(isLeft=true)인 분기는
  * 활성 멤버가 아니므로 400 이어야 한다.
  */
+@DisplayName("알림 뮤트 — 퇴장 멤버 방 뮤트 거부")
 class MuteLeftMemberE2eTest extends MuteTestSupport {
 
     @Autowired

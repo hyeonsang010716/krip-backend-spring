@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 분기: 신규→NEW / INACTIVE→WITHDRAWAL_PENDING / detail 없음→IN_PROGRESS / detail 있음→COMPLETE.
  */
 @Transactional
+@DisplayName("가입 상태 판정 — NEW/COMPLETE/IN_PROGRESS/WITHDRAWAL_PENDING")
 class SignupServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

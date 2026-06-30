@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 공개 share E2E — 공유 토큰 발급 → 인증 없이 공개 endpoint 라운드트립(소유자 user_id 미노출).
  * 토큰 무효/손상/만료 → 400, 디코드됐으나 plan 삭제 → 404. JSON snake_case.
  */
+@DisplayName("공개 공유 — 토큰 발급·무인증 조회·손상/삭제 처리")
 class PublicShareE2eTest extends IntegrationTestSupport {
 
     @Autowired

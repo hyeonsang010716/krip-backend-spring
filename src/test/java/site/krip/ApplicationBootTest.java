@@ -11,6 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * 부팅 스모크 — 실 PG/Mongo/Redis 위에서 Flyway·ddl-auto=validate·Mongo 인덱스·전체 빈 와이어링이 끝까지 올라오는지 검증.
  */
+@DisplayName("애플리케이션 부팅 — 실 PG/Mongo/Redis 위 컨텍스트 기동")
 class ApplicationBootTest extends IntegrationTestSupport {
 
     @Autowired

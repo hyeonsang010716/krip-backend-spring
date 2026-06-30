@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
  * {@link ChatHandshakeInterceptor} 순수 단위 테스트 — accept() 전이라 RFC 6455 상 커스텀 close code 불가,
  * origin/auth/inactive 거부는 전부 HTTP 403 으로 일관(토큰 없음/무효도 401 아닌 403).
  */
+@DisplayName("WS 핸드셰이크 — Origin/토큰/상태 검증 403")
 class ChatHandshakeInterceptorTest {
 
     private static final String SECRET = "test-login-jwt-secret-value-1234567890";

@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@link ShareTokenProvider} 순수 단위 테스트 — encode/decode 라운드트립 및 무효 토큰 거절.
  * Spring 컨텍스트 없이 {@link ShareProperties} 레코드를 직접 생성해 주입한다.
  */
+@DisplayName("공유 토큰 — encode/decode·위조/만료/클레임 거부")
 class ShareTokenProviderTest {
 
     private static final String SECRET = "test-share-secret-for-unit-tests";

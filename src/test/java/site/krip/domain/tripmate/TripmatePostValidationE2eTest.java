@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 게시글 교차 필드 검증 E2E (M7) — 나이 min&gt;max, 종료일&lt;시작일 → 400.
  * per-field 제약은 통과하지만 record {@code @AssertTrue} 가 거부하는 경계를 검증한다.
  */
+@DisplayName("트립메이트 게시글 검증 — 나이/날짜 범위·이미지 개수")
 class TripmatePostValidationE2eTest extends IntegrationTestSupport {
 
     private static final String CREATE = "/api/tripmate/posts";

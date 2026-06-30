@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link PlaceGrouping#computeCaps} — 합 ≤ HARD_CAP(80)·각 그룹 ≥ 1 불변식 검증.
  */
+@DisplayName("장소 그룹 캡 스케일링 — 스타일별 합 ≤ 80 보정")
 class PlaceGroupingTest {
 
     private static final int HARD_CAP = 80;

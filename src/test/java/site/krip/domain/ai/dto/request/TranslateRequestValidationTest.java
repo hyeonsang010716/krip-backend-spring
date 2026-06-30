@@ -21,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link TranslateRequest} 검증 — source/target 누락이 컨트롤러 경계에서 400 으로 걸러지는지 확인한다.
  * (이전엔 @Pattern 만 있어 null 이 통과 → 서비스의 source.equals(...) 에서 NPE→500 났던 회귀 방지)
  */
+@DisplayName("번역 요청 검증 — source/target 언어 제약")
 class TranslateRequestValidationTest {
 
     private static ValidatorFactory factory;

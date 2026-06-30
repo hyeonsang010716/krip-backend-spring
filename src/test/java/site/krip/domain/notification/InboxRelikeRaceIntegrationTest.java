@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 재좋아요 dedup 동시성 검증 — hidden 문서 부활(upsert)과 hide 가 경합해도 같은 dedup 튜플의
  * visible 문서가 2건 이상 생기지 않아야 한다(partial unique index + upsert 멱등).
  */
+@DisplayName("인박스 재좋아요 경합 — visible 문서 최대 1건")
 class InboxRelikeRaceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

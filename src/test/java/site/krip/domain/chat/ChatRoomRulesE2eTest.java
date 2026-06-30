@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 채팅 방 퇴장/강퇴 규칙 경계 E2E ({@code /api/chat/rooms}) — DIRECT 방·자기 강퇴·이미 떠난 멤버 강퇴는 모두 400.
  */
+@DisplayName("채팅 방 규칙 — DIRECT/그룹 퇴장·강퇴 제약")
 class ChatRoomRulesE2eTest extends ChatTestSupport {
 
     @Test

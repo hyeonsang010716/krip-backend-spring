@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
  * RegisteredCacheManager — 3-state(R/U/I) 음성 캐싱 + Redis 장애 시 fail-open(lookup null → DB 폴백),
  * cache 는 best-effort(예외 미전파).
  */
+@DisplayName("가입상태 캐시 — Outcome 디코딩·TTL·fail-open")
 class RegisteredCacheManagerTest {
 
     private final StringRedisTemplate redis = mock(StringRedisTemplate.class);

@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
  * {@link TripmateImageService} 고아 보상 단위 테스트 — 업로드 저장 실패 시 S3 보상 삭제(누수 방지),
  * 삭제는 DB-우선 후 best-effort 스토리지 정리를 검증한다.
  */
+@DisplayName("트립메이트 이미지 서비스 — Mongo 실패 시 S3 보상 삭제")
 class TripmateImageServiceTest {
 
     private final TripmateImageRepository imageRepository = mock(TripmateImageRepository.class);

@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 알림 차단(mute) E2E — 경로 {@code /api/notification/mute}. 전역(유저) / 방별(멤버) 두 레벨.
  * 저장은 true 만, 해제는 NULL 정규화. 요청 JSON snake_case({@code muted}).
  */
+@DisplayName("알림 뮤트 — 전역/방 토글·정규화·멤버십 검증")
 class MuteE2eTest extends MuteTestSupport {
 
     @Autowired

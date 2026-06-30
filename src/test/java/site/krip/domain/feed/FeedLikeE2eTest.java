@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 피드 좋아요 E2E — 추가(201)→중복(400)→목록→취소(200)→재취소(400), 가시성 미충족(404).
  * 경로: {@code /api/feed/posts/{postId}/like[s]}. 게시물은 리포지토리로 직접 시드(S3 우회).
  */
+@DisplayName("피드 좋아요 — 추가/취소·가시성·커서 페이지네이션")
 class FeedLikeE2eTest extends FeedTestSupport {
 
     private static final int PAGE_SIZE = 30;

@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 인박스 keyset 커서 페이지네이션 회귀 — 커서가 created_at 단일키였을 때 동일 created_at 항목이
  * 페이지 경계에서 유실됐다. (created_at, _id) keyset 적용 후 전부 정확히 한 번씩 반환되어야 한다.
  */
+@DisplayName("인박스 페이지네이션 — 동일 created_at 경계 무손실")
 class InboxPaginationIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

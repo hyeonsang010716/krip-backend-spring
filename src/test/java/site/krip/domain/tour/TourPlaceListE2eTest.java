@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 비어있지 않은 $geoNear 결과로 거리정렬·is_favorite 병합·커서 페이지네이션을 검증하는 E2E.
  * 간섭 회피를 위해 keyword prefix 로 자기 시드만 조회. coordinates 는 [lng, lat] 순(GeoJSON).
  */
+@DisplayName("장소 목록 — 거리순·즐겨찾기 병합·커서 페이지네이션")
 class TourPlaceListE2eTest extends IntegrationTestSupport {
 
     private static final String PLACES = "/api/tour/places";

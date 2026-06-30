@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 친구 상세 조회 에러/관계상태 E2E (/api/friend/detail/{userId}).
  * FriendSearchE2eTest 가 무관계/PENDING(요청자)을 다루고, 본 테스트는 나머지 경계: 404/400/ACCEPTED/요청 수신(is_requester=false).
  */
+@DisplayName("친구 상세 — 관계 상태 노출·거절 마스킹·차단 방향별 처리")
 class FriendDetailE2eTest extends IntegrationTestSupport {
 
     @Test

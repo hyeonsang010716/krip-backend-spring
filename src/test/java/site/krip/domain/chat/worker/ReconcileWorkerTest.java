@@ -35,6 +35,7 @@ import static org.mockito.Mockito.when;
  * {@link ReconcileWorker} at-least-once drain 단위 테스트 — 정상 갱신·SREM, 실패 시 set 유지(재시도),
  * tick 배치 예산 상한·진전 기반 백오프.
  */
+@DisplayName("reconcile 워커 — last_message 갱신·실패 보존·배치 예산")
 class ReconcileWorkerTest {
 
     private static final String KEY = ChatRedisKeys.DIRTY_CHAT_ROOM_KEY;

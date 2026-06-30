@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link AiCircuitBreaker} 단위 테스트 — nanoClock 주입으로 open/half-open/close 전이를 결정적으로 검증하고,
  * cooldown 경과 후 probe 가 단 1건만 통과하는지(single-flight) 동시성으로 검증한다.
  */
+@DisplayName("AI 서킷브레이커 — open/half-open/probe 전이·latch 경합")
 class AiCircuitBreakerTest {
 
     private static final long ONE_SECOND_NANOS = 1_000_000_000L;

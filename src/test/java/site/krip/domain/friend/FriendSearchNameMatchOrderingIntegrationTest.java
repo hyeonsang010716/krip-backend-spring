@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 닉네임 선해석 상한이 메인 검색과 동일 정렬(최신 가입순)로 적용되는지 검증(회귀).
  * 구버그: 정렬 없이 N개를 뽑아 상한 초과 시 최신 유저가 비결정적 누락("흔한 이름 검색 안 됨"). 최신순으로 최근 매치 보존.
  */
+@DisplayName("친구 검색 정렬 — 상한 초과 시 최근 가입 최신순 보존")
 class FriendSearchNameMatchOrderingIntegrationTest extends IntegrationTestSupport {
 
     /** 닉네임 선해석 상한 — 매치 3건보다 작게 잡아 가장 오래된 1건이 잘리도록. */

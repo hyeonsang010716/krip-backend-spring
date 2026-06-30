@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * add 201/중복 409, update 200(이전 객체 정리), delete 200/미존재 404, S3 업로드는 DB 트랜잭션 밖.
  */
 @Import(FakeStorageConfig.class)
+@DisplayName("프로필 이미지 — 추가/수정/삭제 CRUD")
 class ProfileImageE2eTest extends IntegrationTestSupport {
 
     private static final String IMAGE = "/api/auth/profile/image";

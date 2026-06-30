@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 채팅 메시지 핫패스 서비스 통합 테스트 — WS 핸들러를 거치지 않고 {@link MessageService} 를 직접 호출해
  * 실 Redis(rate limit / dedupe / seq) + 실 Mongo(insert) 경로를 검증한다.
  */
+@DisplayName("메시지 전송 서비스 — rate limit·dedupe·seq·차단·캐시 폴백")
 class ChatMessageServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

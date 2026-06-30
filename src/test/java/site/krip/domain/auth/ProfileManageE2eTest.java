@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 프로필 수정/탐색목록/통계/로그아웃 E2E ({@code /api/auth/profile}, {@code /api/auth/logout}).
  * {@link AuthProfileE2eTest} 가 다루지 않는 변경/목록/로그아웃 엔드포인트를 메운다.
  */
+@DisplayName("프로필 관리 — 부분 수정·목록·통계·로그아웃 토큰 폐기")
 class ProfileManageE2eTest extends IntegrationTestSupport {
 
     @Test

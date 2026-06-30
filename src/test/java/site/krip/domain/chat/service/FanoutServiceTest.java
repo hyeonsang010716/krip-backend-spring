@@ -33,6 +33,7 @@ import static org.mockito.Mockito.when;
  * {@link FanoutService} 단위 테스트 (in_process 모드) — Redis 없이 로컬 메모리 직배송만 검증:
  * 자기-에코 skip, 유저 전 세션 전달, 닫힌 소켓 정리(가짜 WS 세션으로 송신 캡처).
  */
+@DisplayName("fan-out 서비스 — 자기 에코 skip·세션 정리·register 경합")
 class FanoutServiceTest {
 
     private FanoutService fanout;

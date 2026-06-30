@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 채팅 메시지 히스토리/편집/삭제 REST E2E. 본문 생성은 평시 WS 핫패스라, 검증용 {@code chat_message}
  * 도큐먼트를 {@link ChatMessageRepository} 로 직접 시드({@code MessageService.baseDoc} 형태)한다.
  */
+@DisplayName("채팅 메시지 — 페이지네이션·편집·삭제 권한/제약")
 class ChatMessageE2eTest extends ChatTestSupport {
 
     @Autowired

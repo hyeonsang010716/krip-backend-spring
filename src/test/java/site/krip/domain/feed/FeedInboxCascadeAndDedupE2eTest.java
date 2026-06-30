@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 인박스 cascade(게시물 삭제 → soft hide) + dedup partial-unique(hide 후 재좋아요 → 신규 항목) E2E.
  * feed 헬퍼(seedPost) 재사용을 위해 feed 패키지의 FeedTestSupport 를 상속.
  */
+@DisplayName("피드 인박스 cascade — 삭제 soft hide·재좋아요 재생성")
 class FeedInboxCascadeAndDedupE2eTest extends FeedTestSupport {
 
     private static final String INBOX = "/api/notification/inbox";

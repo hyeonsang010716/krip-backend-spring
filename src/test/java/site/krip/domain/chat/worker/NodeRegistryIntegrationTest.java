@@ -15,6 +15,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 채팅 노드 레지스트리 통합 테스트 — 실 Redis(`chat:nodes` ZSET) 기준. 등록/활성 노출, 만료 노드 제외,
  * listActiveNodes 읽기 전용, cleanupExpired 삭제, ZSET 유실 후 heartbeat 자가복구를 커버.
  */
+@DisplayName("노드 레지스트리 — 등록·만료 제외·cleanup·자가복구")
 class NodeRegistryIntegrationTest extends IntegrationTestSupport {
 
     private static final String DEAD_NODE = "dead-node";

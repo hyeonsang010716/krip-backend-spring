@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 여행 플랜 권한/유효성 경계 E2E ({@code /api/tour/plans}) — {@link TourPlanE2eTest} 가 다루지 않는
  * 생성/수정 유효성(공백 title·범위 초과 day), 권한 403(남의 플랜 수정/삭제), 일차·카드 경계(400/404)를 메운다.
  */
+@DisplayName("여행 플랜 권한/검증 — 소유자·범위·존재 확인")
 class TourPlanAuthorizationE2eTest extends TourTestSupport {
 
     /** 플랜 컨텍스트(plan/item/place)와 헬퍼 접근을 받아 요청을 조립한다 — 파라미터화된 케이스용. */

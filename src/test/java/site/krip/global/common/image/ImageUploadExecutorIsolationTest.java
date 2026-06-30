@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * process()→uploadInParallel 합성이 업로드를 풀 워커에서 실행하는지 검증(회귀).
  * uploadPool 포화(CallerRuns) 시에도 요청(Tomcat) 스레드가 아닌 img-* 워커에서 돌아 스레드 격리가 유지돼야 한다.
  */
+@DisplayName("이미지 업로드 풀 격리 — 워커 실행·순서·예외 전파")
 class ImageUploadExecutorIsolationTest {
 
     private static final int PROCESS_POOL = 2;

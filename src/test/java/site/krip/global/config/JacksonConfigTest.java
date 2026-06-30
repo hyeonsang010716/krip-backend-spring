@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link JacksonConfig} Instant 직렬화 단위 테스트 — Z(UTC) ISO-8601 형식 검증.
  * Spring 컨텍스트 없이 customizer + SNAKE_CASE 를 builder 에 직접 적용해 동일 ObjectMapper 를 재현한다.
  */
+@DisplayName("Jackson 설정 — Instant UTC 직렬화·snake_case")
 class JacksonConfigTest {
 
     private ObjectMapper mapper() {

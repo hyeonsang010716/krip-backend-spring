@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 좋아요 E2E — 추가(201)→중복추가(400)→좋아요 유저 목록→취소(200)→재취소(400).
  * 본인→본인 좋아요는 서비스에서 허용(fan-out만 skip)되므로 self-like 가 성공함을 검증.
  */
+@DisplayName("트립메이트 좋아요 — 추가/취소·self-like·존재 은닉")
 class TripmateLikeE2eTest extends TripmateTestSupport {
 
     @Test

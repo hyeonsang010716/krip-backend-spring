@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 읽음 처리 통합 테스트 — {@link RoomService#markRead} 의 GREATEST 회귀 방지(작은 seq 로 내려가지 않음),
  * 비멤버 거부(403), 읽음 후 unread 캐시 동기화(최신까지 읽음→0, 부분 읽음→잔여)를 실 DB 로 검증한다.
  */
+@DisplayName("읽음 처리 — GREATEST 단조·미래 seq 클램프·권한")
 class ChatMarkReadServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

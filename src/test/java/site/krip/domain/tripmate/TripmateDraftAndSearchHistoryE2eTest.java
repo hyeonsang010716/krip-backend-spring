@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 임시저장(draft) + 검색 기록(search-history) E2E.
  * draft 경로: {@code /api/tripmate/posts/draft}, 검색기록 경로: {@code /api/tripmate/search-history}.
  */
+@DisplayName("트립메이트 임시저장·검색 기록 — 저장/조회/삭제 흐름")
 class TripmateDraftAndSearchHistoryE2eTest extends IntegrationTestSupport {
 
     private static final String DRAFT = "/api/tripmate/posts/draft";

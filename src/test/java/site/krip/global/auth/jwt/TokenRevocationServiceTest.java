@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
  * TokenRevocationService — TTL 계산이 주입 Clock 기준인지 검증.
  * exp 는 JwtProvider 가 주입 clock 으로 만든 절대시각이므로, ttl 도 같은 시계로 계산해야 한다.
  */
+@DisplayName("토큰 폐기 — clock 기준 TTL·fail-open 조회·예외 흡수")
 class TokenRevocationServiceTest {
 
     private static final Instant FIXED = Instant.parse("2020-01-01T00:00:00Z");

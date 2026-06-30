@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 시스템 메시지 통합 테스트 — {@link MessageService#sendSystemMessage} 가 ① action/target 과 함께 Mongo 적재
  * ② unread 를 올리지 않음(일반 텍스트는 올림)을 실 Redis/Mongo 로 검증.
  */
+@DisplayName("시스템 메시지 — 타입 적재·unread 미증가")
 class ChatSystemMessageServiceIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

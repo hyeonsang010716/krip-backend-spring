@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate display 토글 권한 + 비표시 필터링 E2E ({@code /api/tripmate/posts}).
  * {@link TripmatePostE2eTest} 의 정상 흐름 외 경계만: 남이 토글(403), 미존재(404), 비표시 글 목록 제외.
  */
+@DisplayName("트립메이트 display 토글 — 권한·공개 목록 제외")
 class TripmateDisplayE2eTest extends TripmateTestSupport {
 
     /** 제주 지역 모집글 생성 후 post_id 반환 (display 토글 대상). */

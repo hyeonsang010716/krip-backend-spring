@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 전역 예외 처리 규약 E2E — Bean Validation/enum/JSON/누락 파라미터/미존재 라우트가 모두
  * {@code {"detail": ...}} 형태의 400/404 로 변환되는지 검증.
  */
+@DisplayName("전역 예외 처리 — 검증/파싱/라우팅 에러 매핑")
 class GlobalExceptionHandlerE2eTest extends IntegrationTestSupport {
 
     private String tripmateBody(String content, String companionType) {

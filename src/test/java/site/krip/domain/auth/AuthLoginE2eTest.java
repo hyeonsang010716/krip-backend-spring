@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * OAuth 로그인 진입/콜백 E2E ({@code /api/auth/login}, {@code /api/auth/login/app}).
  * 콜백 실패는 JSON 이 아니라 FE 로 {@code ?status=state_invalid} 리다이렉트(브라우저가 리다이렉트 중이므로).
  */
+@DisplayName("OAuth 로그인 — 진입 리다이렉트·미지원 provider·state 검증")
 class AuthLoginE2eTest extends IntegrationTestSupport {
 
     @Test

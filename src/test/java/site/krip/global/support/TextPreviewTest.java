@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link TextPreview} 단위 테스트 — 코드포인트 경계 truncation 과 surrogate 미분리 회귀.
  */
+@DisplayName("텍스트 프리뷰 — 코드포인트 절단·surrogate 무분할")
 class TextPreviewTest {
 
     private static final String EMOJI = "😀"; // 😀 U+1F600 (surrogate pair, 2 char / 1 code point)

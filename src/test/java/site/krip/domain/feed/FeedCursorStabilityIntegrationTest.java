@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 피드 게시글/댓글 커서 안정성 — 경계 행이 삭제돼도 다음 페이지가 잘리지 않는지(회귀).
  * 구버그: 커서가 id 만 담아 경계 행 삭제 시 createdAt 서브쿼리가 NULL → 빈 결과로 잘림. (createdAt, id) 인코딩으로 수정.
  */
+@DisplayName("피드 커서 안정성 — 경계 행 삭제에도 페이지 무손실")
 class FeedCursorStabilityIntegrationTest extends FeedTestSupport {
 
     @Autowired

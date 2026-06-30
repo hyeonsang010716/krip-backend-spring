@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 차단/숨김 가시성 E2E ({@code /api/tripmate/posts}).
  * 차단(방향 무관) 작성자 글은 목록·검색·단건에서 제외, 숨김 글은 작성자만 단건 조회(나머지 404).
  */
+@DisplayName("트립메이트 차단 가시성 — 목록/검색/단건/좋아요 양방향 제외")
 class TripmateBlockVisibilityE2eTest extends TripmateTestSupport {
 
     /** 서울 지역 모집글 생성 후 post_id 반환. */

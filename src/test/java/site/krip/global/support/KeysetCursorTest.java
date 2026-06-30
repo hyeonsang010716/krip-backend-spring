@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** keyset 커서 코덱 — 라운드트립(정렬키+id) 과 형식 오류 검증. */
+@DisplayName("Keyset 커서 — encode/decode round-trip·형식 오류 400")
 class KeysetCursorTest {
 
     @Test

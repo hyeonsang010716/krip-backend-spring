@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 회원 탈퇴/취소 E2E.
  * 경로: {@code DELETE /api/auth/withdraw}, {@code POST /api/auth/withdraw/cancel} (RegisterCheckFilter 제외).
  */
+@DisplayName("회원 탈퇴 — 요청·유예 내 취소·재탈퇴")
 class WithdrawE2eTest extends IntegrationTestSupport {
 
     @Test

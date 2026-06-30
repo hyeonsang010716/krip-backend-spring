@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "krip.chat.fanout-mode=redis_stream",
         "krip.chat.node-id=test-node-1" // redis_stream 부팅 가드 충족 — 기본 'node-local' 은 fail-fast 거부됨
 })
+@DisplayName("fan-out 자기전달 — 노드 명단 비어도 로컬 세션 수신")
 class FanoutSelfDeliveryIntegrationTest extends ChatTestSupport {
 
     @Autowired

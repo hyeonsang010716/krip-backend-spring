@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verify;
  * WS liveness sweep 회귀 — pong 으로 생존 확인된 세션만 ping/TTL 연장, half-open(타임아웃) 세션은 닫는다.
  * 과거엔 무조건 TTL 을 연장해 좀비 세션이 자가청소를 회피하고 세션 한도를 소진했다.
  */
+@DisplayName("WS liveness — pong 기반 ping·TTL 연장·끊긴 세션 종료")
 class ChatWebSocketHandlerLivenessTest extends ChatTestSupport {
 
     @Autowired

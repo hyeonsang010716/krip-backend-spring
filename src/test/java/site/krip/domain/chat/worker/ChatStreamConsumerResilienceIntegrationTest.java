@@ -25,6 +25,7 @@ import static org.awaitility.Awaitility.await;
         "krip.chat.fanout-mode=redis_stream",
         "krip.chat.node-id=test-node-1" // redis_stream 부팅 가드 충족 — 기본 'node-local' 은 fail-fast 거부됨
 })
+@DisplayName("스트림 컨슈머 복원력 — group 파괴 후 재생성·전달 재개")
 class ChatStreamConsumerResilienceIntegrationTest extends ChatTestSupport {
 
     @Autowired

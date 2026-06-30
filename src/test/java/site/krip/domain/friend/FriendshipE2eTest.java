@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 친구 요청/수락/거절/취소/삭제 E2E (/api/friend/friendships).
  * 모든 관계는 실제 API 로 생성. 응답 JSON 은 snake_case, status 는 소문자(pending/accepted/rejected).
  */
+@DisplayName("친구 관계 — 요청/수락/거절/취소/삭제 플로우")
 class FriendshipE2eTest extends IntegrationTestSupport {
 
     @Test

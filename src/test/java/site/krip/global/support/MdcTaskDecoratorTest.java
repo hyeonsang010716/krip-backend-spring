@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link MdcTaskDecorator} 단위 테스트 — request_id 전파/신규생성/누수방지/반환값.
  */
+@DisplayName("MDC 전파 — request_id 워커 전파·복원")
 class MdcTaskDecoratorTest {
 
     @AfterEach

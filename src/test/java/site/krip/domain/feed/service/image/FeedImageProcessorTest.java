@@ -24,6 +24,7 @@ import static site.krip.domain.feed.service.image.ImageTestSupport.makeImage;
  * {@link ImageProcessor} 순수 Java 이미지 처리 단위 테스트 — S3/Spring 불필요.
  * 한계: WEBP 플러그인은 디코드 전용이라 정지 WEBP 인코딩 불가 → "정상 WEBP" 케이스는 생략, animated WEBP 는 헤더를 손으로 만들어 거절만 본다.
  */
+@DisplayName("피드 이미지 처리 — 변형 생성·정사각 crop·포맷 화이트리스트·폭탄 방어")
 class FeedImageProcessorTest {
 
     private static final byte[] MARKER = "__METADATA_MARKER__".getBytes(StandardCharsets.US_ASCII);

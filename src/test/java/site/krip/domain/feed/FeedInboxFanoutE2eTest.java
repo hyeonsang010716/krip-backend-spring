@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * feed 좋아요/댓글 → notification 인박스 fan-out E2E (소스 도메인 관점).
  * 외부 액터 fan-out, self-skip, dedup(멱등), 댓글 preview 100자 절단을 인박스 목록으로 검증.
  */
+@DisplayName("피드 인박스 fan-out — 좋아요/댓글 알림·self-skip·dedup·preview")
 class FeedInboxFanoutE2eTest extends FeedTestSupport {
 
     @Test

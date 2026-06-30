@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 이후 {@code plan.touch()} 가 무효화돼 갱신이 유실됐었다. 목록은 {@code updated_at desc} 정렬이므로
  * "먼저 만든 플랜의 day 를 삭제하면 목록 맨 앞으로 올라온다"로 갱신 여부를 행위로 검증한다.
  */
+@DisplayName("여행 플랜 일차 삭제 — updated_at 갱신(목록 정렬 반영)")
 class TourRemoveDayTouchE2eTest extends TourTestSupport {
 
     @Test

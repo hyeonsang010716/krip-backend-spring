@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@code /api/ws/chat} 실제 연결. 인증은 쿠키 대신 {@code auth.<jwt>} 서브프로토콜 + Origin 화이트리스트.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DisplayName("WS 채팅 — 핸드셰이크·send/read·시스템 위조 차단·폐기 토큰")
 class ChatWebSocketE2eTest extends IntegrationTestSupport {
 
     private static final String ALLOWED_ORIGIN = "https://krip.site";

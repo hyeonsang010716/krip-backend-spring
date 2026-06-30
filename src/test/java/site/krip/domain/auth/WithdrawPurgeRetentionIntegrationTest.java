@@ -13,6 +13,7 @@ import static org.mockito.Mockito.doThrow;
  * 외부 리소스(PII) 정리 실패 시 작업 큐(doc) 보존 + 다음 사이클 재시도 검증 — Object Storage 삭제를
  * 첫 호출만 실패시켜, RDB 유저는 hard delete 되더라도 doc 이 남아 영구 누수를 막는지 확인한다.
  */
+@DisplayName("탈퇴 purge — 외부 삭제 실패 시 doc 보존·재시도")
 class WithdrawPurgeRetentionIntegrationTest extends WithdrawPurgeTestSupport {
 
     @MockitoBean

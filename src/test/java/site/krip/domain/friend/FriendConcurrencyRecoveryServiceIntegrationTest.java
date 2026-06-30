@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 친구요청/차단의 동시성 복구 분기 통합 — 같은 INSERT 경합 시 한쪽 성공, 다른 쪽은
  * DataIntegrityViolation → 재조회 catch 로 500이 아닌 400. "정확히 하나 성공 + 나머지 400 + 최종 1건" 불변식 검증.
  */
+@DisplayName("친구/차단 동시성 — 단일 성공·나머지 400(500 아님)")
 class FriendConcurrencyRecoveryServiceIntegrationTest extends IntegrationTestSupport {
 
     private static final int CONTENDERS = 2;

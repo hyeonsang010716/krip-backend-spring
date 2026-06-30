@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 /**
  * {@link ChatSetCache#saddWithTtl} 단위 테스트 — 빈 멤버 가드(스크립트 SADD 0-인자 abort 방지)와 정상 ARGV 구성.
  */
+@DisplayName("방 멤버 캐시 — 빈 멤버 no-op·스크립트 실행")
 class ChatSetCacheTest {
 
     private StringRedisTemplate redis;

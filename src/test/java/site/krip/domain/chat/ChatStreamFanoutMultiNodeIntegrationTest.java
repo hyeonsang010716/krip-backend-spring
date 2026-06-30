@@ -22,6 +22,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** 다중 노드 Stream fan-out — 격리 스트림에서 at-least-once(다운 중 발행분도 복귀 시 전부 수신) + ack 커서 전진을 검증. */
+@DisplayName("스트림 fan-out 멀티노드 — 노드 재합류 시 유실 없는 갭 수신")
 class ChatStreamFanoutMultiNodeIntegrationTest extends IntegrationTestSupport {
 
     @Autowired

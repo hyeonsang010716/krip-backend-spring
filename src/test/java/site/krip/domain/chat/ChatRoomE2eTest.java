@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 채팅 방 생성/멤버십/조회 REST E2E ({@code /api/chat/rooms}). 친구/차단은 리포지토리로 직접 시드,
  * 응답 JSON 은 snake_case, room type 은 소문자 enum({@code direct/group}).
  */
+@DisplayName("채팅 방 — 1:1/그룹 생성·초대·퇴장·강퇴·조회")
 class ChatRoomE2eTest extends ChatTestSupport {
 
     // ──────────────────── 1:1 방 ────────────────────

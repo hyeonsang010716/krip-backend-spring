@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * remove_day 의 gap 보존 + day_number monotonic 검증 — day 를 비워도 travel_days 는 유지하고(gap 보존),
  * 이후 add_day 는 gap 재사용 없이 max+1 을 부여하는지 본다.
  */
+@DisplayName("여행 플랜 일차 삭제 — travel_days 불변·gap 보존")
 class TourRemoveDayGapE2eTest extends TourTestSupport {
 
     @Test

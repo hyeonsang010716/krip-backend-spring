@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 유저 차단/해제/목록 E2E (/api/friend/blocks).
  * 차단 시 기존 friendship(방향 무관) 정리 + 검색에서 양방향 제외. 관계는 실제 API(befriendViaApi)로 생성.
  */
+@DisplayName("유저 차단 — 차단/해제·친구관계 제거·검색 제외")
 class UserBlockE2eTest extends IntegrationTestSupport {
 
     @Test

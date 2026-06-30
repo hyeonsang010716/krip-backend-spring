@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * {@link ImageProcessor} 의 WEBP 알파 판정 / EXIF 회전 경로 단위 테스트.
  * ImageIO 로는 WEBP 인코딩·EXIF 기록이 불가해 Pillow 로 만든 픽스처(src/test/resources/images)를 쓴다.
  */
+@DisplayName("피드 이미지 엣지 — WEBP 재인코딩·EXIF 회전")
 class FeedImageEdgeCaseTest {
 
     private final ImageProcessor processor = new ImageProcessor();

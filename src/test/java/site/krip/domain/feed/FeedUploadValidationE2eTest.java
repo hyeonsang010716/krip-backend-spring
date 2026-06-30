@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 피드 업로드 검증 E2E — S3 미사용이라 S3 도달 전 거절되는 경로만 본다({@code POST /api/feed/posts}).
  * 컨트롤러는 content-type → size → caption 길이를 S3/이미지 처리보다 먼저 검증한다.
  */
+@DisplayName("피드 업로드 검증 — content-type·크기·캡션·디코드(S3 미도달)")
 class FeedUploadValidationE2eTest extends IntegrationTestSupport {
 
     private static MockMultipartFile file(String contentType, byte[] bytes) {

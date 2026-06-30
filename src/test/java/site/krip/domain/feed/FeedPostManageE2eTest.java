@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 피드 게시물 관리 E2E — 캡션 PATCH(설정/삭제/길이검증), 가시성 PATCH, 삭제→삭제후 404.
  * 캡션 길이는 코드포인트 기준이라 이모지 케이스를 PATCH(S3 미사용)로 검증한다.
  */
+@DisplayName("피드 게시물 관리 — 캡션·가시성·삭제 권한")
 class FeedPostManageE2eTest extends FeedTestSupport {
 
     private static final int CAPTION_MAX = 100;

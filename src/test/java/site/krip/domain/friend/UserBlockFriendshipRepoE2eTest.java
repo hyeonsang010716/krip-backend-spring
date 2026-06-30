@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 차단 ↔ friendship 상호작용을 저장소(DB) 수준으로 검증 — 차단 시 friendship 이 실제로 삭제되고,
  * 해제해도 복원되지 않는다.
  */
+@DisplayName("차단 repo — friendship 삭제·해제 후 미복원")
 class UserBlockFriendshipRepoE2eTest extends IntegrationTestSupport {
 
     @Test

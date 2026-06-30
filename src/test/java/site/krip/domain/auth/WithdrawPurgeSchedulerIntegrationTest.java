@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 스토리지를 주입한다(실 S3 빈은 자격증명 부재로 실패 → doc 보존). 실패→보존→재시도는 별도 테스트가 검증한다.
  */
 @Import(FakeStorageConfig.class)
+@DisplayName("탈퇴 purge 스케줄러 — due 유저만 hard delete·doc 청소")
 class WithdrawPurgeSchedulerIntegrationTest extends WithdrawPurgeTestSupport {
 
     @Autowired

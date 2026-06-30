@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 댓글 길이 검증이 코드포인트 기준인지 확인하는 E2E — 컨트롤러 단계라 게시물 없이도 검증(한도 내면 404=통과 증거).
  * 이모지(비-BMP)는 UTF-16 2 유닛이라 과거 코드유닛 기준에선 과도 거부되던 경계를 본다.
  */
+@DisplayName("피드 댓글 길이 — 코드포인트 한도")
 class FeedCommentLengthE2eTest extends IntegrationTestSupport {
 
     private static final String COMMENTS = "/api/feed/posts/nope/comments";

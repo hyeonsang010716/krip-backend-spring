@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
  * {@link UnreadService} 순수 단위 테스트 — miss 방은 단일 aggregate 로 배치 계산(N+1 제거), 캐시 hit 은 우회,
  * 미읽음 0 은 호출측이 채움, 배치 실패 시 miss 전체 skip(방별 격리 → all-or-nothing 변경).
  */
+@DisplayName("미읽음 집계 — 배치 aggregate·캐시·999 캡")
 class UnreadServiceTest {
 
     private final ChatRoomMemberRepository memberRepo = mock(ChatRoomMemberRepository.class);

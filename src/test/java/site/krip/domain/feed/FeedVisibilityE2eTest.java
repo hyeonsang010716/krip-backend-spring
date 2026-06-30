@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 피드 가시성 매트릭스 E2E — PRIVATE/FRIENDS/PUBLIC × (owner/friend/stranger/blocked).
  * 단건 조회는 owner 전용이라 타 유저 가시성은 좋아요 진입점으로 검증한다(미충족·차단 모두 404).
  */
+@DisplayName("피드 가시성 — owner/친구/비친구/차단별 단건·목록 노출")
 class FeedVisibilityE2eTest extends FeedTestSupport {
 
     // ──────────────────── owner 본인 ────────────────────

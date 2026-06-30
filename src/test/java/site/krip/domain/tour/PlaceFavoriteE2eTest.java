@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 장소 조회 + 즐겨찾기 + 검색 기록 E2E ({@code /api/tour/places}, {@code /api/tour/search-history}).
  * 거리순(geo) 조회는 시드가 무거워 빈/페이지 경로만 검증한다.
  */
+@DisplayName("장소 즐겨찾기 — 단건/목록 조회·추가/해제·검색 기록")
 class PlaceFavoriteE2eTest extends TourTestSupport {
 
     // ──────────────────── 장소 조회 ────────────────────

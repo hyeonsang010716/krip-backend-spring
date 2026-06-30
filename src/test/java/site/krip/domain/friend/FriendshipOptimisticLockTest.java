@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Friendship 낙관적 락(@Version) 통합 — 같은 관계 행을 stale 핸들로 수정하면 충돌이 발생함을 검증.
  * (@SpringBootTest 는 메서드 트랜잭션을 열지 않아 각 repo 호출이 독립 커밋되므로 동시 수정을 재현할 수 있다.)
  */
+@DisplayName("친구 관계 낙관적 락 — stale 버전 충돌")
 class FriendshipOptimisticLockTest extends IntegrationTestSupport {
 
     @Test

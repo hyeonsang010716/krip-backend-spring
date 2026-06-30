@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * {@link JwtProvider} 순수 단위 테스트 — issue/parse 라운드트립 및 무효/만료 토큰.
  * {@link AuthProperties} 레코드(중첩 Jwt 포함)를 직접 생성해 주입한다.
  */
+@DisplayName("JWT 발급/검증 — round-trip·위조/만료 거부·만료 계산")
 class JwtProviderTest {
 
     private static final String SECRET = "test-login-jwt-secret-value-1234567890";

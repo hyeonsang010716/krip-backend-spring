@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 친구 요청 상태머신 + 권한 가드 E2E (/api/friend/friendships).
  * FriendshipE2eTest 의 정상 흐름 밖 경계: 잘못된 당사자 403, 비-PENDING/비-ACCEPTED 전이 400, 차단 방향/미존재 400.
  */
+@DisplayName("친구 상태 전이 — 권한·PENDING 전용·TOCTOU 방어")
 class FriendshipStateMachineE2eTest extends IntegrationTestSupport {
 
     /** ACCEPTED 상태에서 거부돼야 하는 PENDING 전용 전이 — 엔드포인트/요청자(actor) 만 다르다. */

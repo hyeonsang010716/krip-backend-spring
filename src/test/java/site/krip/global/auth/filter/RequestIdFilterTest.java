@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link RequestIdFilter} — 안전한 X-Request-ID 만 재사용, 위험 값은 UUID 재생성(CRLF 로그 위조 방지).
  */
+@DisplayName("Request-ID 필터 — 안전 값 재사용·CRLF 위조 거부")
 class RequestIdFilterTest {
 
     private static final String HEADER = "X-Request-ID";

@@ -16,6 +16,7 @@ import static org.mockito.Mockito.mock;
 /**
  * reaper 의 group 선정 로직 단위 테스트 — 스냅샷 경합/짧은 누락 방어(연속 부재 N틱 후에만 제거).
  */
+@DisplayName("스트림 reaper — 연속 2틱 부재 시 제거·경합 방어")
 class ChatStreamConfigReaperTest {
 
     private ChatStreamConfig config;

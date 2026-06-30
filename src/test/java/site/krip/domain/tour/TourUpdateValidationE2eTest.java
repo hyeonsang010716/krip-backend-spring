@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 플랜/카드 수정 요청의 필수 키 존재 검증 E2E — {@code @JsonProperty(required=true)} 가 키 누락이면 400,
  * 키 존재(값 null)면 검증 통과 후 미존재 플랜이라 404 가 되는지 본다.
  */
+@DisplayName("여행 플랜 수정 검증 — 필수 키·null 값 처리")
 class TourUpdateValidationE2eTest extends IntegrationTestSupport {
 
     private static final String NO_SUCH_PLAN = "/api/tour/plans/nope";

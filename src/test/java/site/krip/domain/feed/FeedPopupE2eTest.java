@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 피드 팝업 E2E — 프로필 + 가시성 부분집합 피드. 경로: {@code GET /api/feed/popup/{userId}}.
  * user 미존재·차단 404, 가시성은 viewer 관계에 따라 PUBLIC/FRIENDS+PUBLIC/전체.
  */
+@DisplayName("피드 프로필 팝업 — 관계별 가시성·차단 은닉")
 class FeedPopupE2eTest extends FeedTestSupport {
 
     @Test

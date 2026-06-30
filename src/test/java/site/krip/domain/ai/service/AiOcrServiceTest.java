@@ -18,6 +18,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 /**
  * {@link AiOcrService#ocrBatch} 개수 가드 — AI 호출 전에 빈/초과 입력을 400 으로 차단(헛 호출 방지).
  */
+@DisplayName("AI OCR 서비스 — batch 크기 검증")
 class AiOcrServiceTest {
 
     private static final int BAD_REQUEST = 400;

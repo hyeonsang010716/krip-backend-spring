@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 피드 댓글 E2E — 작성(201)→공백(400)→목록→작성자만 삭제(타인 403)→post_id 불일치(404).
  * 경로: {@code /api/feed/posts/{postId}/comments}. 게시물은 리포지토리로 직접 시드(S3 우회).
  */
+@DisplayName("피드 댓글 — 작성·삭제 권한·가시성")
 class FeedCommentE2eTest extends FeedTestSupport {
 
     @Test

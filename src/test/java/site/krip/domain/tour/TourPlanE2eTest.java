@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 여행 플랜 CRUD + 카드 편집 E2E ({@code /api/tour/plans}) — 생성→조회→목록→제목수정→일차추가→
  * 카드추가/수정/이동/삭제→일차삭제→삭제 전체 흐름과 권한(403)/유효성(400)/미존재(404) 케이스.
  */
+@DisplayName("여행 플랜 — 생성/조회/카드 이동·position 재정규화 전체 흐름")
 class TourPlanE2eTest extends TourTestSupport {
 
     // ──────────────────── 전체 흐름 ────────────────────

@@ -20,6 +20,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
  * Google OAuth 클라이언트 HTTP 단위 테스트 — {@link MockRestServiceServer} 로 응답을 가짜로 주고 파싱·누락 필드 방어 검증.
  * 커버: 토큰 교환 성공/access_token 누락, userinfo 파싱 성공/id 누락, authorize URL 생성.
  */
+@DisplayName("Google OAuth 클라이언트 — 토큰 교환·userinfo·authorize URL")
 class GoogleOAuthClientTest {
 
     private static final String TOKEN_URL = "https://token.test/token";

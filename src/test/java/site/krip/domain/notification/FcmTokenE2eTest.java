@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * FCM 토큰 등록/해제 E2E — 경로 {@code /api/notification/fcm-token}. FCM 자격증명 미설정이라
  * 발송은 no-op 이지만 등록/해제는 RDB 기준 정상 동작. 요청/응답 JSON snake_case.
  */
+@DisplayName("FCM 토큰 — 등록 멱등·소유자 교체·해제")
 class FcmTokenE2eTest extends IntegrationTestSupport {
 
     @Autowired

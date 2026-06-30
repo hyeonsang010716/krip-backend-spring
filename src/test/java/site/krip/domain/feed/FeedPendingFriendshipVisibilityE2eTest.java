@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * 가시성 엣지: PENDING(미수락) friendship 은 비친구로 취급되어 FRIENDS 게시물에 접근 불가(404).
  */
+@DisplayName("피드 가시성 — PENDING 친구는 FRIENDS 글 불가")
 class FeedPendingFriendshipVisibilityE2eTest extends FeedTestSupport {
 
     @Test

@@ -18,6 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link IdGenerator} 순수 단위 테스트 — 형식/접두사/고유성. Spring/DB 불필요.
  */
+@DisplayName("ID 생성기 — 형식·고유성·접두사")
 class IdGeneratorTest {
 
     // <PREFIX>_<epochSeconds>_<16 hex>

@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /**
  * {@link LogSafe} — CRLF/제어문자 무력화(CWE-117).
  */
+@DisplayName("로그 새니타이즈 — CRLF/탭 치환·로그 위조 방지")
 class LogSafeTest {
 
     @Test

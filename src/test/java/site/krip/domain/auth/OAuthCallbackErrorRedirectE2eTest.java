@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * OAuth 콜백 실패 경로 — 코드 교환/내부 실패가 JSON 500 이 아니라 FE 로 {@code ?status=} 리다이렉트되는지.
  * 유효 state 쿠키로 통과 후 {@link OAuthCallbackService} 를 mock 해 실패 주입(provider_error=교환실패, error=내부예외).
  */
+@DisplayName("OAuth 콜백 에러 — 교환/내부 실패 시 상태 리다이렉트(500 아님)")
 class OAuthCallbackErrorRedirectE2eTest extends IntegrationTestSupport {
 
     @MockitoBean

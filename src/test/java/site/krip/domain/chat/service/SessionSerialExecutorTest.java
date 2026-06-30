@@ -23,6 +23,7 @@ import static org.awaitility.Awaitility.await;
 /**
  * {@link SessionSerialExecutor} 단위 테스트 — 순서 보존, reject 후 복구, 경합 시 무유실(strand 방지).
  */
+@DisplayName("세션 직렬 실행기 — 순서 보존·reject 복원")
 class SessionSerialExecutorTest {
 
     @Test

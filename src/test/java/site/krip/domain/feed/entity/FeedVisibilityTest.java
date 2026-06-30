@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 /**
  * {@link FeedVisibility} 순수 매핑 헬퍼 테스트 — JSON value <-> enum, NAME 허용, 무효값 거절.
  */
+@DisplayName("Visibility enum — JSON/DB 값 변환·round-trip")
 class FeedVisibilityTest {
 
     @ParameterizedTest(name = "value '{0}' -> {1}")

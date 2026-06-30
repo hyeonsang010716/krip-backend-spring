@@ -13,6 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 좋아요 → notification 인박스 fan-out E2E (소스 도메인 관점).
  * 외부 유저 좋아요는 게시자 인박스로 fan-out 되고, 본인 좋아요는 skip 되는지 검증한다.
  */
+@DisplayName("트립메이트 좋아요 인박스 — 알림 1건·self-skip")
 class TripmateLikeInboxFanoutE2eTest extends TripmateTestSupport {
 
     private void like(String liker, String postId) throws Exception {

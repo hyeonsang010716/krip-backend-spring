@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
  * OAuthStateService — state nonce ↔ 바인딩 쿠키 상수시간 비교(CSRF 방어) 검증.
  * 실제 방어선인 nonce 비교(일치/불일치/쿠키부재) — 잘못된 필드 비교·쿠키 검사 제거 회귀를 잡는다.
  */
+@DisplayName("OAuth state — nonce/쿠키 검증·CSRF 거부·round-trip")
 class OAuthStateServiceTest {
 
     private final OAuthStateService svc = new OAuthStateService();

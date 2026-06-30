@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
  * {@link FcmService#registerToken} 동시성 — reassign UPDATE 가 0행(동시 삭제)이면 insert 로 폴백해
  * 토큰이 무음 유실되지 않는지 검증.
  */
+@DisplayName("FCM 토큰 reassign — 동시 삭제 시 insert 폴백")
 class FcmServiceTest {
 
     private FcmTokenRepository tokenRepo;

@@ -25,6 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * tripmate 게시글 CRUD E2E — 생성→단건→목록→검색→수정→display 토글→삭제→삭제후 404 의 핵심 흐름과
  * 권한/유효성 에러 케이스 검증. 경로: {@code /api/tripmate/posts}, 요청/응답 JSON snake_case.
  */
+@DisplayName("트립메이트 게시글 — 생성/검색/수정/삭제 권한 전체 흐름")
 class TripmatePostE2eTest extends TripmateTestSupport {
 
     @Test

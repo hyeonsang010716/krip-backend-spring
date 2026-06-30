@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
  * 즐겨찾기 추가 단위 테스트 — 동시 추가 race(UNIQUE 충돌)를 500 이 아닌 400 으로 매핑하는지 검증.
  * race 는 순차 호출로 재현 불가하므로 saveAndFlush 의 {@link DataIntegrityViolationException} 을 mock 주입.
  */
+@DisplayName("즐겨찾기 서비스 — 동시 추가 UNIQUE 충돌 400·중복/미존재 차단")
 class FavoritePlaceServiceTest {
 
     private static final String USER = "u1";

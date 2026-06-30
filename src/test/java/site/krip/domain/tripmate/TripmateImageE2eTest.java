@@ -29,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 여행메이트 이미지 업로드/정리 E2E
  * — 인메모리 스토리지로 다건 업로드·검증·고아정리(참조 합집합 차집합)를 검증한다.
  */
+@DisplayName("트립메이트 이미지 — 업로드 검증·고아 정리")
 class TripmateImageE2eTest extends TripmateImageTestSupport {
 
     @Autowired

@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * auth 프로필 E2E — 3계층 인증(글로벌 Bearer → 유저 JWT → 가입/상태 체크)이 실제로 동작하는지 검증.
  * 이 테스트가 통과하면 이후 모든 도메인 E2E 가 같은 인증 헬퍼로 신뢰성 있게 호출된다.
  */
+@DisplayName("프로필 조회 인증 — Bearer/유저 JWT 게이팅")
 class AuthProfileE2eTest extends IntegrationTestSupport {
 
     @Test

@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * ChatStreamConfig 부팅 가드 — redis_stream(다중 노드)에서 미설정 기본 node-id('node-local'/공란)를
  * fail-fast 거부해 consumer group 공유로 인한 fan-out 붕괴를 방지한다.
  */
+@DisplayName("스트림 node-id 가드 — 멀티노드 기본값 부팅 거부")
 class ChatStreamConfigNodeIdGuardTest {
 
     // ChatProperties(fanoutMode, nodeId, dedupeRedisDatabase, wsSendTimeLimitMs, wsSendBufferBytes, deliverySessionMaxQueued)

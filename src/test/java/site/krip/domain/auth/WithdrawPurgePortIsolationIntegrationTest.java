@@ -16,6 +16,7 @@ import static org.mockito.Mockito.verify;
  * 외부 PII purge 포트 격리 검증 — 한 도메인 포트가 실패해도 나머지 포트는 계속 실행되고(루프 try/catch),
  * 실패 시 작업 큐(doc)가 보존돼 PII 가 영구 누수되지 않는지 확인한다.
  */
+@DisplayName("탈퇴 purge — 외부 포트 격리 실행·작업 큐 보존")
 class WithdrawPurgePortIsolationIntegrationTest extends WithdrawPurgeTestSupport {
 
     @MockitoBean

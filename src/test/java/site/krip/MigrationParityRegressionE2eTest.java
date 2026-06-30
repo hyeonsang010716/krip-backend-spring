@@ -16,6 +16,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>커버: 잘못된 place 커서 400 / 검색기록 빈 검색어 삭제 400(friend·tour·tripmate) / 빈 이미지 업로드 400.
  */
+@DisplayName("마이그레이션 패리티 — 레거시 동작 회귀 방지(cursor·검색명·업로드)")
 class MigrationParityRegressionE2eTest extends IntegrationTestSupport {
 
     @Test
